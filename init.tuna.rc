@@ -3,9 +3,9 @@ on boot
 	chmod 0666 /dev/pvrsrvkm
 
 on fs
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/system /system wait ro
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata /data wait noatime nosuid nodev
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/cache /cache wait noatime nosuid nodev
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.1/by-name/system /system wait ro
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.1/by-name/userdata /data wait noatime nosuid nodev
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.1/by-name/cache /cache wait noatime nosuid nodev
 
 # take a wakelock on boot until PM is working
 	write /sys/power/wake_lock hack
