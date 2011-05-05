@@ -36,6 +36,10 @@ PRODUCT_COPY_FILES := \
 	device/samsung/tuna/ueventd.tuna.rc:root/ueventd.tuna.rc \
 	device/samsung/tuna/media_profiles.xml:system/etc/media_profiles.xml
 
+# Input device calibration files
+PRODUCT_COPY_FILES += \
+	device/samsung/tuna/Atmel_maXTouch_Touchscreen.idc:system/usr/idc/Atmel_maXTouch_Touchscreen.idc
+
 # HACK: copy panda init for now to boot on both boards
 PRODUCT_COPY_FILES += \
 	device/ti/panda/init.omap4pandaboard.rc:root/init.omap4pandaboard.rc
