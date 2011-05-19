@@ -49,7 +49,7 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PROPERTY_OVERRIDES := \
 	hwui.render_dirty_regions=false
 
-PRODUCT_CHARACTERISTICS := tablet,nosdcard
+PRODUCT_CHARACTERISTICS := tablet
 
 PRODUCT_TAGS += dalvik.gc.type-precise
 
