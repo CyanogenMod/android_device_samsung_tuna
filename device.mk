@@ -49,7 +49,13 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PROPERTY_OVERRIDES := \
 	hwui.render_dirty_regions=false
 
-PRODUCT_CHARACTERISTICS := tablet
+PRODUCT_PROPERTY_OVERRIDES += \
+	ro.opengles.version=131072
+
+PRODUCT_PROPERTY_OVERRIDES += \
+	ro.sf.lcd_density=320
+
+PRODUCT_CHARACTERISTICS :=
 
 PRODUCT_TAGS += dalvik.gc.type-precise
 
@@ -61,6 +67,8 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
 	make_ext4fs
 
+# XXX: should be including hd-phone-dalvik-heap.mk or something?
 $(call inherit-product, frameworks/base/build/tablet-dalvik-heap.mk)
+
 $(call inherit-product-if-exists, vendor/ti/proprietary/omap4/ti-omap4-vendor.mk)
 $(call inherit-product-if-exists, vendor/samsung/tuna/device-vendor.mk)
