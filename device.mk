@@ -38,6 +38,10 @@ PRODUCT_COPY_FILES := \
 	device/samsung/tuna/ueventd.tuna.rc:root/ueventd.tuna.rc \
 	device/samsung/tuna/media_profiles.xml:system/etc/media_profiles.xml
 
+# Bluetooth configuration files
+PRODUCT_COPY_FILES := \
+	system/bluetooth/data/main.le.conf:system/etc/bluetooth/main.conf
+
 # Input device calibration files
 PRODUCT_COPY_FILES += \
 	device/samsung/tuna/Atmel_maXTouch_Touchscreen.idc:system/usr/idc/Atmel_maXTouch_Touchscreen.idc
