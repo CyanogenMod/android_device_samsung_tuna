@@ -32,7 +32,7 @@ BOARD_HAVE_BLUETOOTH := false
 TARGET_NO_BOOTLOADER := true
 
 BOARD_KERNEL_BASE := 0x80000000
-BOARD_KERNEL_CMDLINE := console=ttyO3,115200n8 mem=256M androidboot.console=ttyO3 foo
+BOARD_KERNEL_CMDLINE := console=ttyO2,115200n8 mem=256M androidboot.console=ttyO2
 
 TARGET_NO_RADIOIMAGE := true
 TARGET_BOARD_PLATFORM := omap4
