@@ -39,7 +39,7 @@ PRODUCT_COPY_FILES := \
 	device/samsung/tuna/media_profiles.xml:system/etc/media_profiles.xml
 
 # Bluetooth configuration files
-PRODUCT_COPY_FILES := \
+PRODUCT_COPY_FILES += \
 	system/bluetooth/data/main.le.conf:system/etc/bluetooth/main.conf
 
 # Input device calibration files
