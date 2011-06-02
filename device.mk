@@ -50,9 +50,6 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
 	device/ti/panda/init.omap4pandaboard.rc:root/init.omap4pandaboard.rc
 
-PRODUCT_PROPERTY_OVERRIDES := \
-	hwui.render_dirty_regions=false
-
 PRODUCT_PROPERTY_OVERRIDES += \
 	ro.opengles.version=131072
 
