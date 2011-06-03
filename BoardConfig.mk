@@ -63,3 +63,6 @@ WIFI_DRIVER_FW_STA_PATH     := "/vendor/firmware/fw_bcmdhd.bin"
 WIFI_DRIVER_FW_AP_PATH      := "/vendor/firmware/fw_bcmdhd_apsta.bin"
 WIFI_DRIVER_MODULE_ARG      := "iface_name=wlan0 firmware_path=/system/vendor/firmware/fw_bcmdhd.bin nvram_path=/system/etc/wifi/bcmdhd.cal"
 WIFI_DRIVER_MODULE_NAME     := "bcmdhd"
+
+BOARD_HAVE_BLUETOOTH := true
+BOARD_HAVE_BLUETOOTH_BCM := true
