@@ -42,6 +42,21 @@ PRODUCT_COPY_FILES := \
 PRODUCT_COPY_FILES += \
 	system/bluetooth/data/main.le.conf:system/etc/bluetooth/main.conf
 
+ifeq ($(TARGET_PREBUILT_WIFI_MODULE),)
+LOCAL_WIFI_MODULE := device/samsung/tuna/bcmdhd.ko
+else
+LOCAL_WIFI_MODULE := $(TARGET_PREBUILT_WIFI_MODULE)
+endif
+
+# Wifi
+PRODUCT_COPY_FILES += \
+	$(LOCAL_WIFI_MODULE):system/lib/modules/bcmdhd.ko \
+	device/samsung/tuna/bcmdhd.cal:system/etc/wifi/bcmdhd.cal
+
+PRODUCT_PROPERTY_OVERRIDES := \
+	wifi.interface=wlan0 \
+	wifi.supplicant_scan_interval=15
+
 # Input device calibration files
 PRODUCT_COPY_FILES += \
 	device/samsung/tuna/Atmel_maXTouch_Touchscreen.idc:system/usr/idc/Atmel_maXTouch_Touchscreen.idc
@@ -73,3 +88,6 @@ $(call inherit-product, frameworks/base/build/tablet-dalvik-heap.mk)
 
 $(call inherit-product-if-exists, vendor/ti/proprietary/omap4/ti-omap4-vendor.mk)
 $(call inherit-product-if-exists, vendor/samsung/tuna/device-vendor.mk)
+
+BOARD_WLAN_DEVICE_REV := bcm4330_b1
+$(call inherit-product-if-exists, hardware/broadcom/wlan/bcmdhd/firmware/bcm4330/device-bcm.mk)
