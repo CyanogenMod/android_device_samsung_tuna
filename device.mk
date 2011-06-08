@@ -113,6 +113,10 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
 	device/ti/panda/init.omap4pandaboard.rc:root/init.omap4pandaboard.rc
 
+# Melfas touchscreen firmware
+PRODUCT_COPY_FILES += \
+    device/samsung/tuna/mms144_ts_rev31.fw:system/vendor/firmware/mms144_ts_rev31.fw
+
 PRODUCT_PROPERTY_OVERRIDES += \
 	ro.opengles.version=131072
 
