@@ -57,6 +57,10 @@ PRODUCT_PROPERTY_OVERRIDES := \
 	wifi.interface=wlan0 \
 	wifi.supplicant_scan_interval=15
 
+# Set default USB interface
+ADDITIONAL_DEFAULT_PROPERTIES := \
+	persist.sys.usb.config=mtp
+
 # Input device calibration files
 PRODUCT_COPY_FILES += \
 	device/samsung/tuna/Atmel_maXTouch_Touchscreen.idc:system/usr/idc/Atmel_maXTouch_Touchscreen.idc
