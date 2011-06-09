@@ -14,9 +14,8 @@
 # limitations under the License.
 #
 
-# These two variables are set first, so they can be overridden
+# This variable is set first, so it can be overridden
 # by BoardConfigVendor.mk
-BOARD_USES_GENERIC_AUDIO := true
 USE_CAMERA_STUB := true
 
 # Use the non-open-source parts, if they're present
