@@ -37,6 +37,7 @@ BOARD_KERNEL_CMDLINE := console=ttyO2,115200n8 mem=512M androidboot.console=ttyO
 TARGET_NO_RADIOIMAGE := true
 TARGET_BOARD_PLATFORM := omap4
 TARGET_BOOTLOADER_BOARD_NAME := tuna
+TARGET_BOARD_INFO_FILE := device/samsung/tuna/board-info.txt
 
 BOARD_EGL_CFG := device/samsung/tuna/egl.cfg
 
