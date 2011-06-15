@@ -38,9 +38,6 @@ on fs
 	chown radio radio /efs
 	chmod 0775 /efs
 
-# take a wakelock on boot until PM is working
-	write /sys/power/wake_lock hack
-
 # nfc
     setprop ro.nfc.port "COM4"
     chmod 0600 /dev/ttyO3
