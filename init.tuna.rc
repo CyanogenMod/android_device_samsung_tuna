@@ -20,13 +20,19 @@ on boot
 	chmod 0666 /dev/pvrsrvkm
 
 on fs
+	mkdir /efs 0775 radio radio
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/system /system wait ro
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata /data wait noatime nosuid nodev
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/cache /cache wait noatime nosuid nodev
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /efs wait noatime nosuid nodev
 
 # change permissions for Tiler driver
     chmod 0777 /dev/tiler
     chmod 0777 /dev/dmm
+
+# We chown/chmod /efs because mount is run as root + defaults
+	chown radio radio /efs
+	chmod 0775 /efs
 
 # take a wakelock on boot until PM is working
 	write /sys/power/wake_lock hack
@@ -45,7 +51,10 @@ service pvrsrvinit /vendor/bin/pvrsrvinit
 	oneshot
 
 # create filesystems if necessary
-service setup_fs /system/bin/setup_fs /dev/block/platform/omap/omap_hsmmc.0/by-name/cache /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata
+service setup_fs /system/bin/setup_fs \
+		/dev/block/platform/omap/omap_hsmmc.0/by-name/cache \
+		/dev/block/platform/omap/omap_hsmmc.0/by-name/userdata \
+		/dev/block/platform/omap/omap_hsmmc.0/by-name/efs
         class core
         user root
         group root
