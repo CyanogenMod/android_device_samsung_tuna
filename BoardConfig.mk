@@ -41,7 +41,7 @@ BOARD_EGL_CFG := device/samsung/tuna/egl.cfg
 
 #BOARD_USES_HGL := true
 #BOARD_USES_OVERLAY := true
-#USE_OPENGL_RENDERER := true
+USE_OPENGL_RENDERER := true
 
 TARGET_RECOVERY_PIXEL_FORMAT := "BGRA_8888"
 TARGET_RECOVERY_UI_LIB := librecovery_ui_tuna
