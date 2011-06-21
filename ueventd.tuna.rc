@@ -14,8 +14,10 @@
 /dev/timerirq             0660   system     system
 
 #for RIL
-/dev/ttyO0                0666   radio      radio
 /dev/umts_boot0           0666   radio      radio
 /dev/umts_ipc0            0666   radio      radio
 /dev/umts_rfs0            0666   radio      radio
 /dev/block/mmcblk0p9      0666   radio      radio
+
+# used by RIL and GPS
+/dev/ttyO0                0666   system     radio
