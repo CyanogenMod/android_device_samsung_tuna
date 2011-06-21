@@ -33,6 +33,8 @@
 #include <tinyalsa/asoundlib.h>
 #include <speex/speex_resampler.h>
 
+#include "ril_interface.h"
+
 /* Mixer control names */
 #define MIXER_DL1_MEDIA_PLAYBACK_VOLUME     "DL1 Media Playback Volume"
 #define MIXER_DL1_VOICE_PLAYBACK_VOLUME     "DL1 Voice Playback Volume"
@@ -48,6 +50,7 @@
 #define MIXER_DL2_MIXER_MULTIMEDIA          "DL2 Mixer Multimedia"
 #define MIXER_SIDETONE_MIXER_PLAYBACK       "Sidetone Mixer Playback"
 #define MIXER_DL1_PDM_SWITCH                "DL1 PDM Switch"
+#define MIXER_VOICE_CAPTURE_MIXER_CAPTURE   "Voice Capture Mixer Capture"
 
 #define MIXER_HS_LEFT_PLAYBACK              "HS Left Playback"
 #define MIXER_HS_RIGHT_PLAYBACK             "HS Right Playback"
@@ -56,10 +59,13 @@
 #define MIXER_EARPHONE_DRIVER_SWITCH        "Earphone Driver Switch"
 
 #define MIXER_ANALOG_LEFT_CAPTURE_ROUTE     "Analog Left Capture Route"
+#define MIXER_ANALOG_RIGHT_CAPTURE_ROUTE    "Analog Right Capture Route"
 #define MIXER_CAPTURE_PREAMPLIFIER_VOLUME   "Capture Preamplifier Volume"
 #define MIXER_CAPTURE_VOLUME                "Capture Volume"
 #define MIXER_AMIC_UL_VOLUME                "AMIC UL Volume"
 #define MIXER_AUDUL_VOICE_UL_VOLUME         "AUDUL Voice UL Volume"
+#define MIXER_MUX_VX0                       "MUX_VX0"
+#define MIXER_MUX_VX1                       "MUX_VX1"
 
 /* Mixer control gain and route values */
 #define MIXER_ABE_GAIN_0DB                  120
@@ -68,6 +74,9 @@
 #define MIXER_PLAYBACK_HS_DAC               "HS DAC"
 #define MIXER_PLAYBACK_HF_DAC               "HF DAC"
 #define MIXER_MAIN_MIC                      "Main Mic"
+#define MIXER_SUB_MIC                       "Sub Mic"
+#define MIXER_AMIC0                         "AMic0"
+#define MIXER_AMIC1                         "AMic1"
 
 /* ALSA ports for OMAP4 */
 #define PORT_MM 0
@@ -171,24 +180,20 @@ struct route_setting mm_headset[] = {
 
 struct route_setting modem[] = {
     {
-        .ctl_name = MIXER_DL1_MEDIA_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_MINUS1DB,
-    },
-    {
-        .ctl_name = MIXER_SDT_DL_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB,
-    },
-    {
-        .ctl_name = MIXER_HEADSET_PLAYBACK_VOLUME,
-        .intval = 8, /* reasonable maximum */
-    },
-    {
-        .ctl_name = MIXER_DL1_MIXER_MULTIMEDIA,
+        .ctl_name = MIXER_DL1_MIXER_VOICE,
         .intval = 1,
+    },
+    {
+        .ctl_name = MIXER_DL1_VOICE_PLAYBACK_VOLUME,
+        .intval = 110,
     },
     {
         .ctl_name = MIXER_SIDETONE_MIXER_PLAYBACK,
         .intval = 1,
+    },
+    {
+        .ctl_name = MIXER_SDT_DL_VOLUME,
+        .intval = MIXER_ABE_GAIN_0DB,
     },
     {
         .ctl_name = MIXER_DL1_PDM_SWITCH,
@@ -203,16 +208,33 @@ struct route_setting modem[] = {
         .strval = MIXER_PLAYBACK_HS_DAC,
     },
     {
-        .ctl_name = MIXER_DL1_VOICE_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_MINUS1DB,
+        .ctl_name = MIXER_HEADSET_PLAYBACK_VOLUME,
+        .intval = 13, /* reasonable maximum */
+    },
+
+    {
+        .ctl_name = MIXER_MUX_VX0,
+        .strval = MIXER_AMIC0,
     },
     {
-        .ctl_name = MIXER_DL1_MIXER_VOICE,
+        .ctl_name = MIXER_MUX_VX1,
+        .strval = MIXER_AMIC1,
+    },
+    {
+        .ctl_name = MIXER_VOICE_CAPTURE_MIXER_CAPTURE,
         .intval = 1,
+    },
+    {
+        .ctl_name = MIXER_AUDUL_VOICE_UL_VOLUME,
+        .intval = 110,
     },
     {
         .ctl_name = MIXER_ANALOG_LEFT_CAPTURE_ROUTE,
         .strval = MIXER_MAIN_MIC,
+    },
+    {
+        .ctl_name = MIXER_ANALOG_RIGHT_CAPTURE_ROUTE,
+        .strval = MIXER_SUB_MIC,
     },
     {
         .ctl_name = MIXER_CAPTURE_PREAMPLIFIER_VOLUME,
@@ -220,15 +242,7 @@ struct route_setting modem[] = {
     },
     {
         .ctl_name = MIXER_CAPTURE_VOLUME,
-        .intval = 2,
-    },
-    {
-        .ctl_name = MIXER_AMIC_UL_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB,
-    },
-    {
-        .ctl_name = MIXER_AUDUL_VOICE_UL_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB,
+        .intval = 4,
     },
     {
         .ctl_name = NULL,
@@ -242,7 +256,7 @@ struct route_setting earphone_switch[] = {
     },
     {
         .ctl_name = MIXER_EARPHONE_PLAYBACK_VOLUME,
-        .intval = 10, /* reasonable maximum */
+        .intval = 13, /* reasonable maximum */
     },
     {
         .ctl_name = NULL,
@@ -256,6 +270,13 @@ struct tuna_audio_device {
     struct mixer *mixer;
     int mode;
     int out_device;
+    struct pcm *pcm_modem_dl;
+    struct pcm *pcm_modem_ul;
+    int in_call;
+
+    /* RIL */
+    void *ril_handle;
+    void *ril_client;
 };
 
 struct tuna_stream_out {
@@ -314,11 +335,46 @@ static int set_route_by_array(struct mixer *mixer, struct route_setting *route,
 static int select_route(struct tuna_audio_device *adev)
 {
     if (adev->mode == AUDIO_MODE_IN_CALL) {
-        /* todo: modem routing is untested */
+        LOGE("AUDIO_MODE_IN_CALL");
         set_route_by_array(adev->mixer, modem, 1);
         set_route_by_array(adev->mixer, earphone_switch, 1);
+
+        /* Open modem PCM channels */
+        if (adev->pcm_modem_dl == NULL) {
+            adev->pcm_modem_dl = pcm_open(0, PORT_MODEM, PCM_OUT, &pcm_config_vx);
+            if (!pcm_is_ready(adev->pcm_modem_dl)) {
+                LOGE("cannot open PCM modem DL stream: %s", pcm_get_error(adev->pcm_modem_dl));
+                goto err_open_dl;
+            }
+        }
+
+        if (adev->pcm_modem_ul == NULL) {
+            adev->pcm_modem_ul = pcm_open(0, PORT_MODEM, PCM_IN, &pcm_config_vx);
+            if (!pcm_is_ready(adev->pcm_modem_ul)) {
+                LOGE("cannot open PCM modem UL stream: %s", pcm_get_error(adev->pcm_modem_ul));
+                goto err_open_ul;
+            }
+        }
+
+        ril_set_call_clock_sync(adev->ril_client, SOUND_CLOCK_START);
+        ril_set_call_audio_path(adev->ril_client, SOUND_AUDIO_PATH_HANDSET);
+
+        pcm_start(adev->pcm_modem_dl);
+        pcm_start(adev->pcm_modem_ul);
+
+        adev->in_call = 1;
     } else if (adev->mode == AUDIO_MODE_NORMAL) {
-        set_route_by_array(adev->mixer, modem, 0);
+        LOGE("AUDIO_MODE_NORMAL");
+        if (adev->in_call) {
+            set_route_by_array(adev->mixer, modem, 0);
+            pcm_stop(adev->pcm_modem_dl);
+            pcm_stop(adev->pcm_modem_ul);
+            pcm_close(adev->pcm_modem_dl);
+            pcm_close(adev->pcm_modem_ul);
+            adev->pcm_modem_dl = NULL;
+            adev->pcm_modem_ul = NULL;
+            adev->in_call = 0;
+        }
 
         switch (adev->out_device) {
         case AUDIO_DEVICE_OUT_SPEAKER:
@@ -343,6 +399,15 @@ static int select_route(struct tuna_audio_device *adev)
     }
 
     return 0;
+
+err_open_dl:
+    pcm_close(adev->pcm_modem_dl);
+    adev->pcm_modem_dl = NULL;
+err_open_ul:
+    pcm_close(adev->pcm_modem_ul);
+    adev->pcm_modem_ul = NULL;
+
+    return -ENOMEM;
 }
 
 static uint32_t out_get_sample_rate(const struct audio_stream *stream)
@@ -637,7 +702,15 @@ static int adev_init_check(const struct audio_hw_device *dev)
 
 static int adev_set_voice_volume(struct audio_hw_device *dev, float volume)
 {
-    return -ENOSYS;
+    struct tuna_audio_device *adev = (struct tuna_audio_device *)dev;
+
+    /* todo: this calculation comes from the Nexus S */
+    int int_volume = (int)(volume * 5);
+
+    if (adev->in_call)
+        ril_set_call_volume(adev->ril_client, SOUND_TYPE_VOICE, int_volume);
+
+    return 0;
 }
 
 static int adev_set_master_volume(struct audio_hw_device *dev, float volume)
@@ -652,6 +725,7 @@ static int adev_set_mode(struct audio_hw_device *dev, int mode)
     pthread_mutex_lock(&adev->lock);
     if (adev->mode != mode) {
         adev->mode = mode;
+        LOGE("calling select_route from %s", __func__);
         select_route(adev);
     }
     pthread_mutex_unlock(&adev->lock);
@@ -728,6 +802,9 @@ static int adev_close(hw_device_t *device)
 {
     struct tuna_audio_device *adev = (struct tuna_audio_device *)device;
 
+    /* RIL */
+    ril_close(adev->ril_handle, adev->ril_client);
+
     mixer_close(adev->mixer);
     free(device);
     return 0;
@@ -796,8 +873,16 @@ static int adev_open(const hw_module_t* module, const char* name,
         return -ENOMEM;
     }
 
-    adev->mode = AUDIO_MODE_INVALID;
-    adev->out_device = 0;
+    /* Set the default route before the PCM stream is opened */
+    set_route_by_array(adev->mixer, mm_speaker, 1);
+    adev->mode = AUDIO_MODE_NORMAL;
+    adev->out_device = AUDIO_DEVICE_OUT_SPEAKER;
+
+    adev->pcm_modem_dl = NULL;
+    adev->pcm_modem_ul = NULL;
+
+    /* RIL */
+    ril_open(&adev->ril_handle, &adev->ril_client);
 
     *device = &adev->device.common;
 

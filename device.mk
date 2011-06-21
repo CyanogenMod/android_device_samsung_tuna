@@ -35,6 +35,9 @@ PRODUCT_AAPT_CONFIG := normal hdpi xhdpi
 PRODUCT_PACKAGES := \
 	sensors.tuna
 
+PRODUCT_PACKAGES += \
+	audio.primary.tuna
+
 PRODUCT_COPY_FILES := \
 	$(LOCAL_KERNEL):kernel \
 	device/samsung/tuna/init.tuna.rc:root/init.tuna.rc \
