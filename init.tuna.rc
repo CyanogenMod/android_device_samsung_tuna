@@ -74,3 +74,10 @@ service dhcpcd_wlan0 /system/bin/dhcpcd -ABKL
 service iprenew_wlan0 /system/bin/dhcpcd -n
 	disabled
 	oneshot
+
+# bugreport is triggered by holding down volume down, volume up and power
+service bugreport /system/bin/dumpstate -d -v -o /sdcard/bugreports/bugreport
+	class main
+	disabled
+	oneshot
+	keycodes 114 115 116
