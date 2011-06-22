@@ -1,4 +1,4 @@
-ifeq ($(TARGET_DEVICE),tuna)
+ifneq (,$(findstring $(TARGET_DEVICE),tuna toro maguro))
 
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
