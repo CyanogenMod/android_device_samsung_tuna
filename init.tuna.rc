@@ -35,6 +35,8 @@ on fs
     setprop ro.nfc.port "COM4"
     chmod 0600 /dev/ttyO3
     chown nfc nfc /dev/ttyO3
+    chmod 0600 /sys/devices/platform/nfc-power/nfc_power
+    chown nfc nfc /sys/devices/platform/nfc-power/nfc_power
 
 service pvrsrvinit /vendor/bin/pvrsrvinit
 	class core
