@@ -46,10 +46,6 @@ PRODUCT_COPY_FILES := \
 PRODUCT_COPY_FILES += \
 	system/bluetooth/data/main.le.conf:system/etc/bluetooth/main.conf
 
-# Ducati firmware
-PRODUCT_COPY_FILES += \
-	hardware/ti/omap4/domx/ducati/etc/firmware/ducati-m3.bin:system/vendor/firmware/ducati-m3.bin
-
 ifeq ($(TARGET_PREBUILT_WIFI_MODULE),)
 LOCAL_WIFI_MODULE := device/samsung/tuna/bcmdhd.ko
 else
