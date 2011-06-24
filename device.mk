@@ -126,6 +126,7 @@ PRODUCT_PACKAGES += \
 # XXX: should be including hd-phone-dalvik-heap.mk or something?
 $(call inherit-product, frameworks/base/build/tablet-dalvik-heap.mk)
 
+$(call inherit-product-if-exists, vendor/nxp/pn544/nxp-pn544-fw-vendor.mk)
 $(call inherit-product, hardware/ti/omap4/omap4.mk)
 $(call inherit-product-if-exists, vendor/ti/proprietary/omap4/ti-omap4-vendor.mk)
 $(call inherit-product-if-exists, vendor/samsung/tuna/device-vendor.mk)
