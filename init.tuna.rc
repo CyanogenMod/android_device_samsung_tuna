@@ -44,6 +44,22 @@ on fs
     chmod 0600 /sys/devices/platform/nfc-power/nfc_power
     chown nfc nfc /sys/devices/platform/nfc-power/nfc_power
 
+# permissions for bluetooth.
+	chown bluetooth bluetooth /dev/ttyO1
+	chmod 0600 /dev/ttyO1
+	chmod 0660 /sys/class/rfkill/rfkill0/state
+	chown bluetooth bluetooth /sys/class/rfkill/rfkill0/state
+	chown bluetooth bluetooth /sys/class/rfkill/rfkill0/type
+
+service hciattach /system/bin/brcm_patchram_plus --enable_hci --no2bytes \
+	--tosleep 50000 --baudrate 3000000 --use_baudrate_for_download \
+	--patchram /vendor/firmware/bcm4330.hcd /dev/ttyO1
+	class main
+	user bluetooth
+	group bluetooth net_bt_admin
+	disabled
+	oneshot
+
 service pvrsrvinit /vendor/bin/pvrsrvinit
 	class core
 	user root
