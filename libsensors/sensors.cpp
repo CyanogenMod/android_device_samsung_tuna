@@ -35,6 +35,10 @@
 #include "sensors.h"
 
 #include "MPLSensor.h"
+#include "LightSensor.h"
+#include "ProximitySensor.h"
+#include "PressureSensor.h"
+
 
 /*****************************************************************************/
 
@@ -49,6 +53,9 @@
 #define SENSORS_ACCELERATION     (1<<ID_A)
 #define SENSORS_MAGNETIC_FIELD   (1<<ID_M)
 #define SENSORS_ORIENTATION      (1<<ID_O)
+#define SENSORS_LIGHT            (1<<ID_L)
+#define SENSORS_PROXIMITY        (1<<ID_P)
+#define SENSORS_PRESSURE         (1<<ID_PR)
 
 #define SENSORS_ROTATION_VECTOR_HANDLE  (ID_RV)
 #define SENSORS_LINEAR_ACCEL_HANDLE     (ID_LA)
@@ -57,7 +64,9 @@
 #define SENSORS_ACCELERATION_HANDLE     (ID_A)
 #define SENSORS_MAGNETIC_FIELD_HANDLE   (ID_M)
 #define SENSORS_ORIENTATION_HANDLE      (ID_O)
-
+#define SENSORS_LIGHT_HANDLE            (ID_L)
+#define SENSORS_PROXIMITY_HANDLE        (ID_P)
+#define SENSORS_PRESSURE_HANDLE         (ID_PR)
 #define AKM_FTRACE 0
 #define AKM_DEBUG 0
 #define AKM_DATA 0
@@ -94,8 +103,18 @@ static const struct sensor_t sSensorList[] = {
           "Invensense",
           1, SENSORS_ORIENTATION_HANDLE,
           SENSOR_TYPE_ORIENTATION, 360.0f, 1.0f, 9.7f, 20000,{ } },
-
-
+      { "GP2A Light sensor",
+          "Sharp",
+          1, SENSORS_LIGHT_HANDLE,
+          SENSOR_TYPE_LIGHT, 3000.0f, 1.0f, 0.75f, 0, { } },
+      { "GP2A Proximity sensor",
+          "Sharp",
+          1, SENSORS_PROXIMITY_HANDLE,
+          SENSOR_TYPE_PROXIMITY, 5.0f, 5.0f, 0.75f, 0, { } },
+      { "BMP180 Pressure sensor",
+          "Bosch",
+          1, SENSORS_PRESSURE_HANDLE,
+          SENSOR_TYPE_PRESSURE, 1100.0f, 0.01f, 0.67f, 20000, { } },
 };
 
 
@@ -143,6 +162,9 @@ private:
         mpl               = 0,  //all mpl entries must be consecutive and in this order
         mpl_accel,
         mpl_timer,
+        light,
+        proximity,
+        pressure,
         numSensorDrivers,       // wake pipe goes here
         mpl_power,              //special handle for MPL pm interaction
         numFds,
@@ -164,6 +186,12 @@ private:
             case ID_M:
             case ID_O:
                 return mpl;
+            case ID_L:
+                return light;
+            case ID_P:
+                return proximity;
+            case ID_PR:
+                return pressure;
         }
         return -EINVAL;
     }
@@ -191,6 +219,21 @@ sensors_poll_context_t::sensors_poll_context_t()
     mPollFds[mpl_timer].fd = ((MPLSensor*)mSensors[mpl])->getTimerFd();
     mPollFds[mpl_timer].events = POLLIN;
     mPollFds[mpl_timer].revents = 0;
+
+    mSensors[light] = new LightSensor();
+    mPollFds[light].fd = mSensors[light]->getFd();
+    mPollFds[light].events = POLLIN;
+    mPollFds[light].revents = 0;
+
+    mSensors[proximity] = new ProximitySensor();
+    mPollFds[proximity].fd = mSensors[proximity]->getFd();
+    mPollFds[proximity].events = POLLIN;
+    mPollFds[proximity].revents = 0;
+
+    mSensors[pressure] = new PressureSensor();
+    mPollFds[pressure].fd = mSensors[pressure]->getFd();
+    mPollFds[pressure].events = POLLIN;
+    mPollFds[pressure].revents = 0;
 
     int wakeFds[2];
     int result = pipe(wakeFds);

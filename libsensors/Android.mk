@@ -31,7 +31,11 @@ LOCAL_CFLAGS := -DLOG_TAG=\"Sensors\"
 LOCAL_C_INCLUDES += vendor/invensense/libsensors
 LOCAL_SRC_FILES := \
 	sensors.cpp \
-	InputEventReader.cpp
+	InputEventReader.cpp \
+	LightSensor.cpp \
+	ProximitySensor.cpp \
+	PressureSensor.cpp \
+	SamsungSensorBase.cpp
 
 LOCAL_SHARED_LIBRARIES := libinvensense_hal libcutils libutils libdl
 
