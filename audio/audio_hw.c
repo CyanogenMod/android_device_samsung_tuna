@@ -91,6 +91,10 @@
 
 #define RESAMPLER_BUFFER_SIZE 8192
 
+#define AUDIO_DEVICE_OUT_ALL_HEADSET (AUDIO_DEVICE_OUT_EARPIECE |\
+                                      AUDIO_DEVICE_OUT_WIRED_HEADSET |\
+                                      AUDIO_DEVICE_OUT_WIRED_HEADPHONE)
+
 struct pcm_config pcm_config_mm = {
     .channels = 2,
     .rate = 48000,
@@ -192,12 +196,16 @@ struct route_setting defaults[] = {
         .strval = MIXER_PLAYBACK_HS_DAC,
     },
 
-    /* earphone */
+    {
+        .ctl_name = NULL,
+    },
+};
+
+struct route_setting earpiece_switch[] = {
     {
         .ctl_name = MIXER_EARPHONE_DRIVER_SWITCH,
         .intval = 1,
     },
-
     {
         .ctl_name = NULL,
     },
@@ -447,13 +455,14 @@ static void select_mode(struct tuna_audio_device *adev)
     }
 }
 
+/* Note: currently the headset/earpiece route gets priority
+over speaker if both are selected as output devices. */
 static void select_output_device(struct tuna_audio_device *adev)
 {
     struct mixer_ctl *ctl;
 
     /* Select output device */
-    switch (adev->out_device) {
-    case AUDIO_DEVICE_OUT_SPEAKER:
+    if (adev->out_device & AUDIO_DEVICE_OUT_SPEAKER) {
         if (adev->in_call) {
             /* tear down call stream before changing route,
             otherwise microphone does not function */
@@ -462,8 +471,7 @@ static void select_output_device(struct tuna_audio_device *adev)
             start_call(adev);
         } else
             set_route_by_array(adev->mixer, speaker_mm, 1);
-        break;
-    case AUDIO_DEVICE_OUT_EARPIECE:
+    } else if (adev->out_device & AUDIO_DEVICE_OUT_ALL_HEADSET) {
         if (adev->in_call) {
             /* tear down call stream before changing route,
             otherwise microphone does not function */
@@ -472,11 +480,12 @@ static void select_output_device(struct tuna_audio_device *adev)
             start_call(adev);
         } else
             set_route_by_array(adev->mixer, headset_mm, 1);
-        break;
-    default:
-        /* unknown */
-        break;
-    };
+    }
+
+    if (adev->out_device & AUDIO_DEVICE_OUT_EARPIECE)
+        set_route_by_array(adev->mixer, earpiece_switch, 1);
+    else
+        set_route_by_array(adev->mixer, earpiece_switch, 0);
 }
 
 static uint32_t out_get_sample_rate(const struct audio_stream *stream)
