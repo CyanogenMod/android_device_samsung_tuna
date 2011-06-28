@@ -746,6 +746,10 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 
     out->dev = ladev;
 
+    *format = out_get_format(&out->stream.common);
+    *channels = out_get_channels(&out->stream.common);
+    *sample_rate = out_get_sample_rate(&out->stream.common);
+
     *stream_out = &out->stream;
     return 0;
 
