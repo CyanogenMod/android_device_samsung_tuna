@@ -477,15 +477,19 @@ static void select_output_device(struct tuna_audio_device *adev)
             otherwise microphone does not function */
             end_call(adev);
             set_route_by_array(adev->mixer, headset_vx, 1);
+            if (adev->out_device & AUDIO_DEVICE_OUT_EARPIECE)
+                set_route_by_array(adev->mixer, earpiece_switch, 1);
+            else
+                set_route_by_array(adev->mixer, earpiece_switch, 0);
             start_call(adev);
-        } else
+        } else {
             set_route_by_array(adev->mixer, headset_mm, 1);
+            if (adev->out_device & AUDIO_DEVICE_OUT_EARPIECE)
+                set_route_by_array(adev->mixer, earpiece_switch, 1);
+            else
+                set_route_by_array(adev->mixer, earpiece_switch, 0);
+        }
     }
-
-    if (adev->out_device & AUDIO_DEVICE_OUT_EARPIECE)
-        set_route_by_array(adev->mixer, earpiece_switch, 1);
-    else
-        set_route_by_array(adev->mixer, earpiece_switch, 0);
 }
 
 static uint32_t out_get_sample_rate(const struct audio_stream *stream)
