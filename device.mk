@@ -29,10 +29,10 @@ DEVICE_PACKAGE_OVERLAYS := device/samsung/tuna/overlay
 
 PRODUCT_AAPT_CONFIG := normal hdpi xhdpi
 
-# PRODUCT_PACKAGES := \
-#	liblights.tuna
-
 PRODUCT_PACKAGES := \
+	lights.tuna
+
+PRODUCT_PACKAGES += \
 	sensors.tuna
 
 PRODUCT_PACKAGES += \
