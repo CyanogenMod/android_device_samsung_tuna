@@ -1,6 +1,5 @@
-
 /*
- * Copyright (C) 2011 Invensense, Inc.
+ * Copyright (C) 2011 The Android Open-Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**********Removed the gesture related code from this file for Google code check modified by Meenakshi Ramamoorthi on May 31st  **********/
 
 #define LOG_NDEBUG 0
 #define LOG_TAG "Sensors"
@@ -59,7 +57,6 @@
 #define SENSORS_ACCELERATION_HANDLE     (ID_A)
 #define SENSORS_MAGNETIC_FIELD_HANDLE   (ID_M)
 #define SENSORS_ORIENTATION_HANDLE      (ID_O)
-
 
 #define AKM_FTRACE 0
 #define AKM_DEBUG 0
@@ -123,9 +120,11 @@ struct sensors_module_t HAL_MODULE_INFO_SYM = {
                 version_major: 1,
                 version_minor: 0,
                 id: SENSORS_HARDWARE_MODULE_ID,
-                name: "Invensense module",
-                author: "Invensense Inc.",
+                name: "Samsung Sensor module",
+                author: "Samsung Electronic Company",
                 methods: &sensors_module_methods,
+                dso: 0,
+                reserved: {},
         },
         get_sensors_list: sensors__get_sensors_list,
 };
