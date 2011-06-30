@@ -30,7 +30,8 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := -DLOG_TAG=\"Sensors\"
 LOCAL_C_INCLUDES += vendor/invensense/libsensors
 LOCAL_SRC_FILES := \
-	sensors.cpp
+	sensors.cpp \
+	InputEventReader.cpp
 
 LOCAL_SHARED_LIBRARIES := libinvensense_hal libcutils libutils libdl
 
