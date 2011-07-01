@@ -25,4 +25,8 @@
          This image contains an installer for the AFT file transfer tool. -->
     <string translatable="false" name="config_isoImagePath">/system/etc/AftInstallerImage.iso</string>
 
+    <!-- Whether a software navigation bar should be shown. NOTE: in the future this may be
+         autodetected from the Configuration. -->
+    <bool name="config_showNavigationBar">true</bool>
+
 </resources>
