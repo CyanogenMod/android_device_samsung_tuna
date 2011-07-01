@@ -17,14 +17,19 @@ aa2g=1
 aa5g=1
 ccode=US
 
+#for BT-coexistence
+btc_params80=0
+btc_params6=10
+btc_params8=10000
+
 sd_gpout=0
 # sd_oobonly=1
 muxenab=0x10
 
-# 2G PA para_SMST_0502
-pa0b0=5477
-pa0b1=64918
-pa0b2=65396
+# 2G PA para B42_110628
+pa0b0=5198
+pa0b1=64940
+pa0b2=65391
 #pa0itssit=62
 rssismf2g=0xa
 rssismc2g=0x3
@@ -71,7 +76,7 @@ mcs5ghpo0=0x9999
 mcs5ghpo1=0x9999
 
 cckPwrOffset=4
-cckdigfilttype=20
+cckdigfilttype=21
 ofdmdigfilttype=2
 #wl0id=0x431b
 extpagain5g=2
@@ -85,11 +90,12 @@ bphyscale=17
 #5GHz Carrier
 txiqlopapu5g=1
 txiqlopag5g=0x10
+iqlocalidx5g=64
 
-# for BT-coexistence
-btc_params80=0
-btc_params6=10
-btc_params8=10000
+#5GHz-band Noise CAL parameter
+noise_cal_po_5g=5
+
 
 swctrlmap_2g=0x84048404, 0x82028202, 0x84048404, 0x010202, 0x1ff
 swctrlmap_5g=0xC040C040, 0xB030A020, 0x8000C040, 0x010A02, 0x2F8
+
