@@ -49,18 +49,18 @@ float LightSensor::indexToValue(size_t index) const {
         size_t adc_value;
         float  lux_value;
     } adcToLux[] = {
-        {  150,   10.0 },  /* from    0 -  150 adc, we map to    10.0 lux */
-        {  800,  160.0 },  /* from  151 -  800 adc, we map to   160.0 lux */
-        {  900,  225.0 },  /* from  801 -  900 adc, we map to   225.0 lux */
-        { 1000,  320.0 },  /* from  901 - 1000 adc, we map to   320.0 lux */
-        { 1200,  640.0 },  /* from 1001 - 1200 adc, we map to   640.0 lux */
-        { 1400, 1280.0 },  /* from 1201 - 1400 adc, we map to  1280.0 lux */
-        { 1600, 2600.0 },  /* from 1401 - 1600 adc, we map to  2600.0 lux */
-        { 4095, 10240.0 }, /* from 1601 - 4095 adc, we map to 10240.0 lux */
+        {   50,   10.0 },  /* from    0 -   50 adc, we map to    10.0 lux  */
+        {  280,  160.0 },  /* from   51 -  280 adc, we map to   160.0 lux  */
+        {  320,  225.0 },  /* from  281 -  320 adc, we map to   225.0 lux  */
+        {  350,  320.0 },  /* from  321 -  350 adc, we map to   320.0 lux  */
+        {  400,  640.0 },  /* from  351 -  400 adc, we map to   640.0 lux  */
+        {  520, 1280.0 },  /* from  401 -  520 adc, we map to  1280.0 lux  */
+        {  590, 2600.0 },  /* from  521 -  590 adc, we map to  2600.0 lux  */
+        { 1024, 10240.0 }, /* from  591 - 1024 adc, we map to 10240.0 lux  */
     };
     size_t i;
     for (i = 0; i < ARRAY_SIZE(adcToLux); i++) {
-        if (index < adcToLux[i].adc_value) {
+        if (index <= adcToLux[i].adc_value) {
             return adcToLux[i].lux_value;
         }
     }
