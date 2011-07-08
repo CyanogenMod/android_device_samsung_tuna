@@ -118,7 +118,7 @@ service iprenew_wlan0 /system/bin/dhcpcd -n
 	oneshot
 
 # bugreport is triggered by holding down volume down, volume up and power
-service bugreport /system/bin/dumpstate -d -v -o /sdcard/bugreports/bugreport
+service bugreport /system/bin/bugmailer.sh -v
 	class main
 	disabled
 	oneshot
