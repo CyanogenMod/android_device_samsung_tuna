@@ -50,15 +50,12 @@ PRODUCT_COPY_FILES := \
 PRODUCT_COPY_FILES += \
 	system/bluetooth/data/main.le.conf:system/etc/bluetooth/main.conf
 
-ifeq ($(TARGET_PREBUILT_WIFI_MODULE),)
-LOCAL_WIFI_MODULE := device/samsung/tuna/bcmdhd.ko
-else
-LOCAL_WIFI_MODULE := $(TARGET_PREBUILT_WIFI_MODULE)
-endif
-
 # Wifi
+ifneq ($(TARGET_PREBUILT_WIFI_MODULE),)
 PRODUCT_COPY_FILES += \
-	$(LOCAL_WIFI_MODULE):system/lib/modules/bcmdhd.ko \
+	$(TARGET_PREBUILT_WIFI_MODULE):system/lib/modules/bcmdhd.ko
+endif
+PRODUCT_COPY_FILES += \
 	device/samsung/tuna/bcmdhd.cal:system/etc/wifi/bcmdhd.cal
 
 PRODUCT_PROPERTY_OVERRIDES := \
