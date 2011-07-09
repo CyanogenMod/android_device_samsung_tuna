@@ -91,6 +91,8 @@
 
 #define RESAMPLER_BUFFER_SIZE 8192
 
+#define DEFAULT_OUT_SAMPLING_RATE 44100
+
 #define AUDIO_DEVICE_OUT_ALL_HEADSET (AUDIO_DEVICE_OUT_EARPIECE |\
                                       AUDIO_DEVICE_OUT_WIRED_HEADSET |\
                                       AUDIO_DEVICE_OUT_WIRED_HEADPHONE)
@@ -427,7 +429,7 @@ static int start_output_stream(struct tuna_stream_out *out)
 
 static uint32_t out_get_sample_rate(const struct audio_stream *stream)
 {
-    return 44100;
+    return DEFAULT_OUT_SAMPLING_RATE;
 }
 
 static int out_set_sample_rate(struct audio_stream *stream, uint32_t rate)
@@ -439,7 +441,13 @@ static size_t out_get_buffer_size(const struct audio_stream *stream)
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
-    return pcm_get_buffer_size(out->pcm);
+    /* take resampling into account and return the closest majoring
+    multiple of 16 frames, as audioflinger expects audio buffers to
+    be a multiple of 16 frames */
+    size_t size = (out->config.period_size * DEFAULT_OUT_SAMPLING_RATE) /
+                  out->config.rate;
+    size = ((size + 15) / 16) * 16;
+    return size * audio_stream_frame_size((struct audio_stream *)stream);
 }
 
 static uint32_t out_get_channels(const struct audio_stream *stream)
@@ -509,15 +517,10 @@ static char * out_get_parameters(const struct audio_stream *stream, const char *
 
 static uint32_t out_get_latency(const struct audio_stream_out *stream)
 {
-    int bytes_per_sample;
+    struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
-    if (pcm_config_mm.format == PCM_FORMAT_S32_LE)
-        bytes_per_sample = 4;
-    else
-        bytes_per_sample = 2;
-
-    return (pcm_config_mm.period_size * pcm_config_mm.period_count * 1000) /
-           (44100 * pcm_config_mm.channels * bytes_per_sample);
+    return (out->config.period_size * out->config.period_count * 1000) /
+            out->config.rate;
 }
 
 static int out_set_volume(struct audio_stream_out *stream, float left,
@@ -779,7 +782,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 
     out->config = pcm_config_mm;
 
-    out->speex = speex_resampler_init(2, 44100, 48000,
+    out->speex = speex_resampler_init(2, DEFAULT_OUT_SAMPLING_RATE, 48000,
                                       SPEEX_RESAMPLER_QUALITY_DEFAULT, &ret);
     speex_resampler_reset_mem(out->speex);
     out->buffer = malloc(RESAMPLER_BUFFER_SIZE); /* todo: allow for reallocing */
