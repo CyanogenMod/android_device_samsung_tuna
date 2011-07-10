@@ -343,6 +343,7 @@ struct tuna_stream_out {
     struct pcm *pcm;
     SpeexResamplerState *speex;
     char *buffer;
+    int standby;
 
     struct tuna_audio_device *dev;
 };
@@ -501,6 +502,18 @@ static void select_output_device(struct tuna_audio_device *adev)
     }
 }
 
+static int start_output_stream(struct tuna_stream_out *out)
+{
+    out->pcm = pcm_open(0, PORT_MM, PCM_OUT, &out->config);
+    if (!pcm_is_ready(out->pcm)) {
+        LOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
+        pcm_close(out->pcm);
+        return -ENOMEM;
+    }
+
+    return 0;
+}
+
 static uint32_t out_get_sample_rate(const struct audio_stream *stream)
 {
     return 44100;
@@ -535,6 +548,15 @@ static int out_set_format(struct audio_stream *stream, int format)
 
 static int out_standby(struct audio_stream *stream)
 {
+    struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
+
+    pthread_mutex_lock(&out->lock);
+    if (!out->standby) {
+        pcm_close(out->pcm);
+        out->pcm = NULL;
+        out->standby = 1;
+    }
+    pthread_mutex_unlock(&out->lock);
     return 0;
 }
 
@@ -606,6 +628,13 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     unsigned int pos;
 
     pthread_mutex_lock(&out->lock);
+    if (out->standby) {
+        /* reset the downlink mixer settings otherwise the ABE panics */
+        select_output_device(adev);
+        ret = start_output_stream(out);
+        if (ret == 0)
+            out->standby = 0;
+    }
     speex_resampler_process_interleaved_int(out->speex, buffer, &in_frames,
                                             (spx_int16_t *)out->buffer,
                                             &out_frames);
@@ -821,20 +850,13 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 
     out->config = pcm_config_mm;
 
-    out->pcm = pcm_open(0, PORT_MM, PCM_OUT, &out->config);
-    if (!pcm_is_ready(out->pcm)) {
-        LOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
-        pcm_close(out->pcm);
-        ret = -ENOMEM;
-        goto err_open;
-    }
-
     out->speex = speex_resampler_init(2, 44100, 48000,
                                       SPEEX_RESAMPLER_QUALITY_DEFAULT, &ret);
     speex_resampler_reset_mem(out->speex);
     out->buffer = malloc(RESAMPLER_BUFFER_SIZE); /* todo: allow for reallocing */
 
     out->dev = ladev;
+    out->standby = !!start_output_stream(out);
 
     *format = out_get_format(&out->stream.common);
     *channels = out_get_channels(&out->stream.common);
@@ -854,9 +876,12 @@ static void adev_close_output_stream(struct audio_hw_device *dev,
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
-    free(out->buffer);
-    speex_resampler_destroy(out->speex);
-    pcm_close(out->pcm);
+
+    if (out->buffer)
+        free(out->buffer);
+    if (out->speex)
+        speex_resampler_destroy(out->speex);
+    out_standby(&stream->common);
     free(stream);
 }
 
