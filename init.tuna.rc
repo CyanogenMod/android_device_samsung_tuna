@@ -49,6 +49,8 @@ on fs
     chown nfc nfc /sys/devices/platform/nfc-power/nfc_power
 
 # permissions for bluetooth.
+	setprop ro.bt.bdaddr_path "/efs/bluetooth/bt_addr"
+	chown bluetooth bluetooth ro.bt.bdaddr_path
 	chown bluetooth bluetooth /dev/ttyO1
 	chmod 0600 /dev/ttyO1
 	chmod 0660 /sys/class/rfkill/rfkill0/state
