@@ -15,6 +15,10 @@ on post-fs-data
 	mkdir /data/misc/dhcp 0770 dhcp dhcp
 	chown dhcp dhcp /data/misc/dhcp
 
+# LTE
+    chown radio system /sys/devices/platform/switch-sio/usb_sel
+    chown radio system /sys/devices/platform/switch-sio/uart_sel
+
 on boot
 	mount debugfs /sys/kernel/debug /sys/kernel/debug
 	chmod 0666 /dev/pvrsrvkm
