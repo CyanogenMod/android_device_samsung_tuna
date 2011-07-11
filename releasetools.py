@@ -32,6 +32,22 @@ def FullOTA_InstallEnd(info):
   else:
     WriteRadio(info, radio_img)
 
+def IncrementalOTA_VerifyEnd(info):
+  try:
+    target_radio_img = info.target_zip.read("RADIO/radio.img")
+    source_radio_img = info.source_zip.read("RADIO/radio.img")
+  except KeyError:
+    # No source or target radio. Nothing to verify
+    pass
+  else:
+    if source_radio_img != target_radio_img:
+      info.script.CacheFreeSpaceCheck(len(source_radio_img))
+      radio_type, radio_device = common.GetTypeAndDevice("/radio", info.info_dict)
+      info.script.PatchCheck("%s:%s:%d:%s:%d:%s" % (
+          radio_type, radio_device,
+          len(source_radio_img), common.sha1(source_radio_img).hexdigest(),
+          len(target_radio_img), common.sha1(target_radio_img).hexdigest()))
+
 def IncrementalOTA_InstallEnd(info):
   try:
     target_bootloader_img = info.target_zip.read("RADIO/bootloader.img")
@@ -54,10 +70,7 @@ def IncrementalOTA_InstallEnd(info):
     except KeyError:
       source_radio_img = None
 
-    if source_radio_img == target_radio_img:
-      print "radio unchanged; skipping"
-    else:
-      WriteRadio(info, target_radio_img)
+    WriteRadio(info, target_radio_img, source_radio_img)
   except KeyError:
     print "no radio.img in target target_files; skipping install"
 
@@ -66,11 +79,35 @@ def WriteBootloader(info, bootloader_img):
   fstab = info.info_dict["fstab"]
 
   info.script.Print("Writing bootloader...")
-  info.script.AppendExtra('''samsung.write_bootloader(
-    package_extract_file("bootloader.img"), "%s", "%s");''' % \
+  info.script.AppendExtra('''assert(samsung.write_bootloader(
+    package_extract_file("bootloader.img"), "%s", "%s"));''' % \
     (fstab["/xloader"].device, fstab["/sbl"].device))
 
-def WriteRadio(info, radio_img):
-  common.ZipWriteStr(info.output_zip, "radio.img", radio_img)
-  info.script.Print("Writing radio...")
-  info.script.WriteRawImage("/radio", "radio.img")
+def WriteRadio(info, target_radio_img, source_radio_img=None):
+  tf = common.File("radio.img", target_radio_img)
+  if source_radio_img is None:
+    tf.AddToZip(info.output_zip)
+    info.script.Print("Writing radio...")
+    info.script.WriteRawImage("/radio", tf.name)
+  else:
+    sf = common.File("radio.img", source_radio_img);
+    if tf.sha1 == sf.sha1:
+      print "radio image unchanged; skipping"
+    else:
+      diff = common.Difference(tf, sf)
+      common.ComputeDifferences([diff])
+      _, _, d = diff.GetPatch()
+      if d is None or len(d) > tf.size * common.OPTIONS.patch_threshold:
+        # computing difference failed, or difference is nearly as
+        # big as the target:  simply send the target.
+        tf.AddToZip(info.output_zip)
+        info.script.Print("Writing radio...")
+        info.script.WriteRawImage("/radio", tf.name)
+      else:
+        common.ZipWriteStr(info.output_zip, "radio.img.p", d)
+        info.script.Print("Patching radio...")
+        radio_type, radio_device = common.GetTypeAndDevice("/radio", info.info_dict)
+        info.script.ApplyPatch(
+            "%s:%s:%d:%s:%d:%s" % (radio_type, radio_device,
+                                   sf.size, sf.sha1, tf.size, tf.sha1),
+            "-", tf.size, tf.sha1, sf.sha1, "radio.img.p")
