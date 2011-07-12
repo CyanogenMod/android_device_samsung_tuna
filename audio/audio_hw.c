@@ -211,96 +211,6 @@ struct route_setting earpiece_switch[] = {
     },
 };
 
-/* The following four routes deliberately ensure that
-the new mixer is enabled before the old are disabled */
-struct route_setting speaker_mm[] = {
-    {
-        .ctl_name = MIXER_DL2_MIXER_MULTIMEDIA,
-        .intval = 1,
-    },
-    {
-        .ctl_name = MIXER_DL1_MIXER_MULTIMEDIA,
-        .intval = 0,
-    },
-    {
-        .ctl_name = MIXER_DL1_MIXER_VOICE,
-        .intval = 0,
-    },
-    {
-        .ctl_name = MIXER_DL2_MIXER_VOICE,
-        .intval = 0,
-    },
-    {
-        .ctl_name = NULL,
-    },
-};
-
-struct route_setting headset_mm[] = {
-    {
-        .ctl_name = MIXER_DL1_MIXER_MULTIMEDIA,
-        .intval = 1,
-    },
-    {
-        .ctl_name = MIXER_DL1_MIXER_VOICE,
-        .intval = 0,
-    },
-    {
-        .ctl_name = MIXER_DL2_MIXER_MULTIMEDIA,
-        .intval = 0,
-    },
-    {
-        .ctl_name = MIXER_DL2_MIXER_VOICE,
-        .intval = 0,
-    },
-    {
-        .ctl_name = NULL,
-    },
-};
-
-struct route_setting speaker_vx[] = {
-    {
-        .ctl_name = MIXER_DL2_MIXER_VOICE,
-        .intval = 1,
-    },
-    {
-        .ctl_name = MIXER_DL1_MIXER_MULTIMEDIA,
-        .intval = 0,
-    },
-    {
-        .ctl_name = MIXER_DL1_MIXER_VOICE,
-        .intval = 0,
-    },
-    {
-        .ctl_name = MIXER_DL2_MIXER_MULTIMEDIA,
-        .intval = 0,
-    },
-    {
-        .ctl_name = NULL,
-    },
-};
-
-struct route_setting headset_vx[] = {
-    {
-        .ctl_name = MIXER_DL1_MIXER_VOICE,
-        .intval = 1,
-    },
-    {
-        .ctl_name = MIXER_DL1_MIXER_MULTIMEDIA,
-        .intval = 0,
-    },
-    {
-        .ctl_name = MIXER_DL2_MIXER_MULTIMEDIA,
-        .intval = 0,
-    },
-    {
-        .ctl_name = MIXER_DL2_MIXER_VOICE,
-        .intval = 0,
-    },
-    {
-        .ctl_name = NULL,
-    },
-};
-
 struct route_setting amic_vx[] = {
     {
         .ctl_name = MIXER_MUX_VX0,
@@ -319,11 +229,20 @@ struct route_setting amic_vx[] = {
     },
 };
 
+struct mixer_ctls
+{
+    struct mixer_ctl *headset_mm;
+    struct mixer_ctl *headset_vx;
+    struct mixer_ctl *speaker_mm;
+    struct mixer_ctl *speaker_vx;
+};
+
 struct tuna_audio_device {
     struct audio_hw_device device;
 
     pthread_mutex_t lock;
     struct mixer *mixer;
+    struct mixer_ctls mixer_ctls;
     int mode;
     int out_device;
     struct pcm *pcm_modem_dl;
@@ -450,9 +369,6 @@ static void select_mode(struct tuna_audio_device *adev)
     if (adev->mode == AUDIO_MODE_IN_CALL) {
         if (!adev->in_call) {
             set_route_by_array(adev->mixer, amic_vx, 1);
-            /* force headset voice route otherwise microphone
-            does not function */
-            set_route_by_array(adev->mixer, headset_vx, 1);
             start_call(adev);
             adev->in_call = 1;
         }
@@ -465,41 +381,36 @@ static void select_mode(struct tuna_audio_device *adev)
     }
 }
 
-/* Note: currently the headset/earpiece route gets priority
-over speaker if both are selected as output devices. */
 static void select_output_device(struct tuna_audio_device *adev)
 {
-    struct mixer_ctl *ctl;
+    int headset_on;
+    int speaker_on;
 
-    /* Select output device */
-    if (adev->out_device & AUDIO_DEVICE_OUT_SPEAKER) {
-        if (adev->in_call) {
-            /* tear down call stream before changing route,
-            otherwise microphone does not function */
-            end_call(adev);
-            set_route_by_array(adev->mixer, speaker_vx, 1);
-            start_call(adev);
-        } else
-            set_route_by_array(adev->mixer, speaker_mm, 1);
-    } else if (adev->out_device & AUDIO_DEVICE_OUT_ALL_HEADSET) {
-        if (adev->in_call) {
-            /* tear down call stream before changing route,
-            otherwise microphone does not function */
-            end_call(adev);
-            set_route_by_array(adev->mixer, headset_vx, 1);
-            if (adev->out_device & AUDIO_DEVICE_OUT_EARPIECE)
-                set_route_by_array(adev->mixer, earpiece_switch, 1);
-            else
-                set_route_by_array(adev->mixer, earpiece_switch, 0);
-            start_call(adev);
-        } else {
-            set_route_by_array(adev->mixer, headset_mm, 1);
-            if (adev->out_device & AUDIO_DEVICE_OUT_EARPIECE)
-                set_route_by_array(adev->mixer, earpiece_switch, 1);
-            else
-                set_route_by_array(adev->mixer, earpiece_switch, 0);
-        }
-    }
+    /* tear down call stream before changing route,
+    otherwise microphone does not function */
+    if (adev->in_call)
+        end_call(adev);
+
+    headset_on = adev->out_device & AUDIO_DEVICE_OUT_ALL_HEADSET;
+    speaker_on = adev->out_device & AUDIO_DEVICE_OUT_SPEAKER;
+
+    /* Select output route(s) */
+    mixer_ctl_set_value(adev->mixer_ctls.headset_mm, 0,
+                        headset_on && !adev->in_call);
+    mixer_ctl_set_value(adev->mixer_ctls.headset_vx, 0,
+                        headset_on && adev->in_call);
+    mixer_ctl_set_value(adev->mixer_ctls.speaker_mm, 0,
+                        speaker_on && !adev->in_call);
+    mixer_ctl_set_value(adev->mixer_ctls.speaker_vx, 0,
+                        speaker_on && adev->in_call);
+
+    if (adev->out_device & AUDIO_DEVICE_OUT_EARPIECE)
+        set_route_by_array(adev->mixer, earpiece_switch, 1);
+    else
+        set_route_by_array(adev->mixer, earpiece_switch, 0);
+
+    if (adev->in_call)
+        start_call(adev);
 }
 
 static int start_output_stream(struct tuna_stream_out *out)
@@ -683,9 +594,6 @@ static int start_input_stream(struct tuna_stream_in *in)
     struct tuna_audio_device *adev = in->dev;
 
     set_route_by_array(adev->mixer, amic_vx, 1);
-    /* force headset voice route otherwise microphone
-    does not function */
-    set_route_by_array(adev->mixer, headset_vx, 1);
 
     /* this assumes routing is done previously */
     in->pcm = pcm_open(0, in->port, PCM_IN, &in->config);
@@ -1120,6 +1028,21 @@ static int adev_open(const hw_module_t* module, const char* name,
 
     adev->mixer = mixer_open(0);
     if (!adev->mixer) {
+        free(adev);
+        return -ENOMEM;
+    }
+
+    adev->mixer_ctls.headset_mm = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL1_MIXER_MULTIMEDIA);
+    adev->mixer_ctls.headset_vx = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL1_MIXER_VOICE);
+    adev->mixer_ctls.speaker_mm = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL2_MIXER_MULTIMEDIA);
+    adev->mixer_ctls.speaker_vx = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL2_MIXER_VOICE);
+    if (!adev->mixer_ctls.headset_mm || !adev->mixer_ctls.headset_vx ||
+        !adev->mixer_ctls.speaker_mm || !adev->mixer_ctls.speaker_vx) {
+        mixer_close(adev->mixer);
         free(adev);
         return -ENOMEM;
     }
