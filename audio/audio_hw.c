@@ -581,6 +581,7 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
     if (ret >= 0) {
         if (adev->out_device != atoi(value)) {
             adev->out_device = atoi(value);
+            out_standby(stream);
             select_output_device(adev);
         }
     }
@@ -629,8 +630,6 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
 
     pthread_mutex_lock(&out->lock);
     if (out->standby) {
-        /* reset the downlink mixer settings otherwise the ABE panics */
-        select_output_device(adev);
         ret = start_output_stream(out);
         if (ret == 0)
             out->standby = 0;
