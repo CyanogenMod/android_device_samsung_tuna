@@ -15,8 +15,6 @@
 
 LOCAL_PATH := $(call my-dir)
 
-ifneq ($(TARGET_SIMULATOR),true)
-
 # HAL module implemenation stored in
 # hw/<SENSORS_HARDWARE_MODULE_ID>.<ro.product.board>.so
 include $(CLEAR_VARS)
@@ -40,5 +38,3 @@ LOCAL_SRC_FILES := \
 LOCAL_SHARED_LIBRARIES := libinvensense_hal libcutils libutils libdl
 
 include $(BUILD_SHARED_LIBRARY)
-
-endif # !TARGET_SIMULATOR
