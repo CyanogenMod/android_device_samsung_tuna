@@ -36,7 +36,8 @@ PRODUCT_PACKAGES += \
 	sensors.tuna
 
 PRODUCT_PACKAGES += \
-	audio.primary.tuna
+	audio.primary.tuna \
+	audio.a2dp.default
 
 PRODUCT_COPY_FILES := \
 	$(LOCAL_KERNEL):kernel \
