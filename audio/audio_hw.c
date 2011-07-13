@@ -265,6 +265,7 @@ struct tuna_audio_device {
     struct pcm *pcm_modem_dl;
     struct pcm *pcm_modem_ul;
     int in_call;
+    float voice_volume;
 
     /* RIL */
     struct ril_handle ril;
@@ -299,6 +300,7 @@ struct tuna_stream_in {
 };
 
 static void select_output_device(struct tuna_audio_device *adev);
+static int adev_set_voice_volume(struct audio_hw_device *dev, float volume);
 
 /* The enable flag when 0 makes the assumption that enums are disabled by
  * "Off" and integers/booleans by 0 */
@@ -389,6 +391,7 @@ static void select_mode(struct tuna_audio_device *adev)
             select_output_device(adev);
             set_route_by_array(adev->mixer, amic_vx, 1);
             start_call(adev);
+            adev_set_voice_volume(&adev->device, adev->voice_volume);
             adev->in_call = 1;
         }
     } else if (adev->mode == AUDIO_MODE_NORMAL) {
@@ -884,8 +887,10 @@ static int adev_set_voice_volume(struct audio_hw_device *dev, float volume)
 {
     struct tuna_audio_device *adev = (struct tuna_audio_device *)dev;
 
+    adev->voice_volume = volume;
+
     /* convert the float volume to something suitable for the RIL */
-    if (adev->in_call) {
+    if (adev->mode == AUDIO_MODE_IN_CALL) {
         int int_volume = (int)(volume * 5);
         ril_set_call_volume(&adev->ril, SOUND_TYPE_VOICE, int_volume);
     }
@@ -1124,6 +1129,7 @@ static int adev_open(const hw_module_t* module, const char* name,
 
     adev->pcm_modem_dl = NULL;
     adev->pcm_modem_ul = NULL;
+    adev->voice_volume = 1.0f;
 
     /* RIL */
     ril_open(&adev->ril);
