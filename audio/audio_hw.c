@@ -423,9 +423,6 @@ static int start_call(struct tuna_audio_device *adev)
         }
     }
 
-    ril_set_call_clock_sync(&adev->ril, SOUND_CLOCK_START);
-    ril_set_call_audio_path(&adev->ril, SOUND_AUDIO_PATH_HANDSET);
-
     pcm_start(adev->pcm_modem_dl);
     pcm_start(adev->pcm_modem_ul);
 
@@ -451,12 +448,44 @@ static void end_call(struct tuna_audio_device *adev)
     adev->pcm_modem_ul = NULL;
 }
 
+static void set_incall_device(struct tuna_audio_device *adev)
+{
+    int device_type;
+
+    switch(adev->devices & AUDIO_DEVICE_OUT_ALL) {
+        case AUDIO_DEVICE_OUT_EARPIECE:
+            device_type = SOUND_AUDIO_PATH_HANDSET;
+            break;
+        case AUDIO_DEVICE_OUT_SPEAKER:
+            device_type = SOUND_AUDIO_PATH_SPEAKER;
+            break;
+        case AUDIO_DEVICE_OUT_WIRED_HEADSET:
+            device_type = SOUND_AUDIO_PATH_HEADSET;
+            break;
+        case AUDIO_DEVICE_OUT_WIRED_HEADPHONE:
+            device_type = SOUND_AUDIO_PATH_HEADPHONE;
+            break;
+        case AUDIO_DEVICE_OUT_BLUETOOTH_SCO:
+        case AUDIO_DEVICE_OUT_BLUETOOTH_SCO_HEADSET:
+        case AUDIO_DEVICE_OUT_BLUETOOTH_SCO_CARKIT:
+            device_type = SOUND_AUDIO_PATH_BLUETOOTH;
+            break;
+        default:
+            device_type = SOUND_AUDIO_PATH_HANDSET;
+            break;
+    }
+
+    /* if output device isn't supported, open modem side to handset by default */
+    ril_set_call_audio_path(&adev->ril, device_type);
+}
+
 static void select_mode(struct tuna_audio_device *adev)
 {
     if (adev->mode == AUDIO_MODE_IN_CALL) {
         if (!adev->in_call) {
             select_output_device(adev);
             start_call(adev);
+            ril_set_call_clock_sync(&adev->ril, SOUND_CLOCK_START);
             adev_set_voice_volume(&adev->hw_device, adev->voice_volume);
             adev->in_call = 1;
         }
@@ -571,6 +600,8 @@ static void select_output_device(struct tuna_audio_device *adev)
             mixer_ctl_set_enum_by_string(adev->mixer_ctls.right_capture,
                                          speaker_on ? MIXER_SUB_MIC : "Off");
         }
+
+        set_incall_device(adev);
     }
     if (adev->in_call)
         start_call(adev);
