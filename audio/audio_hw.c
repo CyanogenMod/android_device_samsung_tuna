@@ -68,6 +68,7 @@
 #define MIXER_AUDUL_VOICE_UL_VOLUME         "AUDUL Voice UL Volume"
 #define MIXER_MUX_VX0                       "MUX_VX0"
 #define MIXER_MUX_VX1                       "MUX_VX1"
+#define MIXER_MUX_UL10                      "MUX_UL10"
 
 /* Mixer control gain and route values */
 #define MIXER_ABE_GAIN_0DB                  120
@@ -221,6 +222,20 @@ struct route_setting amic_vx[] = {
     {
         .ctl_name = MIXER_VOICE_CAPTURE_MIXER_CAPTURE,
         .intval = 1,
+    },
+    {
+        .ctl_name = MIXER_ANALOG_LEFT_CAPTURE_ROUTE,
+        .strval = MIXER_MAIN_MIC,
+    },
+    {
+        .ctl_name = NULL,
+    },
+};
+
+struct route_setting amic_mm[] = {
+    {
+        .ctl_name = MIXER_MUX_UL10,
+        .strval = MIXER_AMIC0,
     },
     {
         .ctl_name = MIXER_ANALOG_LEFT_CAPTURE_ROUTE,
@@ -427,6 +442,27 @@ static int start_output_stream(struct tuna_stream_out *out)
     return 0;
 }
 
+static int check_input_parameters(uint32_t sample_rate, int format, int channel_count)
+{
+    if (format != AUDIO_FORMAT_PCM_16_BIT)
+        return -EINVAL;
+
+    if ((channel_count < 1) || (channel_count > 2))
+        return -EINVAL;
+
+    switch(sample_rate) {
+    case 8000:
+    case 16000:
+    case 48000:
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+
 static uint32_t out_get_sample_rate(const struct audio_stream *stream)
 {
     return DEFAULT_OUT_SAMPLING_RATE;
@@ -596,7 +632,15 @@ static int start_input_stream(struct tuna_stream_in *in)
     int ret = 0;
     struct tuna_audio_device *adev = in->dev;
 
-    set_route_by_array(adev->mixer, amic_vx, 1);
+    /* TODO: select route according to capture device: device selection to be implemented
+    * in_set_parameters().
+    * Also check how capture is possible during voice calls or if both use cases are mutually
+    * exclusive.
+    */
+    if (in->port == PORT_VX)
+        set_route_by_array(adev->mixer, amic_vx, 1);
+    else
+        set_route_by_array(adev->mixer, amic_mm, 1);
 
     /* this assumes routing is done previously */
     in->pcm = pcm_open(0, in->port, PCM_IN, &in->config);
@@ -879,7 +923,26 @@ static size_t adev_get_input_buffer_size(const struct audio_hw_device *dev,
                                          uint32_t sample_rate, int format,
                                          int channel_count)
 {
-    return 320;
+    size_t size;
+
+    if (check_input_parameters(sample_rate, format, channel_count) != 0)
+        return 0;
+
+    /* TODO: update when resampling is implemented */
+    switch(sample_rate) {
+    case 8000:
+        size = pcm_config_vx.period_size;
+        break;
+    case 16000:
+        size = pcm_config_vx.period_size * 2;
+        break;
+    case 48000:
+        size = pcm_config_mm.period_size;
+        break;
+    default:
+        return 0;
+    }
+    return size * channel_count * sizeof(short);
 }
 
 static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
@@ -891,6 +954,10 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
     struct tuna_audio_device *ladev = (struct tuna_audio_device *)dev;
     struct tuna_stream_in *in;
     int ret;
+    int channel_count = popcount(*channel_mask);
+
+    if (check_input_parameters(*sample_rate, *format, channel_count) != 0)
+        return -EINVAL;
 
     in = (struct tuna_stream_in *)calloc(1, sizeof(struct tuna_stream_in));
     if (!in)
@@ -913,11 +980,6 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
     in->stream.get_input_frames_lost = in_get_input_frames_lost;
 
     in->requested_rate = *sample_rate;
-    in->config.channels = popcount(*channel_mask);
-    if ((in->config.channels) > 2 || (in->requested_rate == 0)) {
-        ret = -EINVAL;
-        goto err;
-    }
 
     if (in->requested_rate <= 8000) {
         in->port = PORT_VX;
@@ -927,11 +989,12 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
         in->port = PORT_VX; /* use voice uplink */
         memcpy(&in->config, &pcm_config_vx, sizeof(pcm_config_vx));
         in->config.rate = 16000;
+        in->config.period_size *= 2;
     } else {
-        in->port = PORT_MM; /* use multimedia uplink */
+        in->port = PORT_MM2_UL; /* use multimedia uplink 2 */
         memcpy(&in->config, &pcm_config_mm, sizeof(pcm_config_mm));
-        in->config.rate = 48000;
     }
+    in->config.channels = channel_count;
 
     in->dev = ladev;
     in->standby = !!start_input_stream(in);
