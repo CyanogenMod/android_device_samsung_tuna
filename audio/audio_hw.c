@@ -299,6 +299,8 @@ struct tuna_stream_in {
     struct tuna_audio_device *dev;
 };
 
+static void select_output_device(struct tuna_audio_device *adev);
+
 /* The enable flag when 0 makes the assumption that enums are disabled by
  * "Off" and integers/booleans by 0 */
 static int set_route_by_array(struct mixer *mixer, struct route_setting *route,
@@ -385,6 +387,7 @@ static void select_mode(struct tuna_audio_device *adev)
 {
     if (adev->mode == AUDIO_MODE_IN_CALL) {
         if (!adev->in_call) {
+            select_output_device(adev);
             set_route_by_array(adev->mixer, amic_vx, 1);
             start_call(adev);
             adev->in_call = 1;
@@ -393,6 +396,7 @@ static void select_mode(struct tuna_audio_device *adev)
         if (adev->in_call) {
             adev->in_call = 0;
             end_call(adev);
+            select_output_device(adev);
             set_route_by_array(adev->mixer, amic_vx, 0);
         }
     }
@@ -413,13 +417,13 @@ static void select_output_device(struct tuna_audio_device *adev)
 
     /* Select output route(s) */
     mixer_ctl_set_value(adev->mixer_ctls.headset_mm, 0,
-                        headset_on && !adev->in_call);
+                        headset_on);
     mixer_ctl_set_value(adev->mixer_ctls.headset_vx, 0,
-                        headset_on && adev->in_call);
+                        headset_on && (adev->mode == AUDIO_MODE_IN_CALL));
     mixer_ctl_set_value(adev->mixer_ctls.speaker_mm, 0,
-                        speaker_on && !adev->in_call);
+                        speaker_on);
     mixer_ctl_set_value(adev->mixer_ctls.speaker_vx, 0,
-                        speaker_on && adev->in_call);
+                        speaker_on && (adev->mode == AUDIO_MODE_IN_CALL));
 
     if (adev->out_device & AUDIO_DEVICE_OUT_EARPIECE)
         set_route_by_array(adev->mixer, earpiece_switch, 1);
