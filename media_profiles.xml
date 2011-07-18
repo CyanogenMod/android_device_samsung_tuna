@@ -123,7 +123,7 @@
                    frameRate="30" />
             <Audio codec="aac"
                    bitRate="96000"
-                   sampleRate="8000"
+                   sampleRate="48000"
                    channels="1" />
         </EncoderProfile>
 
@@ -135,7 +135,7 @@
                    frameRate="30" />
             <Audio codec="aac"
                    bitRate="96000"
-                   sampleRate="8000"
+                   sampleRate="48000"
                    channels="1" />
         </EncoderProfile>
 
@@ -183,7 +183,7 @@
                    frameRate="30" />
             <Audio codec="aac"
                    bitRate="96000"
-                   sampleRate="8000"
+                   sampleRate="48000"
                    channels="1" />
         </EncoderProfile>
 
@@ -195,7 +195,7 @@
                    frameRate="30" />
             <Audio codec="aac"
                    bitRate="96000"
-                   sampleRate="8000"
+                   sampleRate="48000"
                    channels="1" />
         </EncoderProfile>
 
@@ -252,7 +252,7 @@
                    frameRate="30" />
             <Audio codec="aac"
                    bitRate="96000"
-                   sampleRate="8000"
+                   sampleRate="48000"
                    channels="1" />
         </EncoderProfile>
 
@@ -300,7 +300,7 @@
                    frameRate="30" />
             <Audio codec="aac"
                    bitRate="96000"
-                   sampleRate="8000"
+                   sampleRate="48000"
                    channels="1" />
         </EncoderProfile>
 
@@ -310,7 +310,6 @@
         <ImageDecoding memCap="20000000" />
 
     </CamcorderProfiles>
-
 
     <EncoderOutputFileFormat name="3gp" />
     <EncoderOutputFileFormat name="mp4" />
@@ -339,8 +338,8 @@
         minFrameRate="1" maxFrameRate="30" />
 
     <AudioEncoderCap name="aac" enabled="true"
-        minBitRate="8192" maxBitRate="96000"
-        minSampleRate="8000" maxSampleRate="16000"
+        minBitRate="8000" maxBitRate="96000"
+        minSampleRate="8000" maxSampleRate="48000"
         minChannels="1" maxChannels="1" />
 
     <AudioEncoderCap name="amrwb" enabled="true"
