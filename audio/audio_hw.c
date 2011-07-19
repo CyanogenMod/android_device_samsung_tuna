@@ -15,7 +15,7 @@
  */
 
 #define LOG_TAG "audio_hw_primary"
-/*#define LOG_NDEBUG 0*/
+#define LOG_NDEBUG 0
 
 #include <errno.h>
 #include <pthread.h>
@@ -81,10 +81,11 @@
 #define MIXER_PLAYBACK_HF_DAC               "HF DAC"
 #define MIXER_MAIN_MIC                      "Main Mic"
 #define MIXER_SUB_MIC                       "Sub Mic"
+#define MIXER_HS_MIC                        "Headset Mic"
 #define MIXER_AMIC0                         "AMic0"
 #define MIXER_AMIC1                         "AMic1"
-#define MIXER_BT_LEFT                     "BT Left"
-#define MIXER_BT_RIGHT                    "BT Right"
+#define MIXER_BT_LEFT                       "BT Left"
+#define MIXER_BT_RIGHT                      "BT Right"
 
 /* ALSA ports for OMAP4 */
 #define PORT_MM 0
@@ -98,10 +99,6 @@
 #define RESAMPLER_BUFFER_SIZE 8192
 
 #define DEFAULT_OUT_SAMPLING_RATE 44100
-
-#define AUDIO_DEVICE_OUT_ALL_HEADSET (AUDIO_DEVICE_OUT_EARPIECE |\
-                                      AUDIO_DEVICE_OUT_WIRED_HEADSET |\
-                                      AUDIO_DEVICE_OUT_WIRED_HEADPHONE)
 
 struct pcm_config pcm_config_mm = {
     .channels = 2,
@@ -294,18 +291,18 @@ struct mixer_ctls
 };
 
 struct tuna_audio_device {
-    struct audio_hw_device device;
+    struct audio_hw_device hw_device;
 
     pthread_mutex_t lock;
     struct mixer *mixer;
     struct mixer_ctls mixer_ctls;
     int mode;
-    int out_device;
+    int devices;
     struct pcm *pcm_modem_dl;
     struct pcm *pcm_modem_ul;
     int in_call;
     float voice_volume;
-
+    struct tuna_stream_in *active_input;
     /* RIL */
     struct ril_handle ril;
 };
@@ -316,6 +313,7 @@ struct tuna_stream_out {
     pthread_mutex_t lock;
     struct pcm_config config;
     struct pcm *pcm;
+    int device;
     SpeexResamplerState *speex;
     char *buffer;
     int standby;
@@ -329,6 +327,7 @@ struct tuna_stream_in {
     pthread_mutex_t lock;
     struct pcm_config config;
     struct pcm *pcm;
+    int device;
     SpeexResamplerState *speex;
     char *buffer;
     size_t frames_in;
@@ -340,6 +339,7 @@ struct tuna_stream_in {
 };
 
 static void select_output_device(struct tuna_audio_device *adev);
+static void select_input_device(struct tuna_audio_device *adev);
 static int adev_set_voice_volume(struct audio_hw_device *dev, float volume);
 
 /* The enable flag when 0 makes the assumption that enums are disabled by
@@ -429,20 +429,16 @@ static void select_mode(struct tuna_audio_device *adev)
     if (adev->mode == AUDIO_MODE_IN_CALL) {
         if (!adev->in_call) {
             select_output_device(adev);
-            set_route_by_array(adev->mixer, vx_ul_amic, 1);
-            mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
-                                         MIXER_MAIN_MIC);
             start_call(adev);
-            adev_set_voice_volume(&adev->device, adev->voice_volume);
+            adev_set_voice_volume(&adev->hw_device, adev->voice_volume);
             adev->in_call = 1;
         }
-    } else if (adev->mode == AUDIO_MODE_NORMAL) {
+    } else {
         if (adev->in_call) {
             adev->in_call = 0;
             end_call(adev);
             select_output_device(adev);
-            set_route_by_array(adev->mixer, vx_ul_amic, 0);
-            mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture, "Off");
+            select_input_device(adev);
         }
     }
 }
@@ -451,6 +447,7 @@ static void select_output_device(struct tuna_audio_device *adev)
 {
     int headset_on;
     int speaker_on;
+    int earpiece_on;
     int bt_on;
     int dl1_on;
 
@@ -459,10 +456,12 @@ static void select_output_device(struct tuna_audio_device *adev)
     if (adev->in_call)
         end_call(adev);
 
-    headset_on = adev->out_device & AUDIO_DEVICE_OUT_ALL_HEADSET;
-    speaker_on = adev->out_device & AUDIO_DEVICE_OUT_SPEAKER;
-    bt_on = adev->out_device & AUDIO_DEVICE_OUT_ALL_SCO;
-    dl1_on = headset_on | bt_on;
+    headset_on = adev->devices &
+                (AUDIO_DEVICE_OUT_WIRED_HEADSET | AUDIO_DEVICE_OUT_WIRED_HEADPHONE);
+    speaker_on = adev->devices & AUDIO_DEVICE_OUT_SPEAKER;
+    earpiece_on = adev->devices & AUDIO_DEVICE_OUT_EARPIECE;
+    bt_on = adev->devices & AUDIO_DEVICE_OUT_ALL_SCO;
+    dl1_on = headset_on | earpiece_on | bt_on;
 
     /* Select front end */
     mixer_ctl_set_value(adev->mixer_ctls.mm_dl2, 0, speaker_on);
@@ -472,10 +471,78 @@ static void select_output_device(struct tuna_audio_device *adev)
     mixer_ctl_set_value(adev->mixer_ctls.vx_dl1, 0,
                         dl1_on && (adev->mode == AUDIO_MODE_IN_CALL));
     /* Select back end */
-    mixer_ctl_set_value(adev->mixer_ctls.dl1_headset, 0, headset_on);
+    mixer_ctl_set_value(adev->mixer_ctls.dl1_headset, 0, headset_on | earpiece_on);
     mixer_ctl_set_value(adev->mixer_ctls.dl1_bt, 0, bt_on);
-    mixer_ctl_set_value(adev->mixer_ctls.earpiece_switch, 0,
-                       !!(adev->out_device & AUDIO_DEVICE_OUT_EARPIECE));
+    mixer_ctl_set_value(adev->mixer_ctls.earpiece_switch, 0, earpiece_on);
+
+    /* Special case: select input path if in a call, otherwise
+       in_set_parameters is used to update the input route
+       todo: use sub mic for handsfree case */
+    if (adev->mode == AUDIO_MODE_IN_CALL) {
+        if (bt_on)
+            set_route_by_array(adev->mixer, vx_ul_bt, bt_on);
+        else {
+            set_route_by_array(adev->mixer, vx_ul_amic,
+                              (speaker_on | headset_on | earpiece_on));
+            if (headset_on)
+                mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture, MIXER_HS_MIC);
+            else
+                mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
+                                            (speaker_on | earpiece_on) ?
+                                             MIXER_MAIN_MIC : "Off");
+        }
+    }
+    if (adev->in_call)
+        start_call(adev);
+}
+
+static void select_input_device(struct tuna_audio_device *adev)
+{
+    int headset_on;
+    int main_mic_on;
+    int sub_mic_on = 0; /* not routing to sub-mic for now */
+    int bt_on;
+    int anlg_mic_on;
+    int port;
+
+    headset_on = adev->devices & AUDIO_DEVICE_IN_WIRED_HEADSET;
+    main_mic_on = adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC;
+    bt_on = adev->devices & AUDIO_DEVICE_IN_ALL_SCO;
+    anlg_mic_on = headset_on | main_mic_on | sub_mic_on;
+
+    /* PORT_MM2_UL is only used when not in call and active input uses it. */
+    port = PORT_VX;
+    if ((adev->mode != AUDIO_MODE_IN_CALL) && (adev->active_input != 0))
+        port = adev->active_input->port;
+
+    /* tear down call stream before changing route,
+     * otherwise microphone does not function
+     */
+    if (adev->in_call)
+        end_call(adev);
+
+   /* TODO: check how capture is possible during voice calls or if
+    * both use cases are mutually exclusive.
+    */
+    if (bt_on) {
+        set_route_by_array(adev->mixer, mm_ul2_bt, (port != PORT_VX));
+        set_route_by_array(adev->mixer, vx_ul_bt, (port == PORT_VX));
+    } else {
+        /* Select front end */
+        set_route_by_array(adev->mixer, mm_ul2_amic,
+                           anlg_mic_on && (port != PORT_VX));
+        set_route_by_array(adev->mixer, vx_ul_amic,
+                           anlg_mic_on && (port == PORT_VX));
+
+        /* Select back end */
+        if (headset_on)
+            mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
+                                         MIXER_HS_MIC);
+        else
+            mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
+                                         main_mic_on ? MIXER_MAIN_MIC : "Off");
+        /* TODO: set up sub mic for BACK_MIC when gpio for sub_mic is enabled */
+    }
 
     if (adev->in_call)
         start_call(adev);
@@ -483,6 +550,14 @@ static void select_output_device(struct tuna_audio_device *adev)
 
 static int start_output_stream(struct tuna_stream_out *out)
 {
+    struct tuna_audio_device *adev = out->dev;
+
+    pthread_mutex_lock(&adev->lock);
+    adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
+    adev->devices |= out->device;
+    select_output_device(adev);
+    pthread_mutex_unlock(&adev->lock);
+
     out->pcm = pcm_open(0, PORT_MM, PCM_OUT, &out->config);
     if (!pcm_is_ready(out->pcm)) {
         LOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
@@ -623,19 +698,28 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
     int ret, val = 0;
 
     parms = str_parms_create_str(kvpairs);
-    pthread_mutex_lock(&adev->lock);
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
     if (ret >= 0) {
         val = atoi(value);
-        if ((adev->out_device != val) && (val != 0)) {
-            adev->out_device = val;
-            out_standby(stream);
-            select_output_device(adev);
-        }
+        pthread_mutex_lock(&out->lock);
+        if ((out->device != val) && (val != 0)) {
+            out->device = val;
+            pthread_mutex_unlock(&out->lock);
+            pthread_mutex_lock(&adev->lock);
+            if (adev->mode == AUDIO_MODE_IN_CALL) {
+                adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
+                adev->devices |= out->device;
+                select_output_device(adev);
+                pthread_mutex_unlock(&adev->lock);
+            } else {
+                pthread_mutex_unlock(&adev->lock);
+                out_standby(stream);
+            }
+        } else
+            pthread_mutex_unlock(&out->lock);
     }
 
-    pthread_mutex_unlock(&adev->lock);
     str_parms_destroy(parms);
     return ret;
 }
@@ -726,19 +810,11 @@ static int start_input_stream(struct tuna_stream_in *in)
     int ret = 0;
     struct tuna_audio_device *adev = in->dev;
 
-    /* TODO: select route according to capture device: device selection to be implemented
-    * in_set_parameters().
-    * Also check how capture is possible during voice calls or if both use cases are mutually
-    * exclusive.
-    */
     pthread_mutex_lock(&adev->lock);
-    if (in->port == PORT_VX)
-        set_route_by_array(adev->mixer, vx_ul_amic, 1);
-    else
-        set_route_by_array(adev->mixer, mm_ul2_amic, 1);
-
-    mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
-                                 MIXER_MAIN_MIC);
+    adev->devices &= ~AUDIO_DEVICE_IN_ALL;
+    adev->devices |= in->device;
+    adev->active_input = in;
+    select_input_device(adev);
     pthread_mutex_unlock(&adev->lock);
 
     /* this assumes routing is done previously */
@@ -748,8 +824,6 @@ static int start_input_stream(struct tuna_stream_in *in)
         pcm_close(in->pcm);
         return -ENOMEM;
     }
-
-
     /* if no supported sample rate is available, use the resampler */
     if (in->speex) {
         speex_resampler_reset_mem(in->speex);
@@ -803,11 +877,18 @@ static int in_set_format(struct audio_stream *stream, int format)
 static int in_standby(struct audio_stream *stream)
 {
     struct tuna_stream_in *in = (struct tuna_stream_in *)stream;
+    struct tuna_audio_device *adev = in->dev;
 
     pthread_mutex_lock(&in->lock);
     if (!in->standby) {
         pcm_close(in->pcm);
         in->pcm = NULL;
+        adev->active_input = 0;
+        pthread_mutex_lock(&adev->lock);
+        adev->devices &= ~AUDIO_DEVICE_IN_ALL;
+        adev->active_input = 0;
+        select_input_device(adev);
+        pthread_mutex_unlock(&adev->lock);
         in->standby = 1;
     }
     pthread_mutex_unlock(&in->lock);
@@ -821,7 +902,29 @@ static int in_dump(const struct audio_stream *stream, int fd)
 
 static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
 {
-    return 0;
+    struct tuna_stream_in *in = (struct tuna_stream_in *)stream;
+    struct tuna_audio_device *adev = in->dev;
+    struct str_parms *parms;
+    char *str;
+    char value[32];
+    int ret, val = 0;
+
+    parms = str_parms_create_str(kvpairs);
+
+    ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
+    if (ret >= 0) {
+        val = atoi(value);
+        pthread_mutex_lock(&in->lock);
+        if ((in->device != val) && (val != 0)) {
+            in->device = val;
+            pthread_mutex_unlock(&in->lock);
+            in_standby(stream);
+        } else
+            pthread_mutex_unlock(&in->lock);
+    }
+
+    str_parms_destroy(parms);
+    return ret;
 }
 
 static char * in_get_parameters(const struct audio_stream *stream,
@@ -957,6 +1060,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     speex_resampler_reset_mem(out->speex);
     out->buffer = malloc(RESAMPLER_BUFFER_SIZE); /* todo: allow for reallocing */
 
+    out->device = devices;
     out->dev = ladev;
     out->standby = !!start_output_stream(out);
 
@@ -978,12 +1082,11 @@ static void adev_close_output_stream(struct audio_hw_device *dev,
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
-
+    out_standby(&stream->common);
     if (out->buffer)
         free(out->buffer);
     if (out->speex)
         speex_resampler_destroy(out->speex);
-    out_standby(&stream->common);
     free(stream);
 }
 
@@ -1126,6 +1229,7 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
 
     in->dev = ladev;
     in->standby = 1;
+    in->device = devices;
 
     *stream_in = &in->stream;
     return 0;
@@ -1208,26 +1312,26 @@ static int adev_open(const hw_module_t* module, const char* name,
     if (!adev)
         return -ENOMEM;
 
-    adev->device.common.tag = HARDWARE_DEVICE_TAG;
-    adev->device.common.version = 0;
-    adev->device.common.module = (struct hw_module_t *) module;
-    adev->device.common.close = adev_close;
+    adev->hw_device.common.tag = HARDWARE_DEVICE_TAG;
+    adev->hw_device.common.version = 0;
+    adev->hw_device.common.module = (struct hw_module_t *) module;
+    adev->hw_device.common.close = adev_close;
 
-    adev->device.get_supported_devices = adev_get_supported_devices;
-    adev->device.init_check = adev_init_check;
-    adev->device.set_voice_volume = adev_set_voice_volume;
-    adev->device.set_master_volume = adev_set_master_volume;
-    adev->device.set_mode = adev_set_mode;
-    adev->device.set_mic_mute = adev_set_mic_mute;
-    adev->device.get_mic_mute = adev_get_mic_mute;
-    adev->device.set_parameters = adev_set_parameters;
-    adev->device.get_parameters = adev_get_parameters;
-    adev->device.get_input_buffer_size = adev_get_input_buffer_size;
-    adev->device.open_output_stream = adev_open_output_stream;
-    adev->device.close_output_stream = adev_close_output_stream;
-    adev->device.open_input_stream = adev_open_input_stream;
-    adev->device.close_input_stream = adev_close_input_stream;
-    adev->device.dump = adev_dump;
+    adev->hw_device.get_supported_devices = adev_get_supported_devices;
+    adev->hw_device.init_check = adev_init_check;
+    adev->hw_device.set_voice_volume = adev_set_voice_volume;
+    adev->hw_device.set_master_volume = adev_set_master_volume;
+    adev->hw_device.set_mode = adev_set_mode;
+    adev->hw_device.set_mic_mute = adev_set_mic_mute;
+    adev->hw_device.get_mic_mute = adev_get_mic_mute;
+    adev->hw_device.set_parameters = adev_set_parameters;
+    adev->hw_device.get_parameters = adev_get_parameters;
+    adev->hw_device.get_input_buffer_size = adev_get_input_buffer_size;
+    adev->hw_device.open_output_stream = adev_open_output_stream;
+    adev->hw_device.close_output_stream = adev_close_output_stream;
+    adev->hw_device.open_input_stream = adev_open_input_stream;
+    adev->hw_device.close_input_stream = adev_close_input_stream;
+    adev->hw_device.dump = adev_dump;
 
     adev->mixer = mixer_open(0);
     if (!adev->mixer) {
@@ -1268,7 +1372,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     pthread_mutex_lock(&adev->lock);
     set_route_by_array(adev->mixer, defaults, 1);
     adev->mode = AUDIO_MODE_NORMAL;
-    adev->out_device = AUDIO_DEVICE_OUT_SPEAKER;
+    adev->devices = AUDIO_DEVICE_OUT_SPEAKER | AUDIO_DEVICE_IN_BUILTIN_MIC;
     select_output_device(adev);
 
     adev->pcm_modem_dl = NULL;
@@ -1279,7 +1383,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     ril_open(&adev->ril);
     pthread_mutex_unlock(&adev->lock);
 
-    *device = &adev->device.common;
+    *device = &adev->hw_device.common;
 
     return 0;
 }
