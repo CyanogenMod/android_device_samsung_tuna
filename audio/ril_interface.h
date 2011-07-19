@@ -28,6 +28,12 @@
 #define RIL_CLIENT_ERR_RESOURCE     6 // Resource not available
 #define RIL_CLIENT_ERR_UNKNOWN      7
 
+struct ril_handle
+{
+    void *handle;
+    void *client;
+};
+
 enum ril_sound_type {
     SOUND_TYPE_VOICE,
     SOUND_TYPE_SPEAKER,
@@ -49,19 +55,12 @@ enum ril_clock_state {
     SOUND_CLOCK_START
 };
 
-/* Function pointers */
-void *(*ril_open_client)(void);
-int (*ril_close_client)(void *);
-int (*ril_connect)(void *);
-int (*ril_is_connected)(void *);
-int (*ril_disconnect)(void *);
-int (*ril_set_call_volume)(void *, enum ril_sound_type, int);
-int (*ril_set_call_audio_path)(void *, enum ril_audio_path);
-int (*ril_set_call_clock_sync)(void *, enum ril_clock_state);
-
 /* Function prototypes */
-int ril_open(void **ril_handle, void **ril_client);
-int ril_close(void *ril_handle, void *ril_client);
-
+int ril_open(struct ril_handle *ril);
+int ril_close(struct ril_handle *ril);
+int ril_set_call_volume(struct ril_handle *ril, enum ril_sound_type sound_type,
+                        int volume);
+int ril_set_call_audio_path(struct ril_handle *ril, enum ril_audio_path path);
+int ril_set_call_clock_sync(struct ril_handle *ril, enum ril_clock_state state);
 #endif
 
