@@ -88,7 +88,7 @@
 #define PORT_TONES 3
 #define PORT_VIBRA 4
 #define PORT_MODEM 5
-#define PORT_MM_LP 5
+#define PORT_MM_LP 6
 
 #define RESAMPLER_BUFFER_SIZE 8192
 
