@@ -873,7 +873,7 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
 static char * adev_get_parameters(const struct audio_hw_device *dev,
                                   const char *keys)
 {
-    return NULL;
+    return strdup("");
 }
 
 static int adev_init_check(const struct audio_hw_device *dev)
