@@ -25,8 +25,58 @@
          This image contains an installer for the AFT file transfer tool. -->
     <string translatable="false" name="config_isoImagePath">/system/etc/AftInstallerImage.iso</string>
 
+    <!-- Flag indicating whether we should enable the automatic brightness in Settings.
+         config_hardware_automatic_brightness_available is not set, so we will use software implementation -->
+    <bool name="config_automatic_brightness_available">true</bool>
+
     <!-- Whether a software navigation bar should be shown. NOTE: in the future this may be
          autodetected from the Configuration. -->
     <bool name="config_showNavigationBar">true</bool>
+
+    <!-- Array of light sensor LUX values to define our levels for auto backlight brightness support.
+         The N entries of this array define N + 1 zones as follows:
+
+         Zone 0:        0 <= LUX < array[0]
+         Zone 1:        array[0] <= LUX < array[1]
+         ...
+         Zone N:        array[N - 1] <= LUX < array[N]
+         Zone N + 1:    array[N] <= LUX < infinity
+
+         Must be overridden in platform specific overlays -->
+    <integer-array name="config_autoBrightnessLevels">
+        <item>100</item>
+        <item>200</item>
+    </integer-array>
+
+    <!-- Array of output values for LCD backlight corresponding to the LUX values
+         in the config_autoBrightnessLevels array.  This array should have size one greater
+         than the size of the config_autoBrightnessLevels array.
+    -->
+    <integer-array name="config_autoBrightnessLcdBacklightValues">
+        <item>35</item>
+        <item>55</item>
+        <item>250</item>
+    </integer-array>
+
+    <!-- Array of output values for button backlight corresponding to the LUX values
+         in the config_autoBrightnessLevels array.  This array should have size one greater
+         than the size of the config_autoBrightnessLevels array.
+    -->
+    <integer-array name="config_autoBrightnessButtonBacklightValues">
+        <item>0</item>
+        <item>0</item>
+        <item>0</item>
+    </integer-array>
+
+    <!-- Array of output values for keyboard backlight corresponding to the LUX values
+         in the config_autoBrightnessLevels array.  This array should have size one greater
+         than the size of the config_autoBrightnessLevels array.
+         Crespo has no keyboard so all values are zero.
+    -->
+    <integer-array name="config_autoBrightnessKeyboardBacklightValues">
+        <item>0</item>
+        <item>0</item>
+        <item>0</item>
+    </integer-array>
 
 </resources>
