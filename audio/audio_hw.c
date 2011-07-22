@@ -152,6 +152,18 @@ struct route_setting defaults[] = {
         .intval = MIXER_ABE_GAIN_0DB,
     },
     {
+        .ctl_name = MIXER_HEADSET_PLAYBACK_VOLUME,
+        .intval = 13,
+    },
+    {
+        .ctl_name = MIXER_EARPHONE_PLAYBACK_VOLUME,
+        .intval = 15,
+    },
+    {
+        .ctl_name = MIXER_HANDSFREE_PLAYBACK_VOLUME,
+        .intval = 26, /* max for no distortion */
+    },
+    {
         .ctl_name = MIXER_AUDUL_VOICE_UL_VOLUME,
         .intval = MIXER_ABE_GAIN_0DB,
     },
@@ -163,26 +175,8 @@ struct route_setting defaults[] = {
         .ctl_name = MIXER_CAPTURE_VOLUME,
         .intval = 4,
     },
-    {
-        .ctl_name = MIXER_SIDETONE_MIXER_PLAYBACK,
-        .intval = 1,
-    },
-    {
-        .ctl_name = MIXER_DL1_PDM_SWITCH,
-        .intval = 1,
-    },
 
-    /* bt */
-    {
-        .ctl_name = MIXER_BT_UL_VOLUME,
-        .intval = MIXER_ABE_GAIN_MINUS1DB,
-    },
-    {
-        .ctl_name = NULL,
-    },
-};
-
-struct route_setting output_stage[] = {
+    /* speaker */
     {
         .ctl_name = MIXER_HF_LEFT_PLAYBACK,
         .strval = MIXER_PLAYBACK_HF_DAC,
@@ -190,6 +184,16 @@ struct route_setting output_stage[] = {
     {
         .ctl_name = MIXER_HF_RIGHT_PLAYBACK,
         .strval = MIXER_PLAYBACK_HF_DAC,
+    },
+
+    /* headset */
+    {
+        .ctl_name = MIXER_SIDETONE_MIXER_PLAYBACK,
+        .intval = 1,
+    },
+    {
+        .ctl_name = MIXER_DL1_PDM_SWITCH,
+        .intval = 1,
     },
     {
         .ctl_name = MIXER_HS_LEFT_PLAYBACK,
@@ -199,17 +203,11 @@ struct route_setting output_stage[] = {
         .ctl_name = MIXER_HS_RIGHT_PLAYBACK,
         .strval = MIXER_PLAYBACK_HS_DAC,
     },
+
+    /* bt */
     {
-        .ctl_name = MIXER_HEADSET_PLAYBACK_VOLUME,
-        .intval = 13,
-    },
-    {
-        .ctl_name = MIXER_EARPHONE_PLAYBACK_VOLUME,
-        .intval = 15,
-    },
-    {
-        .ctl_name = MIXER_HANDSFREE_PLAYBACK_VOLUME,
-        .intval = 26, /* max for no distortion */
+        .ctl_name = MIXER_BT_UL_VOLUME,
+        .intval = MIXER_ABE_GAIN_MINUS1DB,
     },
     {
         .ctl_name = NULL,
@@ -484,9 +482,6 @@ static void select_output_device(struct tuna_audio_device *adev)
 
 static int start_output_stream(struct tuna_stream_out *out)
 {
-    struct tuna_audio_device *adev = out->dev;
-
-    set_route_by_array(adev->mixer, output_stage, 1);
     out->pcm = pcm_open(0, PORT_MM, PCM_OUT, &out->config);
     if (!pcm_is_ready(out->pcm)) {
         LOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
@@ -559,10 +554,8 @@ static int out_set_format(struct audio_stream *stream, int format)
 static int out_standby(struct audio_stream *stream)
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
-    struct tuna_audio_device *adev = out->dev;
 
     pthread_mutex_lock(&out->lock);
-    set_route_by_array(adev->mixer, output_stage, 0);
     if (!out->standby) {
         pcm_close(out->pcm);
         out->pcm = NULL;
