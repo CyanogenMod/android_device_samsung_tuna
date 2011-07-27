@@ -100,4 +100,7 @@
     <!-- Boolean indicating whether the wifi chipset has background scan support -->
     <bool translatable="false" name="config_wifi_background_scan_support">true</bool>
 
+    <!-- Boolean indicating where bluetooth is always powered on but kept at
+         low power mode -->
+    <bool translatable="false" name="config_bluetooth_adapter_quick_switch">false</bool>
 </resources>
