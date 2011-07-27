@@ -1008,11 +1008,8 @@ static int adev_set_voice_volume(struct audio_hw_device *dev, float volume)
 
     adev->voice_volume = volume;
 
-    /* convert the float volume to something suitable for the RIL */
-    if (adev->mode == AUDIO_MODE_IN_CALL) {
-        int int_volume = (int)(volume * 5);
-        ril_set_call_volume(&adev->ril, SOUND_TYPE_VOICE, int_volume);
-    }
+    if (adev->mode == AUDIO_MODE_IN_CALL)
+        ril_set_call_volume(&adev->ril, SOUND_TYPE_VOICE, volume);
 
     return 0;
 }

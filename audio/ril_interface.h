@@ -32,6 +32,7 @@ struct ril_handle
 {
     void *handle;
     void *client;
+    int volume_steps_max;
 };
 
 enum ril_sound_type {
@@ -59,7 +60,7 @@ enum ril_clock_state {
 int ril_open(struct ril_handle *ril);
 int ril_close(struct ril_handle *ril);
 int ril_set_call_volume(struct ril_handle *ril, enum ril_sound_type sound_type,
-                        int volume);
+                        float volume);
 int ril_set_call_audio_path(struct ril_handle *ril, enum ril_audio_path path);
 int ril_set_call_clock_sync(struct ril_handle *ril, enum ril_clock_state state);
 #endif
