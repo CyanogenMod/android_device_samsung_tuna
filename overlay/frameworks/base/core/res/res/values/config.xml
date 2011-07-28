@@ -21,10 +21,6 @@
      for different hardware and product builds. -->
 <resources>
 
-    <!-- Path to an ISO image to be shared with via USB mass storage.
-         This image contains an installer for the AFT file transfer tool. -->
-    <string translatable="false" name="config_isoImagePath">/system/etc/AftInstallerImage.iso</string>
-
     <!-- Flag indicating whether we should enable the automatic brightness in Settings.
          config_hardware_automatic_brightness_available is not set, so we will use software implementation -->
     <bool name="config_automatic_brightness_available">true</bool>
