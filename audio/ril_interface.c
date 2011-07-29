@@ -18,10 +18,15 @@
 /*#define LOG_NDEBUG 0*/
 
 #include <dlfcn.h>
+#include <stdlib.h>
 
 #include <utils/Log.h>
+#include <cutils/properties.h>
 
 #include "ril_interface.h"
+
+#define VOLUME_STEPS_DEFAULT  "5"
+#define VOLUME_STEPS_PROPERTY "ro.config.vc_call_vol_steps"
 
 /* Function pointers */
 void *(*_ril_open_client)(void);
@@ -47,6 +52,8 @@ static int ril_connect_if_required(struct ril_handle *ril)
 
 int ril_open(struct ril_handle *ril)
 {
+    char property[PROPERTY_VALUE_MAX];
+
     if (!ril)
         return -1;
 
@@ -81,6 +88,13 @@ int ril_open(struct ril_handle *ril)
         return -1;
     }
 
+    property_get(VOLUME_STEPS_PROPERTY, property, VOLUME_STEPS_DEFAULT);
+    ril->volume_steps_max = atoi(property);
+    /* this catches the case where VOLUME_STEPS_PROPERTY does not contain
+    an integer */
+    if (ril->volume_steps_max == 0)
+        ril->volume_steps_max = atoi(VOLUME_STEPS_DEFAULT);
+
     return 0;
 }
 
@@ -100,12 +114,13 @@ int ril_close(struct ril_handle *ril)
 }
 
 int ril_set_call_volume(struct ril_handle *ril, enum ril_sound_type sound_type,
-                        int volume)
+                        float volume)
 {
     if (ril_connect_if_required(ril))
         return 0;
 
-    return _ril_set_call_volume(ril->client, sound_type, volume);
+    return _ril_set_call_volume(ril->client, sound_type,
+                                (int)(volume * ril->volume_steps_max));
 }
 
 int ril_set_call_audio_path(struct ril_handle *ril, enum ril_audio_path path)
