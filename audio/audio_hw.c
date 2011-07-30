@@ -620,15 +620,16 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
     struct str_parms *parms;
     char *str;
     char value[32];
-    int ret;
+    int ret, val = 0;
 
     parms = str_parms_create_str(kvpairs);
     pthread_mutex_lock(&adev->lock);
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
     if (ret >= 0) {
-        if (adev->out_device != atoi(value)) {
-            adev->out_device = atoi(value);
+        val = atoi(value);
+        if ((adev->out_device != val) && (val != 0)) {
+            adev->out_device = val;
             out_standby(stream);
             select_output_device(adev);
         }
