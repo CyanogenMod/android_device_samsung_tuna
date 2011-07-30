@@ -82,9 +82,6 @@ PRODUCT_PACKAGES += \
         VisualizationWallpapers \
         librs_jni
 
-PRODUCT_PACKAGES += \
-	VideoEditorGoogle
-
 # Input device calibration files
 PRODUCT_COPY_FILES += \
 	device/samsung/tuna/Atmel_maXTouch_Touchscreen.idc:system/usr/idc/Atmel_maXTouch_Touchscreen.idc
