@@ -60,7 +60,7 @@
 #define MIXER_HS_RIGHT_PLAYBACK             "HS Right Playback"
 #define MIXER_HF_LEFT_PLAYBACK              "HF Left Playback"
 #define MIXER_HF_RIGHT_PLAYBACK             "HF Right Playback"
-#define MIXER_EARPHONE_DRIVER_SWITCH        "Earphone Driver Switch"
+#define MIXER_EARPHONE_ENABLE_SWITCH        "Earphone Enable Switch"
 
 #define MIXER_ANALOG_LEFT_CAPTURE_ROUTE     "Analog Left Capture Route"
 #define MIXER_ANALOG_RIGHT_CAPTURE_ROUTE    "Analog Right Capture Route"
@@ -283,7 +283,7 @@ struct mixer_ctls
     struct mixer_ctl *mm_dl2;
     struct mixer_ctl *vx_dl1;
     struct mixer_ctl *vx_dl2;
-    struct mixer_ctl *earpiece_switch;
+    struct mixer_ctl *earpiece_enable;
     struct mixer_ctl *dl1_headset;
     struct mixer_ctl *dl1_bt;
     struct mixer_ctl *left_capture;
@@ -473,7 +473,7 @@ static void select_output_device(struct tuna_audio_device *adev)
     /* Select back end */
     mixer_ctl_set_value(adev->mixer_ctls.dl1_headset, 0, headset_on | earpiece_on);
     mixer_ctl_set_value(adev->mixer_ctls.dl1_bt, 0, bt_on);
-    mixer_ctl_set_value(adev->mixer_ctls.earpiece_switch, 0, earpiece_on);
+    mixer_ctl_set_value(adev->mixer_ctls.earpiece_enable, 0, earpiece_on);
 
     /* Special case: select input path if in a call, otherwise
        in_set_parameters is used to update the input route
@@ -1336,7 +1336,8 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->mixer = mixer_open(0);
     if (!adev->mixer) {
         free(adev);
-        return -ENOMEM;
+        LOGE("Unable to open the mixer, aborting.");
+        return -EINVAL;
     }
 
     adev->mixer_ctls.mm_dl1 = mixer_get_ctl_by_name(adev->mixer,
@@ -1351,8 +1352,8 @@ static int adev_open(const hw_module_t* module, const char* name,
                                            MIXER_DL1_PDM_SWITCH);
     adev->mixer_ctls.dl1_bt = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL1_BT_VX_SWITCH);
-    adev->mixer_ctls.earpiece_switch = mixer_get_ctl_by_name(adev->mixer,
-                                           MIXER_EARPHONE_DRIVER_SWITCH);
+    adev->mixer_ctls.earpiece_enable = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_EARPHONE_ENABLE_SWITCH);
     adev->mixer_ctls.left_capture = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_ANALOG_LEFT_CAPTURE_ROUTE);
     adev->mixer_ctls.right_capture = mixer_get_ctl_by_name(adev->mixer,
@@ -1361,11 +1362,12 @@ static int adev_open(const hw_module_t* module, const char* name,
     if (!adev->mixer_ctls.mm_dl1 || !adev->mixer_ctls.vx_dl1 ||
         !adev->mixer_ctls.mm_dl2 || !adev->mixer_ctls.vx_dl2 ||
         !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
-        !adev->mixer_ctls.earpiece_switch || !adev->mixer_ctls.left_capture ||
+        !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
         !adev->mixer_ctls.right_capture) {
         mixer_close(adev->mixer);
         free(adev);
-        return -ENOMEM;
+        LOGE("Unable to locate all mixer controls, aborting.");
+        return -EINVAL;
     }
 
     /* Set the default route before the PCM stream is opened */
