@@ -321,6 +321,7 @@ struct tuna_audio_device {
     int sub_mic_on;
     float voice_volume;
     struct tuna_stream_in *active_input;
+    bool mic_mute;
     /* RIL */
     struct ril_handle ril;
 };
@@ -1042,6 +1043,9 @@ static ssize_t in_read(struct audio_stream_in *stream, void* buffer,
         ret = pcm_read(in->pcm, buffer, bytes);
     }
 
+    if (ret == 0 && adev->mic_mute)
+        memset(buffer, 0, bytes);
+
 exit:
     if (ret < 0)
         usleep(bytes * 1000000 / audio_stream_frame_size(&stream->common) /
@@ -1183,12 +1187,20 @@ static int adev_set_mode(struct audio_hw_device *dev, int mode)
 
 static int adev_set_mic_mute(struct audio_hw_device *dev, bool state)
 {
-    return -ENOSYS;
+    struct tuna_audio_device *adev = (struct tuna_audio_device *)dev;
+
+    adev->mic_mute = state;
+
+    return 0;
 }
 
 static int adev_get_mic_mute(const struct audio_hw_device *dev, bool *state)
 {
-    return -ENOSYS;
+    struct tuna_audio_device *adev = (struct tuna_audio_device *)dev;
+
+    *state = adev->mic_mute;
+
+    return 0;
 }
 
 static size_t adev_get_input_buffer_size(const struct audio_hw_device *dev,
