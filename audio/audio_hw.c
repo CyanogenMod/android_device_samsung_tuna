@@ -75,7 +75,6 @@
 
 /* Mixer control gain and route values */
 #define MIXER_ABE_GAIN_0DB                  120
-#define MIXER_ABE_GAIN_MINUS1DB             118
 #define MIXER_CODEC_VOLUME_MAX              15
 #define MIXER_PLAYBACK_HS_DAC               "HS DAC"
 #define MIXER_PLAYBACK_HF_DAC               "HF DAC"
@@ -130,19 +129,19 @@ struct route_setting defaults[] = {
     /* general */
     {
         .ctl_name = MIXER_DL1_MEDIA_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_MINUS1DB,
+        .intval = MIXER_ABE_GAIN_0DB,
     },
     {
         .ctl_name = MIXER_DL2_MEDIA_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_MINUS1DB,
+        .intval = MIXER_ABE_GAIN_0DB,
     },
     {
         .ctl_name = MIXER_DL1_VOICE_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_MINUS1DB,
+        .intval = MIXER_ABE_GAIN_0DB,
     },
     {
         .ctl_name = MIXER_DL2_VOICE_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_MINUS1DB,
+        .intval = MIXER_ABE_GAIN_0DB,
     },
     {
         .ctl_name = MIXER_SDT_DL_VOLUME,
@@ -204,7 +203,7 @@ struct route_setting defaults[] = {
     /* bt */
     {
         .ctl_name = MIXER_BT_UL_VOLUME,
-        .intval = MIXER_ABE_GAIN_MINUS1DB,
+        .intval = MIXER_ABE_GAIN_0DB,
     },
     {
         .ctl_name = NULL,
