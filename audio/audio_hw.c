@@ -99,6 +99,13 @@
 
 #define DEFAULT_OUT_SAMPLING_RATE 44100
 
+enum tty_modes {
+    TTY_MODE_OFF,
+    TTY_MODE_VCO,
+    TTY_MODE_HCO,
+    TTY_MODE_FULL
+};
+
 struct pcm_config pcm_config_mm = {
     .channels = 2,
     .rate = 48000,
@@ -322,6 +329,7 @@ struct tuna_audio_device {
     float voice_volume;
     struct tuna_stream_in *active_input;
     bool mic_mute;
+    int tty_mode;
     /* RIL */
     struct ril_handle ril;
 };
@@ -481,6 +489,31 @@ static void select_output_device(struct tuna_audio_device *adev)
     speaker_on = adev->devices & AUDIO_DEVICE_OUT_SPEAKER;
     earpiece_on = adev->devices & AUDIO_DEVICE_OUT_EARPIECE;
     bt_on = adev->devices & AUDIO_DEVICE_OUT_ALL_SCO;
+
+    /* force rx path according to TTY mode when in call */
+    if (adev->mode == AUDIO_MODE_IN_CALL && !bt_on) {
+        switch(adev->tty_mode) {
+            case TTY_MODE_FULL:
+            case TTY_MODE_VCO:
+                /* rx path to headphones */
+                headphone_on = 1;
+                headset_on = 0;
+                speaker_on = 0;
+                earpiece_on = 0;
+                break;
+            case TTY_MODE_HCO:
+                /* rx path to device speaker */
+                headphone_on = 0;
+                headset_on = 0;
+                speaker_on = 1;
+                earpiece_on = 0;
+                break;
+            case TTY_MODE_OFF:
+            default:
+                break;
+        }
+    }
+
     dl1_on = headset_on | headphone_on | earpiece_on | bt_on;
 
     /* Select front end */
@@ -503,6 +536,28 @@ static void select_output_device(struct tuna_audio_device *adev)
         if (bt_on)
             set_route_by_array(adev->mixer, vx_ul_bt, bt_on);
         else {
+            /* force tx path according to TTY mode when in call */
+            switch(adev->tty_mode) {
+                case TTY_MODE_FULL:
+                case TTY_MODE_HCO:
+                    /* tx path from headset mic */
+                    headphone_on = 0;
+                    headset_on = 1;
+                    speaker_on = 0;
+                    earpiece_on = 0;
+                    break;
+                case TTY_MODE_VCO:
+                    /* tx path from device sub mic */
+                    headphone_on = 0;
+                    headset_on = 0;
+                    speaker_on = 1;
+                    earpiece_on = 0;
+                    break;
+                case TTY_MODE_OFF:
+                default:
+                    break;
+            }
+
             if (headset_on || headphone_on || earpiece_on)
                 set_route_by_array(adev->mixer, vx_ul_amic_left, 1);
             else if (speaker_on)
@@ -1140,7 +1195,39 @@ static void adev_close_output_stream(struct audio_hw_device *dev,
 
 static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
 {
-    return -ENOSYS;
+    struct tuna_audio_device *adev = (struct tuna_audio_device *)dev;
+    struct str_parms *parms;
+    char *str;
+    char value[32];
+    int ret;
+
+    parms = str_parms_create_str(kvpairs);
+    ret = str_parms_get_str(parms, AUDIO_PARAMETER_KEY_TTY_MODE, value, sizeof(value));
+    if (ret >= 0) {
+        int tty_mode;
+
+        if (strcmp(value, AUDIO_PARAMETER_VALUE_TTY_OFF) == 0)
+            tty_mode = TTY_MODE_OFF;
+        else if (strcmp(value, AUDIO_PARAMETER_VALUE_TTY_VCO) == 0)
+            tty_mode = TTY_MODE_VCO;
+        else if (strcmp(value, AUDIO_PARAMETER_VALUE_TTY_HCO) == 0)
+            tty_mode = TTY_MODE_HCO;
+        else if (strcmp(value, AUDIO_PARAMETER_VALUE_TTY_FULL) == 0)
+            tty_mode = TTY_MODE_FULL;
+        else
+            return -EINVAL;
+
+        pthread_mutex_lock(&adev->lock);
+        if (tty_mode != adev->tty_mode) {
+            adev->tty_mode = tty_mode;
+            if (adev->mode == AUDIO_MODE_IN_CALL)
+                select_output_device(adev);
+        }
+        pthread_mutex_unlock(&adev->lock);
+    }
+
+    str_parms_destroy(parms);
+    return ret;
 }
 
 static char * adev_get_parameters(const struct audio_hw_device *dev,
@@ -1436,6 +1523,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->pcm_modem_dl = NULL;
     adev->pcm_modem_ul = NULL;
     adev->voice_volume = 1.0f;
+    adev->tty_mode = TTY_MODE_OFF;
 
     /* RIL */
     ril_open(&adev->ril);
