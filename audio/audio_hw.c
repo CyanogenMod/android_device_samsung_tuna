@@ -240,7 +240,7 @@ struct route_setting mm_ul2_amic[] = {
 };
 
 /* VX UL front-end paths */
-struct route_setting vx_ul_amic[] = {
+struct route_setting vx_ul_amic_left[] = {
     {
         .ctl_name = MIXER_MUX_VX0,
         .strval = MIXER_AMIC0,
@@ -248,6 +248,24 @@ struct route_setting vx_ul_amic[] = {
     {
         .ctl_name = MIXER_MUX_VX1,
         .strval = MIXER_AMIC1,
+    },
+    {
+        .ctl_name = MIXER_VOICE_CAPTURE_MIXER_CAPTURE,
+        .intval = 1,
+    },
+    {
+        .ctl_name = NULL,
+    },
+};
+
+struct route_setting vx_ul_amic_right[] = {
+    {
+        .ctl_name = MIXER_MUX_VX0,
+        .strval = MIXER_AMIC1,
+    },
+    {
+        .ctl_name = MIXER_MUX_VX1,
+        .strval = MIXER_AMIC0,
     },
     {
         .ctl_name = MIXER_VOICE_CAPTURE_MIXER_CAPTURE,
@@ -481,14 +499,18 @@ static void select_output_device(struct tuna_audio_device *adev)
         if (bt_on)
             set_route_by_array(adev->mixer, vx_ul_bt, bt_on);
         else {
-            set_route_by_array(adev->mixer, vx_ul_amic,
-                              (speaker_on | headset_on | earpiece_on));
-            if (headset_on)
-                mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture, MIXER_HS_MIC);
+            if (headset_on || earpiece_on)
+                set_route_by_array(adev->mixer, vx_ul_amic_left, 1);
+            else if (speaker_on)
+                set_route_by_array(adev->mixer, vx_ul_amic_right, 1);
             else
-                mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
-                                            (speaker_on | earpiece_on) ?
-                                             MIXER_MAIN_MIC : "Off");
+                set_route_by_array(adev->mixer, vx_ul_amic_left, 0);
+
+            mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
+                                         earpiece_on ? MIXER_MAIN_MIC :
+                                        (headset_on ? MIXER_HS_MIC : "Off"));
+            mixer_ctl_set_enum_by_string(adev->mixer_ctls.right_capture,
+                                         speaker_on ? MIXER_SUB_MIC : "Off");
         }
     }
     if (adev->in_call)
@@ -530,7 +552,7 @@ static void select_input_device(struct tuna_audio_device *adev)
         /* Select front end */
         set_route_by_array(adev->mixer, mm_ul2_amic,
                            anlg_mic_on && (port != PORT_VX));
-        set_route_by_array(adev->mixer, vx_ul_amic,
+        set_route_by_array(adev->mixer, vx_ul_amic_left,
                            anlg_mic_on && (port == PORT_VX));
 
         /* Select back end */
