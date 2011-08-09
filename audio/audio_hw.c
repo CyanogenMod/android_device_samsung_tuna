@@ -463,6 +463,7 @@ static void select_mode(struct tuna_audio_device *adev)
 static void select_output_device(struct tuna_audio_device *adev)
 {
     int headset_on;
+    int headphone_on;
     int speaker_on;
     int earpiece_on;
     int bt_on;
@@ -473,12 +474,12 @@ static void select_output_device(struct tuna_audio_device *adev)
     if (adev->in_call)
         end_call(adev);
 
-    headset_on = adev->devices &
-                (AUDIO_DEVICE_OUT_WIRED_HEADSET | AUDIO_DEVICE_OUT_WIRED_HEADPHONE);
+    headset_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET;
+    headphone_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADPHONE;
     speaker_on = adev->devices & AUDIO_DEVICE_OUT_SPEAKER;
     earpiece_on = adev->devices & AUDIO_DEVICE_OUT_EARPIECE;
     bt_on = adev->devices & AUDIO_DEVICE_OUT_ALL_SCO;
-    dl1_on = headset_on | earpiece_on | bt_on;
+    dl1_on = headset_on | headphone_on | earpiece_on | bt_on;
 
     /* Select front end */
     mixer_ctl_set_value(adev->mixer_ctls.mm_dl2, 0, speaker_on);
@@ -488,7 +489,8 @@ static void select_output_device(struct tuna_audio_device *adev)
     mixer_ctl_set_value(adev->mixer_ctls.vx_dl1, 0,
                         dl1_on && (adev->mode == AUDIO_MODE_IN_CALL));
     /* Select back end */
-    mixer_ctl_set_value(adev->mixer_ctls.dl1_headset, 0, headset_on | earpiece_on);
+    mixer_ctl_set_value(adev->mixer_ctls.dl1_headset, 0,
+                        headset_on | headphone_on | earpiece_on);
     mixer_ctl_set_value(adev->mixer_ctls.dl1_bt, 0, bt_on);
     mixer_ctl_set_value(adev->mixer_ctls.earpiece_enable, 0, earpiece_on);
 
@@ -499,7 +501,7 @@ static void select_output_device(struct tuna_audio_device *adev)
         if (bt_on)
             set_route_by_array(adev->mixer, vx_ul_bt, bt_on);
         else {
-            if (headset_on || earpiece_on)
+            if (headset_on || headphone_on || earpiece_on)
                 set_route_by_array(adev->mixer, vx_ul_amic_left, 1);
             else if (speaker_on)
                 set_route_by_array(adev->mixer, vx_ul_amic_right, 1);
@@ -507,7 +509,7 @@ static void select_output_device(struct tuna_audio_device *adev)
                 set_route_by_array(adev->mixer, vx_ul_amic_left, 0);
 
             mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
-                                         earpiece_on ? MIXER_MAIN_MIC :
+                                        (earpiece_on || headphone_on) ? MIXER_MAIN_MIC :
                                         (headset_on ? MIXER_HS_MIC : "Off"));
             mixer_ctl_set_enum_by_string(adev->mixer_ctls.right_capture,
                                          speaker_on ? MIXER_SUB_MIC : "Off");
