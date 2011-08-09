@@ -15,7 +15,7 @@
  */
 
 #define LOG_TAG "audio_hw_primary"
-#define LOG_NDEBUG 0
+/*#define LOG_NDEBUG 0*/
 
 #include <errno.h>
 #include <pthread.h>
@@ -318,6 +318,7 @@ struct tuna_audio_device {
     struct pcm *pcm_modem_dl;
     struct pcm *pcm_modem_ul;
     int in_call;
+    int sub_mic_on;
     float voice_volume;
     struct tuna_stream_in *active_input;
     /* RIL */
@@ -523,7 +524,6 @@ static void select_input_device(struct tuna_audio_device *adev)
 {
     int headset_on;
     int main_mic_on;
-    int sub_mic_on = 0; /* not routing to sub-mic for now */
     int bt_on;
     int anlg_mic_on;
     int port;
@@ -531,7 +531,7 @@ static void select_input_device(struct tuna_audio_device *adev)
     headset_on = adev->devices & AUDIO_DEVICE_IN_WIRED_HEADSET;
     main_mic_on = adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC;
     bt_on = adev->devices & AUDIO_DEVICE_IN_ALL_SCO;
-    anlg_mic_on = headset_on | main_mic_on | sub_mic_on;
+    anlg_mic_on = headset_on | main_mic_on;
 
     /* PORT_MM2_UL is only used when not in call and active input uses it. */
     port = PORT_VX;
@@ -558,13 +558,18 @@ static void select_input_device(struct tuna_audio_device *adev)
                            anlg_mic_on && (port == PORT_VX));
 
         /* Select back end */
-        if (headset_on)
+        mixer_ctl_set_enum_by_string(adev->mixer_ctls.right_capture,
+                                    (main_mic_on && adev->sub_mic_on) ?
+                                     MIXER_SUB_MIC : "Off");
+        if (main_mic_on && !adev->sub_mic_on)
+            mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
+                                         MIXER_MAIN_MIC);
+        else if (headset_on)
             mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
                                          MIXER_HS_MIC);
         else
             mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
-                                         main_mic_on ? MIXER_MAIN_MIC : "Off");
-        /* TODO: set up sub mic for BACK_MIC when gpio for sub_mic is enabled */
+                                         "Off");
     }
 
     if (adev->in_call)
@@ -933,6 +938,22 @@ static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
     int ret, val = 0;
 
     parms = str_parms_create_str(kvpairs);
+
+    ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_INPUT_SOURCE, value, sizeof(value));
+    if (ret >= 0) {
+        int sub_mic_on = 0;
+
+        val = atoi(value);
+        if (val == AUDIO_SOURCE_CAMCORDER)
+            sub_mic_on = 1;
+        /* no audio source uses val == 0 */
+        if (val != 0) {
+            pthread_mutex_lock(&adev->lock);
+            adev->sub_mic_on = sub_mic_on;
+            pthread_mutex_unlock(&adev->lock);
+            in_standby(stream);
+        }
+    }
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
     if (ret >= 0) {
