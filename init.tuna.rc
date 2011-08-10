@@ -65,6 +65,9 @@ on fs
 # backlight
 	chown system system /sys/class/backlight/s6e8aa0/brightness
 
+# leds
+	chown system system /dev/an30259a_leds
+
 # for GPS
     chown root system /sys/class/sec/gps/GPS_PWR_EN/value
     chmod 0660 /sys/class/sec/gps/GPS_PWR_EN/value
