@@ -37,6 +37,9 @@ on fs
     chmod 0777 /dev/tiler
     chmod 0777 /dev/dmm
 
+# change permissions for ION driver
+    chmod 0777 /dev/ion
+
 # We chown/chmod /efs because mount is run as root + defaults
 	chown radio radio /efs
 	chmod 0775 /efs
