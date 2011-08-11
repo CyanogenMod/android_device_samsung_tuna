@@ -34,3 +34,4 @@
 /dev/lte_rmnet4		    0660	radio	radio
 /dev/ttyGS1			    0660	radio	radio
 /dev/block/mmcblk0p4	0660 	radio	radio
+/dev/modem_br           0660    radio   radio
