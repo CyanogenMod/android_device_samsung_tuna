@@ -99,6 +99,9 @@
         <item>"mobile_supl,3,0,2,60000,true"</item>
         <item>"mobile_hipri,5,0,3,60000,true"</item>
         <item>"mobile_bluetooth,7,7,1,-1,true"</item>
+        <item>"mobile_fota,10,0,2,60000,true"</item>
+        <item>"mobile_ims,11,0,2,-1,true"</item>
+        <item>"mobile_cbs,12,0,2,60000,false"</item>
     </string-array>
 
     <!-- An Array of "[ConnectivityManager connectionType],
