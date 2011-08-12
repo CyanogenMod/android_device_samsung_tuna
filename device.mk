@@ -84,7 +84,7 @@ PRODUCT_PACKAGES += \
 
 # Input device calibration files
 PRODUCT_COPY_FILES += \
-	device/samsung/tuna/Atmel_maXTouch_Touchscreen.idc:system/usr/idc/Atmel_maXTouch_Touchscreen.idc
+	device/samsung/tuna/Melfas_MMSxxx_Touchscreen.idc:system/usr/idc/Melfas_MMSxxx_Touchscreen.idc
 
 # These are the hardware-specific features
 PRODUCT_COPY_FILES += \
