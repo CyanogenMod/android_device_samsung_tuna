@@ -33,7 +33,8 @@ PRODUCT_PACKAGES := \
 	lights.tuna
 
 PRODUCT_PACKAGES += \
-	sensors.tuna
+	sensors.tuna \
+	libinvensense_mpl
 
 PRODUCT_PACKAGES += \
 	audio.primary.tuna \
