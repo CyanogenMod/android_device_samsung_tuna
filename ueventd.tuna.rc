@@ -13,11 +13,12 @@
 /dev/compassirq           0660   system     system
 /dev/timerirq             0660   system     system
 
-#for RIL
+#for HSPA RIL
 /dev/umts_boot0           0660   radio      radio
 /dev/umts_ipc0            0660   radio      radio
 /dev/umts_rfs0            0660   radio      radio
 /dev/block/mmcblk0p9      0660   radio      radio
+/dev/umts_ramdump0        0660   radio      radio
 
 # used by RIL and GPS
 /dev/ttyO0                0666   system     radio
@@ -35,3 +36,5 @@
 /dev/ttyGS1			    0660	radio	radio
 /dev/block/mmcblk0p4	0660 	radio	radio
 /dev/modem_br           0660    radio   radio
+/dev/cdma_ramdump0      0660    radio   radio
+/dev/lte_ramdump0       0660    radio   radio
