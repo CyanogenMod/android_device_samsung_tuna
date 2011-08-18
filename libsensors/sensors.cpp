@@ -74,35 +74,8 @@
 /*****************************************************************************/
 
 /* The SENSORS Module */
-static const struct sensor_t sSensorList[] = {
-      { "MPL rotation vector",
-        "Invensense",
-        1, SENSORS_ROTATION_VECTOR_HANDLE,
-        SENSOR_TYPE_ROTATION_VECTOR, 10240.0f, 1.0f, 0.5f, 20000,{ } },
-      { "MPL linear accel",
-        "Invensense",
-        1, SENSORS_LINEAR_ACCEL_HANDLE,
-        SENSOR_TYPE_LINEAR_ACCELERATION, 10240.0f, 1.0f, 0.5f, 20000,{ } },
-      { "MPL gravity",
-        "Invensense",
-        1, SENSORS_GRAVITY_HANDLE,
-        SENSOR_TYPE_GRAVITY, 10240.0f, 1.0f, 0.5f, 20000,{ } },
-      { "MPL Gyro",
-        "Invensense",
-        1, SENSORS_GYROSCOPE_HANDLE,
-        SENSOR_TYPE_GYROSCOPE, 10240.0f, 1.0f, 0.5f, 20000,{ } },
-      { "MPL accel",
-        "Invensense",
-        1, SENSORS_ACCELERATION_HANDLE,
-        SENSOR_TYPE_ACCELEROMETER, 10240.0f, 1.0f, 0.5f, 20000,{ } },
-      { "MPL magnetic field",
-        "Invensense",
-        1, SENSORS_MAGNETIC_FIELD_HANDLE,
-        SENSOR_TYPE_MAGNETIC_FIELD, 10240.0f, 1.0f, 0.5f, 20000,{ } },
-      { "MPL Orientation (android deprecated format)",
-          "Invensense",
-          1, SENSORS_ORIENTATION_HANDLE,
-          SENSOR_TYPE_ORIENTATION, 360.0f, 1.0f, 9.7f, 20000,{ } },
+#define LOCAL_SENSORS (3)
+static struct sensor_t sSensorList[LOCAL_SENSORS + MPLSensor::numSensors] = {
       { "GP2A Light sensor",
           "Sharp",
           1, SENSORS_LIGHT_HANDLE,
@@ -116,7 +89,7 @@ static const struct sensor_t sSensorList[] = {
           1, SENSORS_PRESSURE_HANDLE,
           SENSOR_TYPE_PRESSURE, 1100.0f, 0.01f, 0.67f, 20000, { } },
 };
-
+static int numSensors = LOCAL_SENSORS;
 
 static int open_sensors(const struct hw_module_t* module, const char* id,
                         struct hw_device_t** device);
@@ -126,7 +99,7 @@ static int sensors__get_sensors_list(struct sensors_module_t* module,
                                      struct sensor_t const** list)
 {
     *list = sSensorList;
-    return ARRAY_SIZE(sSensorList);
+    return numSensors;
 }
 
 static struct hw_module_methods_t sensors_module_methods = {
@@ -204,6 +177,10 @@ sensors_poll_context_t::sensors_poll_context_t()
     FUNC_LOG;
     MPLSensor* p_mplsen = new MPLSensor();
     setCallbackObject(p_mplsen); //setup the callback object for handing mpl callbacks
+    numSensors =
+        LOCAL_SENSORS +
+        p_mplsen->populateSensorList(sSensorList + LOCAL_SENSORS,
+                                     sizeof(sSensorList[0]) * (ARRAY_SIZE(sSensorList) - LOCAL_SENSORS));
 
     mSensors[mpl] = p_mplsen;
     mPollFds[mpl].fd = mSensors[mpl]->getFd();
