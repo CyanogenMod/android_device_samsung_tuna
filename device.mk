@@ -38,7 +38,8 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_PACKAGES += \
 	audio.primary.tuna \
-	audio.a2dp.default
+	audio.a2dp.default \
+	libaudioutils
 
 PRODUCT_COPY_FILES := \
 	$(LOCAL_KERNEL):kernel \

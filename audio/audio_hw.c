@@ -31,7 +31,7 @@
 #include <hardware/audio.h>
 
 #include <tinyalsa/asoundlib.h>
-#include <speex/speex_resampler.h>
+#include <audio_utils/resampler.h>
 
 #include "ril_interface.h"
 
@@ -366,7 +366,7 @@ struct tuna_stream_out {
     struct pcm_config config;
     struct pcm *pcm;
     int device;
-    SpeexResamplerState *speex;
+    struct resampler_itfe *resampler;
     char *buffer;
     int standby;
 
@@ -380,7 +380,7 @@ struct tuna_stream_in {
     struct pcm_config config;
     struct pcm *pcm;
     int device;
-    SpeexResamplerState *speex;
+    struct resampler_itfe *resampler;
     char *buffer;
     size_t frames_in;
     unsigned int requested_rate;
@@ -759,6 +759,8 @@ static int start_output_stream(struct tuna_stream_out *out)
         return -ENOMEM;
     }
 
+    out->resampler->reset(out->resampler);
+
     return 0;
 }
 
@@ -943,8 +945,8 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     int ret;
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
     struct tuna_audio_device *adev = out->dev;
-    spx_uint32_t in_frames = bytes / 4; /* todo */
-    spx_uint32_t out_frames = RESAMPLER_BUFFER_SIZE / 4;
+    size_t in_frames = bytes / 4; /* todo */
+    size_t out_frames = RESAMPLER_BUFFER_SIZE / 4;
     unsigned int total_bytes;
     unsigned int max_bytes;
     unsigned int remaining_bytes;
@@ -956,9 +958,12 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
         if (ret == 0)
             out->standby = 0;
     }
-    speex_resampler_process_interleaved_int(out->speex, buffer, &in_frames,
-                                            (spx_int16_t *)out->buffer,
-                                            &out_frames);
+
+    out->resampler->resample_from_input(out->resampler,
+                                        (int16_t *)buffer,
+                                        &in_frames,
+                                        (int16_t *)out->buffer,
+                                        &out_frames);
 
     total_bytes = out_frames * 4;
     max_bytes = pcm_get_buffer_size(out->pcm);
@@ -1019,8 +1024,8 @@ static int start_input_stream(struct tuna_stream_in *in)
         return -ENOMEM;
     }
     /* if no supported sample rate is available, use the resampler */
-    if (in->speex) {
-        speex_resampler_reset_mem(in->speex);
+    if (in->resampler) {
+        in->resampler->reset(in->resampler);
         in->frames_in = 0;
     }
     return 0;
@@ -1164,7 +1169,7 @@ static ssize_t in_read(struct audio_stream_in *stream, void* buffer,
     if (ret < 0)
         goto exit;
 
-    if (in->speex) {
+    if (in->resampler) {
         size_t frame_size = audio_stream_frame_size(&in->stream.common);
         size_t frames_rq = bytes / frame_size;
         size_t frames_wr = 0;
@@ -1182,24 +1187,12 @@ static ssize_t in_read(struct audio_stream_in *stream, void* buffer,
 
             frames_out = frames_rq - frames_wr;
             frames_in = in->frames_in;
-            if (in->config.channels == 1) {
-                speex_resampler_process_int(
-                        in->speex,
-                        0,
-                        (short *)((char *)in->buffer +
-                                (in->config.period_size - in->frames_in) * frame_size),
-                        &frames_in,
-                        (short *)((char *)buffer + frames_wr * frame_size),
-                        &frames_out);
-            } else {
-                speex_resampler_process_interleaved_int(
-                        in->speex,
-                        (short *)((char *)in->buffer +
-                                (in->config.period_size - in->frames_in) * frame_size),
-                        &frames_in,
-                        (short *)((char *)buffer + frames_wr * frame_size),
-                        &frames_out);
-            }
+            in->resampler->resample_from_input(in->resampler,
+                                (short *)((char *)in->buffer +
+                                        (in->config.period_size - in->frames_in) * frame_size),
+                                &frames_in,
+                                (short *)((char *)buffer + frames_wr * frame_size),
+                                &frames_out);
             frames_wr += frames_out;
             in->frames_in -= frames_in;
         }
@@ -1248,6 +1241,16 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     if (!out)
         return -ENOMEM;
 
+    ret = create_resampler(DEFAULT_OUT_SAMPLING_RATE,
+                          48000,
+                          2,
+                          RESAMPLER_QUALITY_DEFAULT,
+                          NULL,
+                          &out->resampler);
+    if (ret != 0)
+        goto err_open;
+    out->buffer = malloc(RESAMPLER_BUFFER_SIZE); /* todo: allow for reallocing */
+
     out->stream.common.get_sample_rate = out_get_sample_rate;
     out->stream.common.set_sample_rate = out_set_sample_rate;
     out->stream.common.get_buffer_size = out_get_buffer_size;
@@ -1266,11 +1269,6 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     out->stream.get_render_position = out_get_render_position;
 
     out->config = pcm_config_mm;
-
-    out->speex = speex_resampler_init(2, DEFAULT_OUT_SAMPLING_RATE, 48000,
-                                      SPEEX_RESAMPLER_QUALITY_DEFAULT, &ret);
-    speex_resampler_reset_mem(out->speex);
-    out->buffer = malloc(RESAMPLER_BUFFER_SIZE); /* todo: allow for reallocing */
 
     out->device = devices;
     out->dev = ladev;
@@ -1297,8 +1295,8 @@ static void adev_close_output_stream(struct audio_hw_device *dev,
     out_standby(&stream->common);
     if (out->buffer)
         free(out->buffer);
-    if (out->speex)
-        speex_resampler_destroy(out->speex);
+    if (out->resampler)
+        release_resampler(out->resampler);
     free(stream);
 }
 
@@ -1463,11 +1461,13 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
     in->config.channels = channel_count;
 
     if (in->requested_rate != in->config.rate) {
-        in->speex = speex_resampler_init(in->config.channels, in->config.rate,
-                                         in->requested_rate,
-                                         SPEEX_RESAMPLER_QUALITY_DEFAULT,
-                                         &ret);
-        if (ret != RESAMPLER_ERR_SUCCESS) {
+        ret = create_resampler(in->config.rate,
+                               in->requested_rate,
+                               in->config.channels,
+                               RESAMPLER_QUALITY_DEFAULT,
+                               NULL,
+                               &in->resampler);
+        if (ret != 0) {
             ret = -EINVAL;
             goto err;
         }
@@ -1487,8 +1487,8 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
     return 0;
 
 err:
-    if (in->speex)
-        speex_resampler_destroy(in->speex);
+    if (in->resampler)
+        release_resampler(in->resampler);
 
     free(in);
     *stream_in = NULL;
@@ -1502,9 +1502,9 @@ static void adev_close_input_stream(struct audio_hw_device *dev,
 
     in_standby(&stream->common);
 
-    if (in->speex) {
+    if (in->resampler) {
         free(in->buffer);
-        speex_resampler_destroy(in->speex);
+        release_resampler(in->resampler);
     }
 
     free(stream);
