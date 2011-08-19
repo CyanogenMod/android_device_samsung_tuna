@@ -75,6 +75,10 @@
 <!ATTLIST VideoEditorCap maxInputFrameHeight CDATA #REQUIRED>
 <!ATTLIST VideoEditorCap maxOutputFrameWidth CDATA #REQUIRED>
 <!ATTLIST VideoEditorCap maxOutputFrameHeight CDATA #REQUIRED>
+<!ELEMENT ExportVideoProfile EMPTY>
+<!ATTLIST ExportVideoProfile name (h264|h263|m4v) #REQUIRED>
+<!ATTLIST ExportVideoProfile profile CDATA #REQUIRED>
+<!ATTLIST ExportVideoProfile level CDATA #REQUIRED>
 ]>
 <!--
      This file is used to declare the multimedia profiles and capabilities
@@ -345,4 +349,24 @@
     <VideoEditorCap  maxInputFrameWidth="1920"
         maxInputFrameHeight="1080" maxOutputFrameWidth="1920"
         maxOutputFrameHeight="1080"/>
+    <!--
+        The VideoEditor Export codec profile and level values
+        correspond to the values in OMX_Video.h.
+        E.g. for h264, profile value 1 means OMX_VIDEO_AVCProfileBaseline
+        and  level 4096 means OMX_VIDEO_AVCLevel41.
+        Please note that the values are in decimal.
+        These values are for video encoder.
+    -->
+    <!--
+      Codec = h.264, Baseline profile, level 4.1
+    -->
+    <ExportVideoProfile name="h264" profile= "1" level="4096"/>
+    <!--
+      Codec = h.263, Baseline profile, level 0
+    -->
+    <ExportVideoProfile name="h263" profile= "1" level="1"/>
+    <!--
+      Codec = mpeg4, Simple profile, level 3
+    -->
+    <ExportVideoProfile name="m4v" profile= "1" level="16"/>
 </MediaSettings>
