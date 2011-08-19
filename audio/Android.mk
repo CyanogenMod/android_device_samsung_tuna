@@ -21,8 +21,8 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_SRC_FILES := audio_hw.c ril_interface.c
 LOCAL_C_INCLUDES += \
 	external/tinyalsa/include \
-	external/speex/include
-LOCAL_SHARED_LIBRARIES := liblog libcutils libtinyalsa libspeexresampler libdl
+	system/media/audio_utils/include
+LOCAL_SHARED_LIBRARIES := liblog libcutils libtinyalsa libaudioutils libdl
 LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_SHARED_LIBRARY)
