@@ -156,7 +156,7 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_HEADSET_PLAYBACK_VOLUME,
-        .intval = 13,
+        .intval = 9,
     },
     {
         .ctl_name = MIXER_EARPHONE_PLAYBACK_VOLUME,
