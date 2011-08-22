@@ -75,7 +75,6 @@
 
 /* Mixer control gain and route values */
 #define MIXER_ABE_GAIN_0DB                  120
-#define MIXER_CODEC_VOLUME_MAX              15
 #define MIXER_PLAYBACK_HS_DAC               "HS DAC"
 #define MIXER_PLAYBACK_HF_DAC               "HF DAC"
 #define MIXER_MAIN_MIC                      "Main Mic"
@@ -98,6 +97,32 @@
 #define RESAMPLER_BUFFER_SIZE 8192
 
 #define DEFAULT_OUT_SAMPLING_RATE 44100
+
+/* conversions from dB to ABE and codec gains */
+#define DB_TO_ABE_GAIN(x) ((x) + MIXER_ABE_GAIN_0DB)
+#define DB_TO_CAPTURE_PREAMPLIFIER_VOLUME(x) (((x) + 6) / 6)
+#define DB_TO_CAPTURE_VOLUME(x) (((x) - 6) / 6)
+
+/* use-case specific volumes, all in dB */
+#define CAPTURE_MAIN_MIC_VOLUME 13
+#define CAPTURE_SUB_MIC_VOLUME 18
+#define CAPTURE_HEADSET_MIC_VOLUME 12
+
+#define VOICE_RECOGNITION_MAIN_MIC_VOLUME 13
+#define VOICE_RECOGNITION_SUB_MIC_VOLUME 18
+#define VOICE_RECOGNITION_HEADSET_MIC_VOLUME 12
+
+#define CAMCORDER_MAIN_MIC_VOLUME 13
+#define CAMCORDER_SUB_MIC_VOLUME 18
+#define CAMCORDER_HEADSET_MIC_VOLUME 12
+
+#define VOIP_MAIN_MIC_VOLUME 8
+#define VOIP_SUB_MIC_VOLUME 0
+#define VOIP_HEADSET_MIC_VOLUME 12
+
+#define VOICE_CALL_MAIN_MIC_VOLUME 0
+#define VOICE_CALL_SUB_MIC_VOLUME -4
+#define VOICE_CALL_HEADSET_MIC_VOLUME 8
 
 enum tty_modes {
     TTY_MODE_OFF,
@@ -172,11 +197,11 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_CAPTURE_PREAMPLIFIER_VOLUME,
-        .intval = 1,
+        .intval = DB_TO_CAPTURE_PREAMPLIFIER_VOLUME(0),
     },
     {
         .ctl_name = MIXER_CAPTURE_VOLUME,
-        .intval = 4,
+        .intval = DB_TO_CAPTURE_VOLUME(30),
     },
 
     /* speaker */
@@ -312,6 +337,7 @@ struct mixer_ctls
     struct mixer_ctl *dl1_bt;
     struct mixer_ctl *left_capture;
     struct mixer_ctl *right_capture;
+    struct mixer_ctl *amic_ul_volume;
 };
 
 struct tuna_audio_device {
@@ -325,7 +351,6 @@ struct tuna_audio_device {
     struct pcm *pcm_modem_dl;
     struct pcm *pcm_modem_ul;
     int in_call;
-    int sub_mic_on;
     float voice_volume;
     struct tuna_stream_in *active_input;
     bool mic_mute;
@@ -361,6 +386,7 @@ struct tuna_stream_in {
     unsigned int requested_rate;
     int port;
     int standby;
+    int source;
 
     struct tuna_audio_device *dev;
 };
@@ -477,6 +503,54 @@ static void set_incall_device(struct tuna_audio_device *adev)
 
     /* if output device isn't supported, open modem side to handset by default */
     ril_set_call_audio_path(&adev->ril, device_type);
+}
+
+static void set_input_volumes(struct tuna_audio_device *adev, int main_mic_on,
+                              int headset_mic_on, int sub_mic_on)
+{
+    unsigned int channel;
+    int volume;
+
+    if (adev->mode == AUDIO_MODE_IN_CALL) {
+        /* special case: don't look at input source for IN_CALL state */
+        volume = DB_TO_ABE_GAIN(main_mic_on ? VOICE_CALL_MAIN_MIC_VOLUME :
+                (headset_mic_on ? VOICE_CALL_HEADSET_MIC_VOLUME :
+                (sub_mic_on ? VOICE_CALL_SUB_MIC_VOLUME : 0)));
+    } else {
+        /* determine input volume by use case */
+        switch (adev->active_input->source) {
+        case AUDIO_SOURCE_MIC: /* general capture */
+            volume = DB_TO_ABE_GAIN(main_mic_on ? CAPTURE_MAIN_MIC_VOLUME :
+                    (headset_mic_on ? CAPTURE_HEADSET_MIC_VOLUME :
+                    (sub_mic_on ? CAPTURE_SUB_MIC_VOLUME : 0)));
+            break;
+
+        case AUDIO_SOURCE_CAMCORDER:
+            volume = DB_TO_ABE_GAIN(main_mic_on ? CAMCORDER_MAIN_MIC_VOLUME :
+                    (headset_mic_on ? CAMCORDER_HEADSET_MIC_VOLUME :
+                    (sub_mic_on ? CAMCORDER_SUB_MIC_VOLUME : 0)));
+            break;
+
+        case AUDIO_SOURCE_VOICE_RECOGNITION:
+            volume = DB_TO_ABE_GAIN(main_mic_on ? VOICE_RECOGNITION_MAIN_MIC_VOLUME :
+                    (headset_mic_on ? VOICE_RECOGNITION_HEADSET_MIC_VOLUME :
+                    (sub_mic_on ? VOICE_RECOGNITION_SUB_MIC_VOLUME : 0)));
+            break;
+
+        case AUDIO_SOURCE_VOICE_COMMUNICATION: /* VoIP */
+            volume = DB_TO_ABE_GAIN(main_mic_on ? VOIP_MAIN_MIC_VOLUME :
+                    (headset_mic_on ? VOIP_HEADSET_MIC_VOLUME :
+                    (sub_mic_on ? VOIP_SUB_MIC_VOLUME : 0)));
+            break;
+
+        default:
+            volume = MIXER_ABE_GAIN_0DB;
+            break;
+        }
+    }
+
+    for (channel = 0; channel < 2; channel++)
+        mixer_ctl_set_value(adev->mixer_ctls.amic_ul_volume, channel, volume);
 }
 
 static void select_mode(struct tuna_audio_device *adev)
@@ -599,6 +673,9 @@ static void select_output_device(struct tuna_audio_device *adev)
                                         (headset_on ? MIXER_HS_MIC : "Off"));
             mixer_ctl_set_enum_by_string(adev->mixer_ctls.right_capture,
                                          speaker_on ? MIXER_SUB_MIC : "Off");
+
+            set_input_volumes(adev, earpiece_on || headphone_on,
+                              headset_on, speaker_on);
         }
 
         set_incall_device(adev);
@@ -611,19 +688,26 @@ static void select_input_device(struct tuna_audio_device *adev)
 {
     int headset_on;
     int main_mic_on;
+    int sub_mic_on = 0;
     int bt_on;
     int anlg_mic_on;
     int port;
 
-    headset_on = adev->devices & AUDIO_DEVICE_IN_WIRED_HEADSET;
-    main_mic_on = adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC;
-    bt_on = adev->devices & AUDIO_DEVICE_IN_ALL_SCO;
-    anlg_mic_on = headset_on | main_mic_on;
-
     /* PORT_MM2_UL is only used when not in call and active input uses it. */
     port = PORT_VX;
-    if ((adev->mode != AUDIO_MODE_IN_CALL) && (adev->active_input != 0))
+    if ((adev->mode != AUDIO_MODE_IN_CALL) && (adev->active_input != 0)) {
         port = adev->active_input->port;
+        /* sub mic is used for camcorder or VoIP on speaker phone */
+        sub_mic_on = (adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC) &&
+                     ((adev->active_input->source == AUDIO_SOURCE_CAMCORDER) ||
+                      ((adev->devices & AUDIO_DEVICE_OUT_SPEAKER) &&
+                       (adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION)));
+    }
+
+    headset_on = adev->devices & AUDIO_DEVICE_IN_WIRED_HEADSET;
+    main_mic_on = !sub_mic_on && (adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC);
+    bt_on = adev->devices & AUDIO_DEVICE_IN_ALL_SCO;
+    anlg_mic_on = headset_on | main_mic_on | sub_mic_on;
 
     /* tear down call stream before changing route,
      * otherwise microphone does not function
@@ -646,18 +730,13 @@ static void select_input_device(struct tuna_audio_device *adev)
 
         /* Select back end */
         mixer_ctl_set_enum_by_string(adev->mixer_ctls.right_capture,
-                                    (main_mic_on && adev->sub_mic_on) ?
-                                     MIXER_SUB_MIC : "Off");
-        if (main_mic_on && !adev->sub_mic_on)
-            mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
-                                         MIXER_MAIN_MIC);
-        else if (headset_on)
-            mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
-                                         MIXER_HS_MIC);
-        else
-            mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
-                                         "Off");
+                                     sub_mic_on ? MIXER_SUB_MIC : "Off");
+        mixer_ctl_set_enum_by_string(adev->mixer_ctls.left_capture,
+                                     main_mic_on ? MIXER_MAIN_MIC :
+                                     (headset_on ? MIXER_HS_MIC : "Off"));
     }
+
+    set_input_volumes(adev, main_mic_on, headset_on, sub_mic_on);
 
     if (adev->in_call)
         start_call(adev);
@@ -1023,23 +1102,20 @@ static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
     char *str;
     char value[32];
     int ret, val = 0;
+    bool do_standby = false;
 
     parms = str_parms_create_str(kvpairs);
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_INPUT_SOURCE, value, sizeof(value));
     if (ret >= 0) {
-        int sub_mic_on = 0;
-
         val = atoi(value);
-        if (val == AUDIO_SOURCE_CAMCORDER)
-            sub_mic_on = 1;
+        pthread_mutex_lock(&in->lock);
         /* no audio source uses val == 0 */
-        if (val != 0) {
-            pthread_mutex_lock(&adev->lock);
-            adev->sub_mic_on = sub_mic_on;
-            pthread_mutex_unlock(&adev->lock);
-            in_standby(stream);
+        if ((in->source != val) && (val != 0)) {
+            in->source = val;
+            do_standby = true;
         }
+        pthread_mutex_unlock(&in->lock);
     }
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
@@ -1048,11 +1124,13 @@ static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
         pthread_mutex_lock(&in->lock);
         if ((in->device != val) && (val != 0)) {
             in->device = val;
-            pthread_mutex_unlock(&in->lock);
-            in_standby(stream);
-        } else
-            pthread_mutex_unlock(&in->lock);
+            do_standby = true;
+        }
+        pthread_mutex_unlock(&in->lock);
     }
+
+    if (do_standby)
+        in_standby(stream);
 
     str_parms_destroy(parms);
     return ret;
@@ -1532,12 +1610,14 @@ static int adev_open(const hw_module_t* module, const char* name,
                                            MIXER_ANALOG_LEFT_CAPTURE_ROUTE);
     adev->mixer_ctls.right_capture = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_ANALOG_RIGHT_CAPTURE_ROUTE);
+    adev->mixer_ctls.amic_ul_volume = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_AMIC_UL_VOLUME);
 
     if (!adev->mixer_ctls.mm_dl1 || !adev->mixer_ctls.vx_dl1 ||
         !adev->mixer_ctls.mm_dl2 || !adev->mixer_ctls.vx_dl2 ||
         !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
         !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
-        !adev->mixer_ctls.right_capture) {
+        !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume) {
         mixer_close(adev->mixer);
         free(adev);
         LOGE("Unable to locate all mixer controls, aborting.");
