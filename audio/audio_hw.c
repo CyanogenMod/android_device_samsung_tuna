@@ -33,6 +33,9 @@
 
 #include <tinyalsa/asoundlib.h>
 #include <audio_utils/resampler.h>
+#include <audio_utils/echo_reference.h>
+#include <hardware/audio_effect.h>
+#include <audio_effects/effect_aec.h>
 
 #include "ril_interface.h"
 
@@ -101,6 +104,15 @@
 
 #define DEFAULT_OUT_SAMPLING_RATE 44100
 
+/* sampling rate when using MM low power port */
+#define MM_LOW_POWER_SAMPLING_RATE 44100
+/* sampling rate when using MM full power port */
+#define MM_FULL_POWER_SAMPLING_RATE 48000
+/* sampling rate when using VX port for narrow band */
+#define VX_NB_SAMPLING_RATE 8000
+/* sampling rate when using VX port for wide band */
+#define VX_WB_SAMPLING_RATE 16000
+
 /* conversions from dB to ABE and codec gains */
 #define DB_TO_ABE_GAIN(x) ((x) + MIXER_ABE_GAIN_0DB)
 #define DB_TO_CAPTURE_PREAMPLIFIER_VOLUME(x) (((x) + 6) / 6)
@@ -122,8 +134,8 @@
 #define CAMCORDER_SUB_MIC_VOLUME 18
 #define CAMCORDER_HEADSET_MIC_VOLUME 12
 
-#define VOIP_MAIN_MIC_VOLUME 8
-#define VOIP_SUB_MIC_VOLUME 0
+#define VOIP_MAIN_MIC_VOLUME 13
+#define VOIP_SUB_MIC_VOLUME 20
 #define VOIP_HEADSET_MIC_VOLUME 12
 
 #define VOICE_CALL_MAIN_MIC_VOLUME 0
@@ -143,7 +155,7 @@ enum tty_modes {
 
 struct pcm_config pcm_config_mm = {
     .channels = 2,
-    .rate = 48000,
+    .rate = MM_FULL_POWER_SAMPLING_RATE,
     .period_size = 1024,
     .period_count = 4,
     .format = PCM_FORMAT_S16_LE,
@@ -151,7 +163,7 @@ struct pcm_config pcm_config_mm = {
 
 struct pcm_config pcm_config_vx = {
     .channels = 1,
-    .rate = 8000,
+    .rate = VX_NB_SAMPLING_RATE,
     .period_size = 160,
     .period_count = 2,
     .format = PCM_FORMAT_S16_LE,
@@ -372,7 +384,7 @@ struct mixer_ctls
 struct tuna_audio_device {
     struct audio_hw_device hw_device;
 
-    pthread_mutex_t lock;
+    pthread_mutex_t lock;       /* see note below on mutex acquisition order */
     struct mixer *mixer;
     struct mixer_ctls mixer_ctls;
     int mode;
@@ -382,9 +394,12 @@ struct tuna_audio_device {
     int in_call;
     float voice_volume;
     struct tuna_stream_in *active_input;
+    struct tuna_stream_out *active_output;
     bool mic_mute;
     int tty_mode;
     int sidetone_capture;
+    struct echo_reference_itfe *echo_reference;
+
     /* RIL */
     struct ril_handle ril;
 };
@@ -392,38 +407,61 @@ struct tuna_audio_device {
 struct tuna_stream_out {
     struct audio_stream_out stream;
 
-    pthread_mutex_t lock;
+    pthread_mutex_t lock;       /* see note below on mutex acquisition order */
     struct pcm_config config;
     struct pcm *pcm;
     int device;
     struct resampler_itfe *resampler;
     char *buffer;
     int standby;
+    struct echo_reference_itfe *echo_reference;
 
     struct tuna_audio_device *dev;
 };
 
+#define MAX_PREPROCESSORS 3 /* maximum one AGC + one NS + one AEC per input stream */
+
 struct tuna_stream_in {
     struct audio_stream_in stream;
 
-    pthread_mutex_t lock;
+    pthread_mutex_t lock;       /* see note below on mutex acquisition order */
     struct pcm_config config;
     struct pcm *pcm;
     int device;
     struct resampler_itfe *resampler;
-    char *buffer;
+    struct resampler_buffer_provider buf_provider;
+    int16_t *buffer;
     size_t frames_in;
     unsigned int requested_rate;
     int port;
     int standby;
     int source;
+    struct echo_reference_itfe *echo_reference;
+    bool need_echo_reference;
+    effect_handle_t preprocessors[MAX_PREPROCESSORS];
+    int num_preprocessors;
+    int16_t *proc_buf;
+    size_t proc_buf_size;
+    size_t proc_frames_in;
+    int16_t *ref_buf;
+    size_t ref_buf_size;
+    size_t ref_frames_in;
+    int read_status;
 
     struct tuna_audio_device *dev;
 };
 
+/**
+ * NOTE: when multiple mutexes have to be acquired, always respect the following order:
+ *        hw device > in stream > out stream
+ */
+
+
 static void select_output_device(struct tuna_audio_device *adev);
 static void select_input_device(struct tuna_audio_device *adev);
 static int adev_set_voice_volume(struct audio_hw_device *dev, float volume);
+static int do_input_standby(struct tuna_stream_in *in);
+static int do_output_standby(struct tuna_stream_out *out);
 
 /* Returns true on devices that must use sidetone capture,
  * false otherwise. */
@@ -596,10 +634,30 @@ static void set_input_volumes(struct tuna_audio_device *adev, int main_mic_on,
         mixer_ctl_set_value(adev->mixer_ctls.amic_ul_volume, channel, volume);
 }
 
+static void force_all_standby(struct tuna_audio_device *adev)
+{
+    struct tuna_stream_in *in;
+    struct tuna_stream_out *out;
+
+    if (adev->active_output) {
+        out = adev->active_output;
+        pthread_mutex_lock(&out->lock);
+        do_output_standby(out);
+        pthread_mutex_unlock(&out->lock);
+    }
+    if (adev->active_input) {
+        in = adev->active_input;
+        pthread_mutex_lock(&in->lock);
+        do_input_standby(in);
+        pthread_mutex_unlock(&in->lock);
+    }
+}
+
 static void select_mode(struct tuna_audio_device *adev)
 {
     if (adev->mode == AUDIO_MODE_IN_CALL) {
         if (!adev->in_call) {
+            force_all_standby(adev);
             select_output_device(adev);
             start_call(adev);
             ril_set_call_clock_sync(&adev->ril, SOUND_CLOCK_START);
@@ -610,6 +668,7 @@ static void select_mode(struct tuna_audio_device *adev)
         if (adev->in_call) {
             adev->in_call = 0;
             end_call(adev);
+            force_all_standby(adev);
             select_output_device(adev);
             select_input_device(adev);
         }
@@ -740,27 +799,28 @@ static void select_output_device(struct tuna_audio_device *adev)
 
 static void select_input_device(struct tuna_audio_device *adev)
 {
-    int headset_on;
-    int main_mic_on;
+    int headset_on = 0;
+    int main_mic_on = 0;
     int sub_mic_on = 0;
-    int bt_on;
+    int bt_on = adev->devices & AUDIO_DEVICE_IN_ALL_SCO;
+    int port = PORT_VX;
     int anlg_mic_on;
-    int port;
 
-    /* PORT_MM2_UL is only used when not in call and active input uses it. */
-    port = PORT_VX;
-    if ((adev->mode != AUDIO_MODE_IN_CALL) && (adev->active_input != 0)) {
-        port = adev->active_input->port;
-        /* sub mic is used for camcorder or VoIP on speaker phone */
-        sub_mic_on = (adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC) &&
-                     ((adev->active_input->source == AUDIO_SOURCE_CAMCORDER) ||
-                      ((adev->devices & AUDIO_DEVICE_OUT_SPEAKER) &&
-                       (adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION)));
+    if (!bt_on) {
+        if ((adev->mode != AUDIO_MODE_IN_CALL) && (adev->active_input != 0)) {
+            /* PORT_MM2_UL is only used when not in call and active input uses it. */
+            port = adev->active_input->port;
+            /* sub mic is used for camcorder or VoIP on speaker phone */
+            sub_mic_on = (adev->active_input->source == AUDIO_SOURCE_CAMCORDER) ||
+                         ((adev->devices & AUDIO_DEVICE_OUT_SPEAKER) &&
+                          (adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION));
+        }
+        if (!sub_mic_on) {
+            headset_on = adev->devices & AUDIO_DEVICE_IN_WIRED_HEADSET;
+            main_mic_on = adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC;
+        }
     }
 
-    headset_on = adev->devices & AUDIO_DEVICE_IN_WIRED_HEADSET;
-    main_mic_on = !sub_mic_on && (adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC);
-    bt_on = adev->devices & AUDIO_DEVICE_IN_ALL_SCO;
     anlg_mic_on = headset_on | main_mic_on | sub_mic_on;
 
     /* tear down call stream before changing route,
@@ -796,22 +856,30 @@ static void select_input_device(struct tuna_audio_device *adev)
         start_call(adev);
 }
 
+/* must be called with hw device and output stream mutexes locked */
 static int start_output_stream(struct tuna_stream_out *out)
 {
     struct tuna_audio_device *adev = out->dev;
 
-    pthread_mutex_lock(&adev->lock);
-    adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
-    adev->devices |= out->device;
-    select_output_device(adev);
-    pthread_mutex_unlock(&adev->lock);
+    adev->active_output = out;
+
+    if (adev->mode != AUDIO_MODE_IN_CALL) {
+        /* FIXME: only works if only one output can be active at a time */
+        adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
+        adev->devices |= out->device;
+        select_output_device(adev);
+    }
 
     out->pcm = pcm_open(0, PORT_MM, PCM_OUT, &out->config);
     if (!pcm_is_ready(out->pcm)) {
         LOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
         pcm_close(out->pcm);
+        adev->active_output = NULL;
         return -ENOMEM;
     }
+
+    if (adev->echo_reference != NULL)
+        out->echo_reference = adev->echo_reference;
 
     out->resampler->reset(out->resampler);
 
@@ -851,34 +919,106 @@ static size_t get_input_buffer_size(uint32_t sample_rate, int format, int channe
     if (check_input_parameters(sample_rate, format, channel_count) != 0)
         return 0;
 
-    switch (sample_rate) {
-    case 8000:
+    if (sample_rate <= VX_NB_SAMPLING_RATE) {
         size = pcm_config_vx.period_size;
-        device_rate = 8000;
-        break;
-
-    case 11025:
-    case 16000:
+        device_rate = VX_NB_SAMPLING_RATE;
+    } else if (sample_rate <= VX_WB_SAMPLING_RATE) {
         size = pcm_config_vx.period_size * 2;
-        device_rate = 16000;
-        break;
-
-    case 22050:
-    case 24000:
-    case 32000:
-    case 44100:
-    case 48000:
+        device_rate = VX_WB_SAMPLING_RATE;
+    } else if (sample_rate <= MM_FULL_POWER_SAMPLING_RATE) {
         size = pcm_config_mm.period_size;
-        device_rate = 48000;
-        break;
-
-    default:
+        device_rate = MM_FULL_POWER_SAMPLING_RATE;
+    } else {
         return 0;
     }
 
     size = (((size * sample_rate) / device_rate + 15) / 16) * 16;
 
     return size * channel_count * sizeof(short);
+}
+
+static void add_echo_reference(struct tuna_stream_out *out,
+                               struct echo_reference_itfe *reference)
+{
+    pthread_mutex_lock(&out->lock);
+    out->echo_reference = reference;
+    pthread_mutex_unlock(&out->lock);
+}
+
+static void remove_echo_reference(struct tuna_stream_out *out,
+                                  struct echo_reference_itfe *reference)
+{
+    pthread_mutex_lock(&out->lock);
+    if (out->echo_reference == reference) {
+        /* stop writing to echo reference */
+        reference->write(reference, NULL);
+        out->echo_reference = NULL;
+    }
+    pthread_mutex_unlock(&out->lock);
+}
+
+static void put_echo_reference(struct tuna_audio_device *adev,
+                          struct echo_reference_itfe *reference)
+{
+    if (adev->echo_reference != NULL &&
+            reference == adev->echo_reference) {
+        if (adev->active_output != NULL)
+            remove_echo_reference(adev->active_output, reference);
+        release_echo_reference(reference);
+        adev->echo_reference = NULL;
+    }
+}
+
+static struct echo_reference_itfe *get_echo_reference(struct tuna_audio_device *adev,
+                                               audio_format_t format,
+                                               uint32_t channel_count,
+                                               uint32_t sampling_rate)
+{
+    put_echo_reference(adev, adev->echo_reference);
+    if (adev->active_output != NULL) {
+        struct audio_stream *stream = &adev->active_output->stream.common;
+        uint32_t wr_channel_count = popcount(stream->get_channels(stream));
+        uint32_t wr_sampling_rate = stream->get_sample_rate(stream);
+
+        int status = create_echo_reference(AUDIO_FORMAT_PCM_16_BIT,
+                                           channel_count,
+                                           sampling_rate,
+                                           AUDIO_FORMAT_PCM_16_BIT,
+                                           wr_channel_count,
+                                           wr_sampling_rate,
+                                           &adev->echo_reference);
+        if (status == 0)
+            add_echo_reference(adev->active_output, adev->echo_reference);
+    }
+    return adev->echo_reference;
+}
+
+static int get_playback_delay(struct tuna_stream_out *out,
+                       size_t frames,
+                       struct echo_reference_buffer *buffer)
+{
+    size_t kernel_frames;
+    int status;
+
+    status = pcm_get_htimestamp(out->pcm, &kernel_frames, &buffer->time_stamp);
+    if (status < 0) {
+        buffer->time_stamp.tv_sec  = 0;
+        buffer->time_stamp.tv_nsec = 0;
+        buffer->delay_ns           = 0;
+        LOGV("get_playback_delay(): pcm_get_htimestamp error,"
+                "setting playbackTimestamp to 0");
+        return status;
+    }
+
+    kernel_frames = pcm_get_buffer_size(out->pcm) - kernel_frames;
+
+    /* adjust render time stamp with delay added by current driver buffer.
+     * Add the duration of current frame as we want the render time of the last
+     * sample being written. */
+    buffer->delay_ns = (long)(((int64_t)(kernel_frames + frames)* 1000000000)/
+                            MM_FULL_POWER_SAMPLING_RATE);
+
+    return 0;
 }
 
 static uint32_t out_get_sample_rate(const struct audio_stream *stream)
@@ -919,25 +1059,48 @@ static int out_set_format(struct audio_stream *stream, int format)
     return 0;
 }
 
-static int out_standby(struct audio_stream *stream)
+/* must be called with hw device and output stream mutexes locked */
+static int do_output_standby(struct tuna_stream_out *out)
 {
-    struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
     struct tuna_audio_device *adev = out->dev;
 
-    pthread_mutex_lock(&out->lock);
     if (!out->standby) {
         pcm_close(out->pcm);
+        out->pcm = NULL;
+
+        adev->active_output = 0;
+
         /* if in call, don't turn off the output stage. This will
         be done when the call is ended */
         if (adev->mode != AUDIO_MODE_IN_CALL) {
+            /* FIXME: only works if only one output can be active at a time */
+            adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
             set_route_by_array(adev->mixer, hs_output, 0);
             set_route_by_array(adev->mixer, hf_output, 0);
         }
-        out->pcm = NULL;
+
+        /* stop writing to echo reference */
+        if (out->echo_reference != NULL) {
+            out->echo_reference->write(out->echo_reference, NULL);
+            out->echo_reference = NULL;
+        }
+
         out->standby = 1;
     }
-    pthread_mutex_unlock(&out->lock);
     return 0;
+}
+
+static int out_standby(struct audio_stream *stream)
+{
+    struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
+    int status;
+
+    pthread_mutex_lock(&out->dev->lock);
+    pthread_mutex_lock(&out->lock);
+    status = do_output_standby(out);
+    pthread_mutex_unlock(&out->lock);
+    pthread_mutex_unlock(&out->dev->lock);
+    return status;
 }
 
 static int out_dump(const struct audio_stream *stream, int fd)
@@ -949,32 +1112,43 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
     struct tuna_audio_device *adev = out->dev;
+    struct tuna_stream_in *in;
     struct str_parms *parms;
     char *str;
     char value[32];
     int ret, val = 0;
+    bool force_input_standby = false;
 
     parms = str_parms_create_str(kvpairs);
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
     if (ret >= 0) {
         val = atoi(value);
+        pthread_mutex_lock(&adev->lock);
         pthread_mutex_lock(&out->lock);
         if ((out->device != val) && (val != 0)) {
             out->device = val;
-            pthread_mutex_unlock(&out->lock);
-            pthread_mutex_lock(&adev->lock);
             if (adev->mode == AUDIO_MODE_IN_CALL) {
                 adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
                 adev->devices |= out->device;
                 select_output_device(adev);
-                pthread_mutex_unlock(&adev->lock);
-            } else {
-                pthread_mutex_unlock(&adev->lock);
-                out_standby(stream);
+            } else if (out == adev->active_output) {
+                do_output_standby(out);
+                /* a change in output device may change the microphone selection */
+                if (adev->active_input &&
+                        adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION) {
+                    force_input_standby = true;
+                }
             }
-        } else
-            pthread_mutex_unlock(&out->lock);
+        }
+        pthread_mutex_unlock(&out->lock);
+        if (force_input_standby) {
+            in = adev->active_input;
+            pthread_mutex_lock(&in->lock);
+            do_input_standby(in);
+            pthread_mutex_unlock(&in->lock);
+        }
+        pthread_mutex_unlock(&adev->lock);
     }
 
     str_parms_destroy(parms);
@@ -1006,19 +1180,33 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     int ret;
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
     struct tuna_audio_device *adev = out->dev;
-    size_t in_frames = bytes / 4; /* todo */
-    size_t out_frames = RESAMPLER_BUFFER_SIZE / 4;
+    size_t frame_size = audio_stream_frame_size(&out->stream.common);
+    size_t in_frames = bytes / frame_size;
+    size_t out_frames = RESAMPLER_BUFFER_SIZE / frame_size;
     unsigned int total_bytes;
     unsigned int max_bytes;
     unsigned int remaining_bytes;
     unsigned int pos;
+    bool force_input_standby = false;
+    struct tuna_stream_in *in;
 
+    /* acquiring hw device mutex systematically is useful if a low priority thread is waiting
+     * on the output stream mutex - e.g. executing select_mode() while holding the hw device
+     * mutex
+     */
+    pthread_mutex_lock(&adev->lock);
     pthread_mutex_lock(&out->lock);
     if (out->standby) {
         ret = start_output_stream(out);
-        if (ret == 0)
+        if (ret == 0) {
             out->standby = 0;
+            /* a change in output device may change the microphone selection */
+            if (adev->active_input &&
+                    adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION)
+                force_input_standby = true;
+        }
     }
+    pthread_mutex_unlock(&adev->lock);
 
     out->resampler->resample_from_input(out->resampler,
                                         (int16_t *)buffer,
@@ -1026,9 +1214,19 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
                                         (int16_t *)out->buffer,
                                         &out_frames);
 
-    total_bytes = out_frames * 4;
-    max_bytes = pcm_get_buffer_size(out->pcm);
+    total_bytes = out_frames * frame_size;
+    max_bytes = out->config.period_size * frame_size;
     remaining_bytes = total_bytes;
+
+    if (out->echo_reference != NULL) {
+        struct echo_reference_buffer b;
+        b.raw = (void *)buffer;
+        b.frame_count = out_frames;
+
+        get_playback_delay(out, out_frames, &b);
+        out->echo_reference->write(out->echo_reference, &b);
+    }
+
     for (pos = 0; pos < total_bytes; pos += max_bytes) {
         int bytes_to_write = MIN(max_bytes, remaining_bytes);
 
@@ -1045,6 +1243,18 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     }
 
     pthread_mutex_unlock(&out->lock);
+
+    if (force_input_standby) {
+        pthread_mutex_lock(&adev->lock);
+        if (adev->active_input) {
+            in = adev->active_input;
+            pthread_mutex_lock(&in->lock);
+            do_input_standby(in);
+            pthread_mutex_unlock(&in->lock);
+        }
+        pthread_mutex_unlock(&adev->lock);
+    }
+
     return bytes;
 }
 
@@ -1065,25 +1275,36 @@ static int out_remove_audio_effect(const struct audio_stream *stream, effect_han
 }
 
 /** audio_stream_in implementation **/
+
+/* must be called with hw device and input stream mutexes locked */
 static int start_input_stream(struct tuna_stream_in *in)
 {
     int ret = 0;
     struct tuna_audio_device *adev = in->dev;
 
-    pthread_mutex_lock(&adev->lock);
-    adev->devices &= ~AUDIO_DEVICE_IN_ALL;
-    adev->devices |= in->device;
     adev->active_input = in;
-    select_input_device(adev);
-    pthread_mutex_unlock(&adev->lock);
+
+    if (adev->mode != AUDIO_MODE_IN_CALL) {
+        adev->devices &= ~AUDIO_DEVICE_IN_ALL;
+        adev->devices |= in->device;
+        select_input_device(adev);
+    }
+
+    if (in->need_echo_reference && in->echo_reference == NULL)
+        in->echo_reference = get_echo_reference(adev,
+                                        AUDIO_FORMAT_PCM_16_BIT,
+                                        in->config.channels,
+                                        in->requested_rate);
 
     /* this assumes routing is done previously */
     in->pcm = pcm_open(0, in->port, PCM_IN, &in->config);
     if (!pcm_is_ready(in->pcm)) {
         LOGE("cannot open pcm_in driver: %s", pcm_get_error(in->pcm));
         pcm_close(in->pcm);
+        adev->active_input = NULL;
         return -ENOMEM;
     }
+
     /* if no supported sample rate is available, use the resampler */
     if (in->resampler) {
         in->resampler->reset(in->resampler);
@@ -1134,25 +1355,44 @@ static int in_set_format(struct audio_stream *stream, int format)
     return 0;
 }
 
-static int in_standby(struct audio_stream *stream)
+/* must be called with hw device and input stream mutexes locked */
+static int do_input_standby(struct tuna_stream_in *in)
 {
-    struct tuna_stream_in *in = (struct tuna_stream_in *)stream;
     struct tuna_audio_device *adev = in->dev;
 
-    pthread_mutex_lock(&in->lock);
     if (!in->standby) {
         pcm_close(in->pcm);
         in->pcm = NULL;
+
         adev->active_input = 0;
-        pthread_mutex_lock(&adev->lock);
-        adev->devices &= ~AUDIO_DEVICE_IN_ALL;
-        adev->active_input = 0;
-        select_input_device(adev);
-        pthread_mutex_unlock(&adev->lock);
+        if (adev->mode != AUDIO_MODE_IN_CALL) {
+            adev->devices &= ~AUDIO_DEVICE_IN_ALL;
+            select_input_device(adev);
+        }
+
+        if (in->echo_reference != NULL) {
+            /* stop reading from echo reference */
+            in->echo_reference->read(in->echo_reference, NULL);
+            put_echo_reference(adev, in->echo_reference);
+            in->echo_reference = NULL;
+        }
+
         in->standby = 1;
     }
-    pthread_mutex_unlock(&in->lock);
     return 0;
+}
+
+static int in_standby(struct audio_stream *stream)
+{
+    struct tuna_stream_in *in = (struct tuna_stream_in *)stream;
+    int status;
+
+    pthread_mutex_lock(&in->dev->lock);
+    pthread_mutex_lock(&in->lock);
+    status = do_input_standby(in);
+    pthread_mutex_unlock(&in->lock);
+    pthread_mutex_unlock(&in->dev->lock);
+    return status;
 }
 
 static int in_dump(const struct audio_stream *stream, int fd)
@@ -1173,30 +1413,31 @@ static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
     parms = str_parms_create_str(kvpairs);
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_INPUT_SOURCE, value, sizeof(value));
+
+    pthread_mutex_lock(&adev->lock);
+    pthread_mutex_lock(&in->lock);
     if (ret >= 0) {
         val = atoi(value);
-        pthread_mutex_lock(&in->lock);
         /* no audio source uses val == 0 */
         if ((in->source != val) && (val != 0)) {
             in->source = val;
             do_standby = true;
         }
-        pthread_mutex_unlock(&in->lock);
     }
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
     if (ret >= 0) {
         val = atoi(value);
-        pthread_mutex_lock(&in->lock);
         if ((in->device != val) && (val != 0)) {
             in->device = val;
             do_standby = true;
         }
-        pthread_mutex_unlock(&in->lock);
     }
 
     if (do_standby)
-        in_standby(stream);
+        do_input_standby(in);
+    pthread_mutex_unlock(&in->lock);
+    pthread_mutex_unlock(&adev->lock);
 
     str_parms_destroy(parms);
     return ret;
@@ -1213,53 +1454,345 @@ static int in_set_gain(struct audio_stream_in *stream, float gain)
     return 0;
 }
 
+static void get_capture_delay(struct tuna_stream_in *in,
+                       size_t frames,
+                       struct echo_reference_buffer *buffer)
+{
+
+    /* read frames available in kernel driver buffer */
+    size_t kernel_frames;
+    struct timespec tstamp;
+    long buf_delay;
+    long rsmp_delay;
+    long kernel_delay;
+    long delay_ns;
+
+    if (pcm_get_htimestamp(in->pcm, &kernel_frames, &tstamp) < 0) {
+        buffer->time_stamp.tv_sec  = 0;
+        buffer->time_stamp.tv_nsec = 0;
+        buffer->delay_ns           = 0;
+        LOGW("read get_capture_delay(): pcm_htimestamp error");
+        return;
+    }
+
+    /* read frames available in audio HAL input buffer
+     * add number of frames being read as we want the capture time of first sample
+     * in current buffer */
+    buf_delay = (long)(((int64_t)(in->frames_in + in->proc_frames_in) * 1000000000)
+                                    / in->config.rate);
+    /* add delay introduced by resampler */
+    rsmp_delay = 0;
+    if (in->resampler) {
+        rsmp_delay = in->resampler->delay_ns(in->resampler);
+    }
+
+    kernel_delay = (long)(((int64_t)kernel_frames * 1000000000) / in->config.rate);
+
+    delay_ns = kernel_delay + buf_delay + rsmp_delay;
+
+    buffer->time_stamp = tstamp;
+    buffer->delay_ns   = delay_ns;
+    LOGV("get_capture_delay time_stamp = [%ld].[%ld], delay_ns: [%d],"
+         " kernel_delay:[%ld], buf_delay:[%ld], rsmp_delay:[%ld], kernel_frames:[%d], "
+         "in->frames_in:[%d], in->proc_frames_in:[%d], frames:[%d]",
+         buffer->time_stamp.tv_sec , buffer->time_stamp.tv_nsec, buffer->delay_ns,
+         kernel_delay, buf_delay, rsmp_delay, kernel_frames,
+         in->frames_in, in->proc_frames_in, frames);
+
+}
+
+static int32_t update_echo_reference(struct tuna_stream_in *in, size_t frames)
+{
+    struct echo_reference_buffer b;
+    b.delay_ns = 0;
+
+    LOGV("update_echo_reference, frames = [%d], in->ref_frames_in = [%d],  "
+          "b.frame_count = [%d]",
+         frames, in->ref_frames_in, frames - in->ref_frames_in);
+    if (in->ref_frames_in < frames) {
+        if (in->ref_buf_size < frames) {
+            in->ref_buf_size = frames;
+            in->ref_buf = (int16_t *)realloc(in->ref_buf,
+                                             in->ref_buf_size *
+                                                 in->config.channels * sizeof(int16_t));
+        }
+
+        b.frame_count = frames - in->ref_frames_in;
+        b.raw = (void *)(in->ref_buf + in->ref_frames_in * in->config.channels);
+
+        get_capture_delay(in, frames, &b);
+
+        if (in->echo_reference->read(in->echo_reference, &b) == 0)
+        {
+            in->ref_frames_in += b.frame_count;
+            LOGV("update_echo_reference: in->ref_frames_in:[%d], "
+                    "in->ref_buf_size:[%d], frames:[%d], b.frame_count:[%d]",
+                 in->ref_frames_in, in->ref_buf_size, frames, b.frame_count);
+        }
+    } else
+        LOGW("update_echo_reference: NOT enough frames to read ref buffer");
+    return b.delay_ns;
+}
+
+static int set_preprocessor_param(effect_handle_t handle,
+                           effect_param_t *param)
+{
+    uint32_t size = sizeof(int);
+    uint32_t psize = ((param->psize - 1) / sizeof(int) + 1) * sizeof(int) +
+                        param->vsize;
+
+    int status = (*handle)->command(handle,
+                                   EFFECT_CMD_SET_PARAM,
+                                   sizeof (effect_param_t) + psize,
+                                   param,
+                                   &size,
+                                   &param->status);
+    if (status == 0)
+        status = param->status;
+
+    return status;
+}
+
+static int set_preprocessor_echo_delay(effect_handle_t handle,
+                                     int32_t delay_us)
+{
+    uint32_t buf[sizeof(effect_param_t) / sizeof(uint32_t) + 2];
+    effect_param_t *param = (effect_param_t *)buf;
+
+    param->psize = sizeof(uint32_t);
+    param->vsize = sizeof(uint32_t);
+    *(uint32_t *)param->data = AEC_PARAM_ECHO_DELAY;
+    *((int32_t *)param->data + 1) = delay_us;
+
+    return set_preprocessor_param(handle, param);
+}
+
+static void push_echo_reference(struct tuna_stream_in *in, size_t frames)
+{
+    /* read frames from echo reference buffer and update echo delay
+     * in->ref_frames_in is updated with frames available in in->ref_buf */
+    int32_t delay_us = update_echo_reference(in, frames)/1000;
+    int i;
+    audio_buffer_t buf;
+
+    if (in->ref_frames_in < frames)
+        frames = in->ref_frames_in;
+
+    buf.frameCount = frames;
+    buf.raw = in->ref_buf;
+
+    for (i = 0; i < in->num_preprocessors; i++) {
+        if ((*in->preprocessors[i])->process_reverse == NULL)
+            continue;
+
+        (*in->preprocessors[i])->process_reverse(in->preprocessors[i],
+                                               &buf,
+                                               NULL);
+        set_preprocessor_echo_delay(in->preprocessors[i], delay_us);
+    }
+
+    in->ref_frames_in -= buf.frameCount;
+    if (in->ref_frames_in) {
+        memcpy(in->ref_buf,
+               in->ref_buf + buf.frameCount * in->config.channels,
+               in->ref_frames_in * in->config.channels * sizeof(int16_t));
+    }
+}
+
+static int get_next_buffer(struct resampler_buffer_provider *buffer_provider,
+                                   struct resampler_buffer* buffer)
+{
+    struct tuna_stream_in *in;
+
+    if (buffer_provider == NULL || buffer == NULL)
+        return -EINVAL;
+
+    in = (struct tuna_stream_in *)((char *)buffer_provider -
+                                   offsetof(struct tuna_stream_in, buf_provider));
+
+    if (in->pcm == NULL) {
+        buffer->raw = NULL;
+        buffer->frame_count = 0;
+        in->read_status = -ENODEV;
+        return -ENODEV;
+    }
+
+    if (in->frames_in == 0) {
+        in->read_status = pcm_read(in->pcm,
+                                   (void*)in->buffer,
+                                   in->config.period_size *
+                                       audio_stream_frame_size(&in->stream.common));
+        if (in->read_status != 0) {
+            LOGE("get_next_buffer() pcm_read error %d", in->read_status);
+            buffer->raw = NULL;
+            buffer->frame_count = 0;
+            return in->read_status;
+        }
+        in->frames_in = in->config.period_size;
+    }
+
+    buffer->frame_count = (buffer->frame_count > in->frames_in) ?
+                                in->frames_in : buffer->frame_count;
+    buffer->i16 = in->buffer + (in->config.period_size - in->frames_in) *
+                                                in->config.channels;
+
+    return in->read_status;
+
+}
+
+static void release_buffer(struct resampler_buffer_provider *buffer_provider,
+                                  struct resampler_buffer* buffer)
+{
+    struct tuna_stream_in *in;
+
+    if (buffer_provider == NULL || buffer == NULL)
+        return;
+
+    in = (struct tuna_stream_in *)((char *)buffer_provider -
+                                   offsetof(struct tuna_stream_in, buf_provider));
+
+    in->frames_in -= buffer->frame_count;
+}
+
+/* read_frames() reads frames from kernel driver, down samples to capture rate
+ * if necessary and output the number of frames requested to the buffer specified */
+static ssize_t read_frames(struct tuna_stream_in *in, void *buffer, ssize_t frames)
+{
+    ssize_t frames_wr = 0;
+
+    while (frames_wr < frames) {
+        size_t frames_rd = frames - frames_wr;
+        if (in->resampler != NULL) {
+            in->resampler->resample_from_provider(in->resampler,
+                    (int16_t *)((char *)buffer +
+                            frames_wr * audio_stream_frame_size(&in->stream.common)),
+                    &frames_rd);
+        } else {
+            struct resampler_buffer buf = {
+                    { raw : NULL, },
+                    frame_count : frames_rd,
+            };
+            get_next_buffer(&in->buf_provider, &buf);
+            if (buf.raw != NULL) {
+                memcpy((char *)buffer +
+                           frames_wr * audio_stream_frame_size(&in->stream.common),
+                        buf.raw,
+                        buf.frame_count * audio_stream_frame_size(&in->stream.common));
+                frames_rd = buf.frame_count;
+            }
+            release_buffer(&in->buf_provider, &buf);
+        }
+        /* in->read_status is updated by getNextBuffer() also called by
+         * in->resampler->resample_from_provider() */
+        if (in->read_status != 0)
+            return in->read_status;
+
+        frames_wr += frames_rd;
+    }
+    return frames_wr;
+}
+
+/* process_frames() reads frames from kernel driver (via read_frames()),
+ * calls the active audio pre processings and output the number of frames requested
+ * to the buffer specified */
+static ssize_t process_frames(struct tuna_stream_in *in, void* buffer, ssize_t frames)
+{
+    ssize_t frames_wr = 0;
+    audio_buffer_t in_buf;
+    audio_buffer_t out_buf;
+    int i;
+
+    while (frames_wr < frames) {
+        /* first reload enough frames at the end of process input buffer */
+        if (in->proc_frames_in < (size_t)frames) {
+            ssize_t frames_rd;
+
+            if (in->proc_buf_size < (size_t)frames) {
+                in->proc_buf_size = (size_t)frames;
+                in->proc_buf = (int16_t *)realloc(in->proc_buf,
+                                         in->proc_buf_size *
+                                             in->config.channels * sizeof(int16_t));
+                LOGV("process_frames(): in->proc_buf %p size extended to %d frames",
+                     in->proc_buf, in->proc_buf_size);
+            }
+            frames_rd = read_frames(in,
+                                    in->proc_buf +
+                                        in->proc_frames_in * in->config.channels,
+                                    frames - in->proc_frames_in);
+            if (frames_rd < 0) {
+                frames_wr = frames_rd;
+                break;
+            }
+            in->proc_frames_in += frames_rd;
+        }
+
+        if (in->echo_reference != NULL)
+            push_echo_reference(in, in->proc_frames_in);
+
+         /* in_buf.frameCount and out_buf.frameCount indicate respectively
+          * the maximum number of frames to be consumed and produced by process() */
+        in_buf.frameCount = in->proc_frames_in;
+        in_buf.s16 = in->proc_buf;
+        out_buf.frameCount = frames - frames_wr;
+        out_buf.s16 = (int16_t *)buffer + frames_wr * in->config.channels;
+
+        for (i = 0; i < in->num_preprocessors; i++)
+            (*in->preprocessors[i])->process(in->preprocessors[i],
+                                               &in_buf,
+                                               &out_buf);
+
+        /* process() has updated the number of frames consumed and produced in
+         * in_buf.frameCount and out_buf.frameCount respectively
+         * move remaining frames to the beginning of in->proc_buf */
+        in->proc_frames_in -= in_buf.frameCount;
+        if (in->proc_frames_in) {
+            memcpy(in->proc_buf,
+                   in->proc_buf + in_buf.frameCount * in->config.channels,
+                   in->proc_frames_in * in->config.channels * sizeof(int16_t));
+        }
+
+        /* if not enough frames were passed to process(), read more and retry. */
+        if (out_buf.frameCount == 0)
+            continue;
+
+        frames_wr += out_buf.frameCount;
+    }
+    return frames_wr;
+}
+
 static ssize_t in_read(struct audio_stream_in *stream, void* buffer,
                        size_t bytes)
 {
     int ret = 0;
     struct tuna_stream_in *in = (struct tuna_stream_in *)stream;
     struct tuna_audio_device *adev = in->dev;
+    size_t frames_rq = bytes / audio_stream_frame_size(&stream->common);
 
+    /* acquiring hw device mutex systematically is useful if a low priority thread is waiting
+     * on the input stream mutex - e.g. executing select_mode() while holding the hw device
+     * mutex
+     */
+    pthread_mutex_lock(&adev->lock);
     pthread_mutex_lock(&in->lock);
     if (in->standby) {
         ret = start_input_stream(in);
         if (ret == 0)
             in->standby = 0;
     }
+    pthread_mutex_unlock(&adev->lock);
 
     if (ret < 0)
         goto exit;
 
-    if (in->resampler) {
-        size_t frame_size = audio_stream_frame_size(&in->stream.common);
-        size_t frames_rq = bytes / frame_size;
-        size_t frames_wr = 0;
-
-        while (frames_wr < frames_rq) {
-            size_t frames_in;
-            size_t frames_out;
-
-            if (in->frames_in == 0) {
-                ret = pcm_read(in->pcm, in->buffer, in->config.period_size * frame_size);
-                if (ret != 0)
-                    break;
-                in->frames_in = in->config.period_size;
-            }
-
-            frames_out = frames_rq - frames_wr;
-            frames_in = in->frames_in;
-            in->resampler->resample_from_input(in->resampler,
-                                (short *)((char *)in->buffer +
-                                        (in->config.period_size - in->frames_in) * frame_size),
-                                &frames_in,
-                                (short *)((char *)buffer + frames_wr * frame_size),
-                                &frames_out);
-            frames_wr += frames_out;
-            in->frames_in -= frames_in;
-        }
-    } else {
+    if (in->num_preprocessors != 0)
+        ret = process_frames(in, buffer, frames_rq);
+    else if (in->resampler != NULL)
+        ret = read_frames(in, buffer, frames_rq);
+    else
         ret = pcm_read(in->pcm, buffer, bytes);
-    }
+
+    if (ret > 0)
+        ret = 0;
 
     if (ret == 0 && adev->mic_mute)
         memset(buffer, 0, bytes);
@@ -1278,14 +1811,84 @@ static uint32_t in_get_input_frames_lost(struct audio_stream_in *stream)
     return 0;
 }
 
-static int in_add_audio_effect(const struct audio_stream *stream, effect_handle_t effect)
+static int in_add_audio_effect(const struct audio_stream *stream,
+                               effect_handle_t effect)
 {
-    return 0;
+    struct tuna_stream_in *in = (struct tuna_stream_in *)stream;
+    int status;
+    effect_descriptor_t desc;
+
+    pthread_mutex_lock(&in->dev->lock);
+    pthread_mutex_lock(&in->lock);
+    if (in->num_preprocessors >= MAX_PREPROCESSORS) {
+        status = -ENOSYS;
+        goto exit;
+    }
+
+    status = (*effect)->get_descriptor(effect, &desc);
+    if (status != 0)
+        goto exit;
+
+    in->preprocessors[in->num_preprocessors++] = effect;
+
+    if (memcmp(&desc.type, FX_IID_AEC, sizeof(effect_uuid_t)) == 0) {
+        in->need_echo_reference = true;
+        do_input_standby(in);
+    }
+
+exit:
+
+    pthread_mutex_unlock(&in->lock);
+    pthread_mutex_unlock(&in->dev->lock);
+    return status;
 }
 
-static int in_remove_audio_effect(const struct audio_stream *stream, effect_handle_t effect)
+static int in_remove_audio_effect(const struct audio_stream *stream,
+                                  effect_handle_t effect)
 {
-    return 0;
+    struct tuna_stream_in *in = (struct tuna_stream_in *)stream;
+    int i;
+    int status = -EINVAL;
+    bool found = false;
+    effect_descriptor_t desc;
+
+    pthread_mutex_lock(&in->dev->lock);
+    pthread_mutex_lock(&in->lock);
+    if (in->num_preprocessors <= 0) {
+        status = -ENOSYS;
+        goto exit;
+    }
+
+    for (i = 0; i < in->num_preprocessors; i++) {
+        if (found) {
+            in->preprocessors[i - 1] = in->preprocessors[i];
+            continue;
+        }
+        if (in->preprocessors[i] == effect) {
+            in->preprocessors[i] = NULL;
+            status = 0;
+            found = true;
+        }
+    }
+
+    if (status != 0)
+        goto exit;
+
+    in->num_preprocessors--;
+
+    status = (*effect)->get_descriptor(effect, &desc);
+    if (status != 0)
+        goto exit;
+    if (memcmp(&desc.type, FX_IID_AEC, sizeof(effect_uuid_t)) == 0) {
+        in->need_echo_reference = false;
+        do_input_standby(in);
+    }
+
+exit:
+
+    pthread_mutex_unlock(&in->lock);
+    pthread_mutex_unlock(&in->dev->lock);
+    return status;
 }
 
 
@@ -1303,11 +1906,11 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
         return -ENOMEM;
 
     ret = create_resampler(DEFAULT_OUT_SAMPLING_RATE,
-                          48000,
-                          2,
-                          RESAMPLER_QUALITY_DEFAULT,
-                          NULL,
-                          &out->resampler);
+                           MM_FULL_POWER_SAMPLING_RATE,
+                           2,
+                           RESAMPLER_QUALITY_DEFAULT,
+                           NULL,
+                           &out->resampler);
     if (ret != 0)
         goto err_open;
     out->buffer = malloc(RESAMPLER_BUFFER_SIZE); /* todo: allow for reallocing */
@@ -1333,7 +1936,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 
     out->device = devices;
     out->dev = ladev;
-    out->standby = !!start_output_stream(out);
+    out->standby = 1;
 
     *format = out_get_format(&out->stream.common);
     *channels = out_get_channels(&out->stream.common);
@@ -1506,14 +2109,14 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
 
     in->requested_rate = *sample_rate;
 
-    if (in->requested_rate <= 8000) {
+    if (in->requested_rate <= VX_NB_SAMPLING_RATE) {
         in->port = PORT_VX;
         memcpy(&in->config, &pcm_config_vx, sizeof(pcm_config_vx));
-        in->config.rate = 8000;
-    } else if (in->requested_rate <= 16000) {
+        in->config.rate = VX_NB_SAMPLING_RATE;
+    } else if (in->requested_rate <= VX_WB_SAMPLING_RATE) {
         in->port = PORT_VX; /* use voice uplink */
         memcpy(&in->config, &pcm_config_vx, sizeof(pcm_config_vx));
-        in->config.rate = 16000;
+        in->config.rate = VX_WB_SAMPLING_RATE;
         in->config.period_size *= 2;
     } else {
         in->port = PORT_MM2_UL; /* use multimedia uplink 2 */
@@ -1521,21 +2124,25 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
     }
     in->config.channels = channel_count;
 
+    in->buffer = malloc(in->config.period_size *
+                        audio_stream_frame_size(&in->stream.common));
+    if (!in->buffer) {
+        ret = -ENOMEM;
+        goto err;
+    }
+
     if (in->requested_rate != in->config.rate) {
+        in->buf_provider.get_next_buffer = get_next_buffer;
+        in->buf_provider.release_buffer = release_buffer;
+
         ret = create_resampler(in->config.rate,
                                in->requested_rate,
                                in->config.channels,
                                RESAMPLER_QUALITY_DEFAULT,
-                               NULL,
+                               &in->buf_provider,
                                &in->resampler);
         if (ret != 0) {
             ret = -EINVAL;
-            goto err;
-        }
-        in->buffer = malloc(in->config.period_size *
-                            audio_stream_frame_size(&in->stream.common));
-        if (!in->buffer) {
-            ret = -ENOMEM;
             goto err;
         }
     }
