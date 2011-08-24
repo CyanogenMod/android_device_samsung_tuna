@@ -162,10 +162,6 @@
     <!-- Boolean indicating whether the wifi chipset has wifi direct support -->
     <bool translatable="false" name="config_wifi_p2p_support">true</bool>
 
-    <!-- Boolean indicating where bluetooth is always powered on but kept at
-         low power mode -->
-    <bool translatable="false" name="config_bluetooth_adapter_quick_switch">false</bool>
-
     <bool name="config_ui_enableFadingMarquee">false</bool>
 
     <!-- Component name of the service providing network location support. -->
