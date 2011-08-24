@@ -32,55 +32,13 @@ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 char const *const LCD_FILE = "/sys/class/backlight/s6e8aa0/brightness";
 char const *const LED_FILE = "/dev/an30259a_leds";
 
-static __u8 old_imax = 1;
+#define IMAX 0 // 12.75mA power consumption
 
-/* configurations for pulse modes of NOTIFICATIONS and ATTENTION */
-/* TODO: Once google fixes values, these values should be modified. */
-struct an30259a_pulse_config_t {
-	__u8  imax;
-};
-struct an30259a_pulse_config_t an30259a_pulse_config[2] = {
-	{	/* notifications */
-		.imax = 1,
-	},
-	{	/* attention */
-		.imax = 1,
-	},
-};
-
-/* configurations for slope mode of NOTIFICATION and ATTENTION */
-/* TODO: Once google fixes values, these values should be modified. */
-struct an30259a_slope_config_t {
-	__u8  imax;
-	struct an30259a_pr_control led;
-};
-
-struct an30259a_slope_config_t an30259a_slope_config[2] = {
-	{	/* notifications */
-		.imax = 1,
-		.led = {
-			.state = LED_LIGHT_SLOPE,
-			.start_delay = 1000,
-			.time_slope_up_1 = 1000,
-			.time_slope_up_2 = 1000,
-			.time_slope_down_1 = 1000,
-			.time_slope_down_2 = 1000,
-			.mid_brightness = 127,
-		},
-	},
-	{	/* attention */
-		.imax = 1,
-		.led = {
-			.state = LED_LIGHT_SLOPE,
-			.start_delay = 2000,
-			.time_slope_up_1 = 2000,
-			.time_slope_up_2 = 2000,
-			.time_slope_down_1 = 2000,
-			.time_slope_down_2 = 2000,
-			.mid_brightness = 127,
-		},
-	},
-};
+// Slope values, based on total blink of 1000ms
+#define SLOPE_UP_1		400
+#define SLOPE_UP_2		(500-SLOPE_UP_1)
+#define SLOPE_DOWN_1	SLOPE_UP_2
+#define SLOPE_DOWN_2	SLOPE_UP_1
 
 void init_g_lock(void)
 {
@@ -143,29 +101,23 @@ static int close_lights(struct light_device_t *dev)
 }
 
 /* LEDs */
-static int write_leds(struct an30259a_pr_control *led, __u8 imax)
+static int write_leds(struct an30259a_pr_control *led)
 {
 	int err = 0;
+	int imax = IMAX;
 	int fd;
 
-LOGD("write_leds %d\n", imax);
 	pthread_mutex_lock(&g_lock);
 
 	fd = open(LED_FILE, O_RDWR);
 	if (fd >= 0) {
-		if (imax != old_imax) {
-			err = ioctl(fd, AN30259A_PR_SET_IMAX, &imax);
-			if (err >= 0)
-				old_imax = imax;
-			else
-				LOGE("failed to set imax");
-		}
+		err = ioctl(fd, AN30259A_PR_SET_IMAX, &imax);
+		if (err)
+			LOGE("failed to set imax");
 
-		if (err >= 0) {
-			err = ioctl(fd, AN30259A_PR_SET_LED, led);
-			if (err < 0)
-				LOGE("failed to set leds!");
-		}
+		err = ioctl(fd, AN30259A_PR_SET_LED, led);
+		if (err < 0)
+			LOGE("failed to set leds!");
 
 		close(fd);
 	} else {
@@ -181,38 +133,30 @@ LOGD("write_leds %d\n", imax);
 static int set_light_leds(struct light_state_t const *state, int type)
 {
 	struct an30259a_pr_control led;
-	__u8 imax;
 
 	memset(&led, 0, sizeof(led));
 
 	switch (state->flashMode) {
 	case LIGHT_FLASH_NONE:
-LOGD("set_light_leds LIGHT_FLASH_NONE\n");
 		led.state = LED_LIGHT_OFF;
-		imax = old_imax;
 		break;
 	case LIGHT_FLASH_TIMED:
-LOGD("set_light_leds LIGHT_FLASH_TIMED\n");
-		led.state = LED_LIGHT_PULSE;
-		led.color = state->color & 0x00ffffff;
-		led.time_on = state->flashOnMS;
-		led.time_off = state->flashOffMS;
-		imax = an30259a_pulse_config[type].imax;
-		break;
 	case LIGHT_FLASH_HARDWARE:
-LOGD("set_light_leds LIGHT_FLASH_HARDWARE\n");
-		led = an30259a_slope_config[type].led;
+		led.state = LED_LIGHT_SLOPE;
 		led.color = state->color & 0x00ffffff;
-		led.time_on = state->flashOnMS;
+		// scale slope times based on flashOnMS
+		led.time_slope_up_1 = (SLOPE_UP_1 * state->flashOnMS) / 1000;
+		led.time_slope_up_2 = (SLOPE_UP_2 * state->flashOnMS) / 1000;
+		led.time_slope_down_1 = (SLOPE_DOWN_1 * state->flashOnMS) / 1000;
+		led.time_slope_down_2 = (SLOPE_DOWN_2 * state->flashOnMS) / 1000;
+		led.mid_brightness = 127;
 		led.time_off = state->flashOffMS;
-		imax = an30259a_slope_config[type].imax;
 		break;
 	default:
-LOGD("set_light_leds EINVAL\n");
 		return -EINVAL;
 	}
 
-	return write_leds(&led, imax);
+	return write_leds(&led);
 }
 
 static int set_light_leds_notifications(struct light_device_t *dev,
