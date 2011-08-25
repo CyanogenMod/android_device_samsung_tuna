@@ -30,7 +30,8 @@ DEVICE_PACKAGE_OVERLAYS := device/samsung/tuna/overlay
 PRODUCT_AAPT_CONFIG := normal hdpi xhdpi
 
 PRODUCT_PACKAGES := \
-	lights.tuna
+	lights.tuna \
+	charger
 
 PRODUCT_PACKAGES += \
 	sensors.tuna \
@@ -48,6 +49,10 @@ PRODUCT_COPY_FILES := \
 	device/samsung/tuna/ueventd.tuna.rc:root/ueventd.tuna.rc \
 	device/samsung/tuna/media_profiles.xml:system/etc/media_profiles.xml \
 	device/samsung/tuna/gps.conf:system/etc/gps.conf
+
+# charger image
+PRODUCT_COPY_FILES += \
+	system/core/charger/images/charging.png:root/res/images/charging.png
 
 # Bluetooth configuration files
 PRODUCT_COPY_FILES += \
