@@ -140,7 +140,7 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_DL2_MEDIA_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB,
+        .intval = MIXER_ABE_GAIN_0DB - 9,
     },
     {
         .ctl_name = MIXER_DL1_VOICE_PLAYBACK_VOLUME,
@@ -148,7 +148,7 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_DL2_VOICE_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB,
+        .intval = MIXER_ABE_GAIN_0DB - 9,
     },
     {
         .ctl_name = MIXER_SDT_DL_VOLUME,
@@ -164,7 +164,7 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_HANDSFREE_PLAYBACK_VOLUME,
-        .intval = 26, /* max for no distortion */
+        .intval = 29,
     },
     {
         .ctl_name = MIXER_AUDUL_VOICE_UL_VOLUME,
