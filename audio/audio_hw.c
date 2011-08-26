@@ -509,14 +509,14 @@ static void set_input_volumes(struct tuna_audio_device *adev, int main_mic_on,
                               int headset_mic_on, int sub_mic_on)
 {
     unsigned int channel;
-    int volume;
+    int volume = MIXER_ABE_GAIN_0DB;
 
     if (adev->mode == AUDIO_MODE_IN_CALL) {
         /* special case: don't look at input source for IN_CALL state */
         volume = DB_TO_ABE_GAIN(main_mic_on ? VOICE_CALL_MAIN_MIC_VOLUME :
                 (headset_mic_on ? VOICE_CALL_HEADSET_MIC_VOLUME :
                 (sub_mic_on ? VOICE_CALL_SUB_MIC_VOLUME : 0)));
-    } else {
+    } else if (adev->active_input) {
         /* determine input volume by use case */
         switch (adev->active_input->source) {
         case AUDIO_SOURCE_MIC: /* general capture */
@@ -544,7 +544,7 @@ static void set_input_volumes(struct tuna_audio_device *adev, int main_mic_on,
             break;
 
         default:
-            volume = MIXER_ABE_GAIN_0DB;
+            /* nothing to do */
             break;
         }
     }
