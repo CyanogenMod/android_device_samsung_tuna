@@ -204,16 +204,6 @@ struct route_setting defaults[] = {
         .intval = DB_TO_CAPTURE_VOLUME(30),
     },
 
-    /* speaker */
-    {
-        .ctl_name = MIXER_HF_LEFT_PLAYBACK,
-        .strval = MIXER_PLAYBACK_HF_DAC,
-    },
-    {
-        .ctl_name = MIXER_HF_RIGHT_PLAYBACK,
-        .strval = MIXER_PLAYBACK_HF_DAC,
-    },
-
     /* headset */
     {
         .ctl_name = MIXER_SIDETONE_MIXER_PLAYBACK,
@@ -223,6 +213,32 @@ struct route_setting defaults[] = {
         .ctl_name = MIXER_DL1_PDM_SWITCH,
         .intval = 1,
     },
+
+    /* bt */
+    {
+        .ctl_name = MIXER_BT_UL_VOLUME,
+        .intval = MIXER_ABE_GAIN_0DB,
+    },
+    {
+        .ctl_name = NULL,
+    },
+};
+
+struct route_setting hf_output[] = {
+    {
+        .ctl_name = MIXER_HF_LEFT_PLAYBACK,
+        .strval = MIXER_PLAYBACK_HF_DAC,
+    },
+    {
+        .ctl_name = MIXER_HF_RIGHT_PLAYBACK,
+        .strval = MIXER_PLAYBACK_HF_DAC,
+    },
+    {
+        .ctl_name = NULL,
+    },
+};
+
+struct route_setting hs_output[] = {
     {
         .ctl_name = MIXER_HS_LEFT_PLAYBACK,
         .strval = MIXER_PLAYBACK_HS_DAC,
@@ -230,12 +246,6 @@ struct route_setting defaults[] = {
     {
         .ctl_name = MIXER_HS_RIGHT_PLAYBACK,
         .strval = MIXER_PLAYBACK_HS_DAC,
-    },
-
-    /* bt */
-    {
-        .ctl_name = MIXER_BT_UL_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB,
     },
     {
         .ctl_name = NULL,
@@ -632,6 +642,10 @@ static void select_output_device(struct tuna_audio_device *adev)
     mixer_ctl_set_value(adev->mixer_ctls.dl1_bt, 0, bt_on);
     mixer_ctl_set_value(adev->mixer_ctls.earpiece_enable, 0, earpiece_on);
 
+    /* select output stage */
+    set_route_by_array(adev->mixer, hs_output, headset_on | headphone_on | earpiece_on);
+    set_route_by_array(adev->mixer, hf_output, speaker_on);
+
     /* Special case: select input path if in a call, otherwise
        in_set_parameters is used to update the input route
        todo: use sub mic for handsfree case */
@@ -868,10 +882,17 @@ static int out_set_format(struct audio_stream *stream, int format)
 static int out_standby(struct audio_stream *stream)
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
+    struct tuna_audio_device *adev = out->dev;
 
     pthread_mutex_lock(&out->lock);
     if (!out->standby) {
         pcm_close(out->pcm);
+        /* if in call, don't turn off the output stage. This will
+        be done when the call is ended */
+        if (adev->mode != AUDIO_MODE_IN_CALL) {
+            set_route_by_array(adev->mixer, hs_output, 0);
+            set_route_by_array(adev->mixer, hf_output, 0);
+        }
         out->pcm = NULL;
         out->standby = 1;
     }
