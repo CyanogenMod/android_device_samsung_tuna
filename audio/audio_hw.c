@@ -25,6 +25,7 @@
 
 #include <cutils/log.h>
 #include <cutils/str_parms.h>
+#include <cutils/properties.h>
 
 #include <hardware/hardware.h>
 #include <system/audio.h>
@@ -41,6 +42,7 @@
 #define MIXER_DL2_MEDIA_PLAYBACK_VOLUME     "DL2 Media Playback Volume"
 #define MIXER_DL2_VOICE_PLAYBACK_VOLUME     "DL2 Voice Playback Volume"
 #define MIXER_SDT_DL_VOLUME                 "SDT DL Volume"
+#define MIXER_SDT_UL_VOLUME                 "SDT UL Volume"
 
 #define MIXER_HEADSET_PLAYBACK_VOLUME       "Headset Playback Volume"
 #define MIXER_HANDSFREE_PLAYBACK_VOLUME     "Handsfree Playback Volume"
@@ -52,6 +54,7 @@
 #define MIXER_DL2_MIXER_MULTIMEDIA          "DL2 Mixer Multimedia"
 #define MIXER_DL2_MIXER_VOICE               "DL2 Mixer Voice"
 #define MIXER_SIDETONE_MIXER_PLAYBACK       "Sidetone Mixer Playback"
+#define MIXER_SIDETONE_MIXER_CAPTURE        "Sidetone Mixer Capture"
 #define MIXER_DL1_PDM_SWITCH                "DL1 PDM Switch"
 #define MIXER_DL1_BT_VX_SWITCH              "DL1 BT_VX Switch"
 #define MIXER_VOICE_CAPTURE_MIXER_CAPTURE   "Voice Capture Mixer Capture"
@@ -123,6 +126,10 @@
 #define VOICE_CALL_MAIN_MIC_VOLUME 0
 #define VOICE_CALL_SUB_MIC_VOLUME -4
 #define VOICE_CALL_HEADSET_MIC_VOLUME 8
+
+/* product-specific defines */
+#define PRODUCT_DEVICE_PROPERTY "ro.product.device"
+#define PRODUCT_DEVICE_VALUE    "toro"
 
 enum tty_modes {
     TTY_MODE_OFF,
@@ -202,6 +209,14 @@ struct route_setting defaults[] = {
     {
         .ctl_name = MIXER_CAPTURE_VOLUME,
         .intval = DB_TO_CAPTURE_VOLUME(30),
+    },
+    {
+        .ctl_name = MIXER_SDT_UL_VOLUME,
+        .intval = MIXER_ABE_GAIN_0DB - 13,
+    },
+    {
+        .ctl_name = MIXER_SIDETONE_MIXER_CAPTURE,
+        .intval = 0,
     },
 
     /* headset */
@@ -348,6 +363,7 @@ struct mixer_ctls
     struct mixer_ctl *left_capture;
     struct mixer_ctl *right_capture;
     struct mixer_ctl *amic_ul_volume;
+    struct mixer_ctl *sidetone_capture;
 };
 
 struct tuna_audio_device {
@@ -365,6 +381,7 @@ struct tuna_audio_device {
     struct tuna_stream_in *active_input;
     bool mic_mute;
     int tty_mode;
+    int sidetone_capture;
     /* RIL */
     struct ril_handle ril;
 };
@@ -404,6 +421,19 @@ struct tuna_stream_in {
 static void select_output_device(struct tuna_audio_device *adev);
 static void select_input_device(struct tuna_audio_device *adev);
 static int adev_set_voice_volume(struct audio_hw_device *dev, float volume);
+
+/* Returns true on devices that must use sidetone capture,
+ * false otherwise. */
+static int needs_sidetone_capture(void)
+{
+    char property[PROPERTY_VALUE_MAX];
+
+    property_get(PRODUCT_DEVICE_PROPERTY, property, PRODUCT_DEVICE_VALUE);
+
+    /* return true if the property matches the given value */
+    return strcmp(property, PRODUCT_DEVICE_VALUE) == 0;
+}
+
 
 /* The enable flag when 0 makes the assumption that enums are disabled by
  * "Off" and integers/booleans by 0 */
@@ -591,6 +621,7 @@ static void select_output_device(struct tuna_audio_device *adev)
     int earpiece_on;
     int bt_on;
     int dl1_on;
+    int sidetone_capture_on = 0;
 
     /* tear down call stream before changing route,
     otherwise microphone does not function */
@@ -690,10 +721,16 @@ static void select_output_device(struct tuna_audio_device *adev)
 
             set_input_volumes(adev, earpiece_on || headphone_on,
                               headset_on, speaker_on);
+
+            /* enable sidetone mixer capture if needed */
+            sidetone_capture_on = earpiece_on && adev->sidetone_capture;
         }
 
         set_incall_device(adev);
     }
+
+    mixer_ctl_set_value(adev->mixer_ctls.sidetone_capture, 0, sidetone_capture_on);
+
     if (adev->in_call)
         start_call(adev);
 }
@@ -1633,12 +1670,15 @@ static int adev_open(const hw_module_t* module, const char* name,
                                            MIXER_ANALOG_RIGHT_CAPTURE_ROUTE);
     adev->mixer_ctls.amic_ul_volume = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_AMIC_UL_VOLUME);
+    adev->mixer_ctls.sidetone_capture = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_SIDETONE_MIXER_CAPTURE);
 
     if (!adev->mixer_ctls.mm_dl1 || !adev->mixer_ctls.vx_dl1 ||
         !adev->mixer_ctls.mm_dl2 || !adev->mixer_ctls.vx_dl2 ||
         !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
         !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
-        !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume) {
+        !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume ||
+        !adev->mixer_ctls.sidetone_capture) {
         mixer_close(adev->mixer);
         free(adev);
         LOGE("Unable to locate all mixer controls, aborting.");
@@ -1656,6 +1696,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->pcm_modem_ul = NULL;
     adev->voice_volume = 1.0f;
     adev->tty_mode = TTY_MODE_OFF;
+    adev->sidetone_capture = needs_sidetone_capture();
 
     /* RIL */
     ril_open(&adev->ril);
