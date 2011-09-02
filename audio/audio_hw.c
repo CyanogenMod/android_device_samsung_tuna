@@ -140,7 +140,7 @@ struct pcm_config pcm_config_mm = {
 };
 
 struct pcm_config pcm_config_vx = {
-    .channels = 2,
+    .channels = 1,
     .rate = 8000,
     .period_size = 160,
     .period_count = 2,
