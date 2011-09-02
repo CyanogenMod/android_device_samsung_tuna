@@ -105,6 +105,9 @@
 #define DB_TO_ABE_GAIN(x) ((x) + MIXER_ABE_GAIN_0DB)
 #define DB_TO_CAPTURE_PREAMPLIFIER_VOLUME(x) (((x) + 6) / 6)
 #define DB_TO_CAPTURE_VOLUME(x) (((x) - 6) / 6)
+#define DB_TO_HEADSET_VOLUME(x) (((x) + 30) / 2)
+#define DB_TO_SPEAKER_VOLUME(x) (((x) + 52) / 2)
+#define DB_TO_EARPIECE_VOLUME(x) (((x) + 24) / 2)
 
 /* use-case specific volumes, all in dB */
 #define CAPTURE_MAIN_MIC_VOLUME 13
@@ -172,7 +175,7 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_DL2_MEDIA_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB - 9,
+        .intval = MIXER_ABE_GAIN_0DB,
     },
     {
         .ctl_name = MIXER_DL1_VOICE_PLAYBACK_VOLUME,
@@ -180,7 +183,7 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_DL2_VOICE_PLAYBACK_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB - 9,
+        .intval = MIXER_ABE_GAIN_0DB,
     },
     {
         .ctl_name = MIXER_SDT_DL_VOLUME,
@@ -188,15 +191,15 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_HEADSET_PLAYBACK_VOLUME,
-        .intval = 9,
+        .intval = DB_TO_HEADSET_VOLUME(-6),
     },
     {
         .ctl_name = MIXER_EARPHONE_PLAYBACK_VOLUME,
-        .intval = 15,
+        .intval = DB_TO_EARPIECE_VOLUME(6),
     },
     {
         .ctl_name = MIXER_HANDSFREE_PLAYBACK_VOLUME,
-        .intval = 29,
+        .intval = DB_TO_SPEAKER_VOLUME(0),
     },
     {
         .ctl_name = MIXER_AUDUL_VOICE_UL_VOLUME,
