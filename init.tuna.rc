@@ -18,8 +18,12 @@ on post-fs-data
 	setprop vold.post_fs_data_done 1
 
 # LTE
-    chown radio system /sys/devices/platform/switch-sio/usb_sel
-    chown radio system /sys/devices/platform/switch-sio/uart_sel
+    chown radio system /sys/devices/tuna_otg/usb_sel
+    chown radio system /sys/devices/tuna_otg/uart_sel
+    chown radio system /sys/bus/i2c/drivers/fsa9480/4-0025/switch
+    chmod 0660 /sys/bus/i2c/drivers/fsa9480/4-0025/switch
+    chmod 0660 /sys/devices/tuna_otg/uart_sel
+    chmod 0660 /sys/devices/tuna_otg/usb_sel
 
 on boot
 	mount debugfs /sys/kernel/debug /sys/kernel/debug
