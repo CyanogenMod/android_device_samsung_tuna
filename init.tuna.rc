@@ -156,3 +156,6 @@ service bugreport /system/bin/bugmailer.sh -v
 	disabled
 	oneshot
 	keycodes 114 115 116
+
+service battery_charger /charger
+	class charger
