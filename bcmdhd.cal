@@ -15,7 +15,7 @@ ag0=253
 ag1=255
 aa2g=1
 aa5g=1
-ccode=US
+ccode=GB
 
 #for BT-coexistence
 btc_params80=0
@@ -57,9 +57,9 @@ pa1hib2=0xFF4E
 maxp2ga0=76
 sromrev=3
 cckpo=0
-ofdm2gpo=0x55555555
-mcs2gpo0=0x9999
-mcs2gpo1=0x9999
+ofdm2gpo=0x77777777
+mcs2gpo0=0xbbbb
+mcs2gpo1=0xbbbb
 
 # 5G PA offset
 maxp5ga0=66
