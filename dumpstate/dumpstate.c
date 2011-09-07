@@ -26,4 +26,7 @@ void dumpstate_board()
     dump_file("soc production_id", "/sys/board_properties/soc/production_id");
     dump_file("pm_debug count", "/d/pm_debug/count");
     dump_file("pm_debug time", "/d/pm_debug/time");
+    dump_file("dsscomp_log", "/d/dsscomp/log");
+    dump_file("dsscomp_comps", "/d/dsscomp/comps");
+    dump_file("dsscomp_gralloc", "/d/dsscomp/gralloc");
 };
