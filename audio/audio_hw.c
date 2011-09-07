@@ -40,6 +40,8 @@
 #include "ril_interface.h"
 
 /* Mixer control names */
+#define MIXER_DL2_LEFT_EQUALIZER            "DL2 Left Equalizer"
+#define MIXER_DL2_RIGHT_EQUALIZER           "DL2 Right Equalizer"
 #define MIXER_DL1_MEDIA_PLAYBACK_VOLUME     "DL1 Media Playback Volume"
 #define MIXER_DL1_VOICE_PLAYBACK_VOLUME     "DL1 Voice Playback Volume"
 #define MIXER_DL2_MEDIA_PLAYBACK_VOLUME     "DL2 Media Playback Volume"
@@ -90,6 +92,7 @@
 #define MIXER_AMIC1                         "AMic1"
 #define MIXER_BT_LEFT                       "BT Left"
 #define MIXER_BT_RIGHT                      "BT Right"
+#define MIXER_450HZ_HIGH_PASS               "450Hz High-pass"
 
 /* ALSA ports for OMAP4 */
 #define PORT_MM 0
@@ -187,6 +190,14 @@ struct route_setting
 /* These are values that never change */
 struct route_setting defaults[] = {
     /* general */
+    {
+        .ctl_name = MIXER_DL2_LEFT_EQUALIZER,
+        .strval = MIXER_450HZ_HIGH_PASS,
+    },
+    {
+        .ctl_name = MIXER_DL2_RIGHT_EQUALIZER,
+        .strval = MIXER_450HZ_HIGH_PASS,
+    },
     {
         .ctl_name = MIXER_DL1_MEDIA_PLAYBACK_VOLUME,
         .intval = MIXER_ABE_GAIN_0DB,
