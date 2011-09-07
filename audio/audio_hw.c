@@ -110,8 +110,6 @@
 #define MM_FULL_POWER_SAMPLING_RATE 48000
 /* sampling rate when using VX port for narrow band */
 #define VX_NB_SAMPLING_RATE 8000
-/* sampling rate when using VX port for wide band */
-#define VX_WB_SAMPLING_RATE 16000
 
 /* conversions from dB to ABE and codec gains */
 #define DB_TO_ABE_GAIN(x) ((x) + MIXER_ABE_GAIN_0DB)
@@ -158,6 +156,14 @@ struct pcm_config pcm_config_mm = {
     .rate = MM_FULL_POWER_SAMPLING_RATE,
     .period_size = 1024,
     .period_count = 4,
+    .format = PCM_FORMAT_S16_LE,
+};
+
+struct pcm_config pcm_config_mm_ul = {
+    .channels = 2,
+    .rate = MM_FULL_POWER_SAMPLING_RATE,
+    .period_size = 1024,
+    .period_count = 2,
     .format = PCM_FORMAT_S16_LE,
 };
 
@@ -919,20 +925,11 @@ static size_t get_input_buffer_size(uint32_t sample_rate, int format, int channe
     if (check_input_parameters(sample_rate, format, channel_count) != 0)
         return 0;
 
-    if (sample_rate <= VX_NB_SAMPLING_RATE) {
-        size = pcm_config_vx.period_size;
-        device_rate = VX_NB_SAMPLING_RATE;
-    } else if (sample_rate <= VX_WB_SAMPLING_RATE) {
-        size = pcm_config_vx.period_size * 2;
-        device_rate = VX_WB_SAMPLING_RATE;
-    } else if (sample_rate <= MM_FULL_POWER_SAMPLING_RATE) {
-        size = pcm_config_mm.period_size;
-        device_rate = MM_FULL_POWER_SAMPLING_RATE;
-    } else {
-        return 0;
-    }
-
-    size = (((size * sample_rate) / device_rate + 15) / 16) * 16;
+    /* take resampling into account and return the closest majoring
+    multiple of 16 frames, as audioflinger expects audio buffers to
+    be a multiple of 16 frames */
+    size = (pcm_config_mm_ul.period_size * sample_rate) / pcm_config_mm_ul.rate;
+    size = ((size + 15) / 16) * 16;
 
     return size * channel_count * sizeof(short);
 }
@@ -2109,19 +2106,8 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
 
     in->requested_rate = *sample_rate;
 
-    if (in->requested_rate <= VX_NB_SAMPLING_RATE) {
-        in->port = PORT_VX;
-        memcpy(&in->config, &pcm_config_vx, sizeof(pcm_config_vx));
-        in->config.rate = VX_NB_SAMPLING_RATE;
-    } else if (in->requested_rate <= VX_WB_SAMPLING_RATE) {
-        in->port = PORT_VX; /* use voice uplink */
-        memcpy(&in->config, &pcm_config_vx, sizeof(pcm_config_vx));
-        in->config.rate = VX_WB_SAMPLING_RATE;
-        in->config.period_size *= 2;
-    } else {
-        in->port = PORT_MM2_UL; /* use multimedia uplink 2 */
-        memcpy(&in->config, &pcm_config_mm, sizeof(pcm_config_mm));
-    }
+    in->port = PORT_MM2_UL; /* use multimedia uplink 2 */
+    memcpy(&in->config, &pcm_config_mm_ul, sizeof(pcm_config_mm_ul));
     in->config.channels = channel_count;
 
     in->buffer = malloc(in->config.period_size *
