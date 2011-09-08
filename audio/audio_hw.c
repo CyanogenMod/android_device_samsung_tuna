@@ -530,6 +530,8 @@ static int set_route_by_array(struct mixer *mixer, struct route_setting *route,
 
 static int start_call(struct tuna_audio_device *adev)
 {
+    LOGE("Opening modem PCMs");
+
     /* Open modem PCM channels */
     if (adev->pcm_modem_dl == NULL) {
         adev->pcm_modem_dl = pcm_open(0, PORT_MODEM, PCM_OUT, &pcm_config_vx);
@@ -564,6 +566,8 @@ err_open_ul:
 
 static void end_call(struct tuna_audio_device *adev)
 {
+    LOGE("Closing modem PCMs");
+
     pcm_stop(adev->pcm_modem_dl);
     pcm_stop(adev->pcm_modem_ul);
     pcm_close(adev->pcm_modem_dl);
@@ -673,6 +677,7 @@ static void force_all_standby(struct tuna_audio_device *adev)
 static void select_mode(struct tuna_audio_device *adev)
 {
     if (adev->mode == AUDIO_MODE_IN_CALL) {
+        LOGE("Entering IN_CALL state, in_call=%d", adev->in_call);
         if (!adev->in_call) {
             force_all_standby(adev);
             select_output_device(adev);
@@ -682,6 +687,8 @@ static void select_mode(struct tuna_audio_device *adev)
             adev->in_call = 1;
         }
     } else {
+        LOGE("Leaving IN_CALL state, in_call=%d, mode=%d",
+             adev->in_call, adev->mode);
         if (adev->in_call) {
             adev->in_call = 0;
             end_call(adev);
