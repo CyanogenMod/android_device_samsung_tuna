@@ -213,7 +213,7 @@
                    channels="1" />
         </EncoderProfile>
 
-        <ImageEncoding quality="90" />
+        <ImageEncoding quality="95" />
         <ImageEncoding quality="80" />
         <ImageEncoding quality="70" />
         <ImageDecoding memCap="20000000" />
@@ -322,7 +322,7 @@
                    channels="1" />
         </EncoderProfile>
 
-        <ImageEncoding quality="90" />
+        <ImageEncoding quality="95" />
         <ImageEncoding quality="80" />
         <ImageEncoding quality="70" />
         <ImageDecoding memCap="20000000" />
