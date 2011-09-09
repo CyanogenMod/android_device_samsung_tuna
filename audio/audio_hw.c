@@ -450,7 +450,6 @@ struct tuna_stream_in {
     int16_t *buffer;
     size_t frames_in;
     unsigned int requested_rate;
-    int port;
     int standby;
     int source;
     struct echo_reference_itfe *echo_reference;
@@ -823,13 +822,10 @@ static void select_input_device(struct tuna_audio_device *adev)
     int main_mic_on = 0;
     int sub_mic_on = 0;
     int bt_on = adev->devices & AUDIO_DEVICE_IN_ALL_SCO;
-    int port = PORT_VX;
     int anlg_mic_on;
 
     if (!bt_on) {
         if ((adev->mode != AUDIO_MODE_IN_CALL) && (adev->active_input != 0)) {
-            /* PORT_MM2_UL is only used when not in call and active input uses it. */
-            port = adev->active_input->port;
             /* sub mic is used for camcorder or VoIP on speaker phone */
             sub_mic_on = (adev->active_input->source == AUDIO_SOURCE_CAMCORDER) ||
                          ((adev->devices & AUDIO_DEVICE_OUT_SPEAKER) &&
@@ -852,15 +848,11 @@ static void select_input_device(struct tuna_audio_device *adev)
    /* TODO: check how capture is possible during voice calls or if
     * both use cases are mutually exclusive.
     */
-    if (bt_on) {
-        set_route_by_array(adev->mixer, mm_ul2_bt, (port != PORT_VX));
-        set_route_by_array(adev->mixer, vx_ul_bt, (port == PORT_VX));
-    } else {
+    if (bt_on)
+        set_route_by_array(adev->mixer, mm_ul2_bt, 1);
+    else {
         /* Select front end */
-        set_route_by_array(adev->mixer, mm_ul2_amic,
-                           anlg_mic_on && (port != PORT_VX));
-        set_route_by_array(adev->mixer, vx_ul_amic_left,
-                           anlg_mic_on && (port == PORT_VX));
+        set_route_by_array(adev->mixer, mm_ul2_amic, anlg_mic_on);
 
         /* Select back end */
         mixer_ctl_set_enum_by_string(adev->mixer_ctls.right_capture,
@@ -1306,7 +1298,7 @@ static int start_input_stream(struct tuna_stream_in *in)
                                         in->requested_rate);
 
     /* this assumes routing is done previously */
-    in->pcm = pcm_open(0, in->port, PCM_IN, &in->config);
+    in->pcm = pcm_open(0, PORT_MM2_UL, PCM_IN, &in->config);
     if (!pcm_is_ready(in->pcm)) {
         LOGE("cannot open pcm_in driver: %s", pcm_get_error(in->pcm));
         pcm_close(in->pcm);
@@ -2134,7 +2126,6 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
 
     in->requested_rate = *sample_rate;
 
-    in->port = PORT_MM2_UL; /* use multimedia uplink 2 */
     memcpy(&in->config, &pcm_config_mm_ul, sizeof(pcm_config_mm_ul));
     in->config.channels = channel_count;
 
