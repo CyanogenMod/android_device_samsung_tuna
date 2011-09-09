@@ -661,14 +661,7 @@ static void set_input_volumes(struct tuna_audio_device *adev, int main_mic_on,
 static void force_all_standby(struct tuna_audio_device *adev)
 {
     struct tuna_stream_in *in;
-    struct tuna_stream_out *out;
 
-    if (adev->active_output) {
-        out = adev->active_output;
-        pthread_mutex_lock(&out->lock);
-        do_output_standby(out);
-        pthread_mutex_unlock(&out->lock);
-    }
     if (adev->active_input) {
         in = adev->active_input;
         pthread_mutex_lock(&in->lock);
@@ -1146,18 +1139,16 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
         pthread_mutex_lock(&out->lock);
         if ((out->device != val) && (val != 0)) {
             out->device = val;
-            if (adev->mode == AUDIO_MODE_IN_CALL) {
-                adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
-                adev->devices |= out->device;
-                select_output_device(adev);
-            } else if (out == adev->active_output) {
-                do_output_standby(out);
+            if (out == adev->active_output) {
                 /* a change in output device may change the microphone selection */
                 if (adev->active_input &&
                         adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION) {
                     force_input_standby = true;
                 }
             }
+            adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
+            adev->devices |= out->device;
+            select_output_device(adev);
         }
         pthread_mutex_unlock(&out->lock);
         if (force_input_standby) {
@@ -1955,6 +1946,14 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     out->device = devices;
     out->dev = ladev;
     out->standby = 1;
+
+    /* FIXME: when we support multiple output devices, we will want to
+     * do the following:
+     * adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
+     * adev->devices |= out->device;
+     * select_output_device(adev);
+     * This is because out_set_parameters() with a route is not
+     * guaranteed to be called after an output stream is opened. */
 
     *format = out_get_format(&out->stream.common);
     *channels = out_get_channels(&out->stream.common);
