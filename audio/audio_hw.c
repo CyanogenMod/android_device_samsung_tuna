@@ -171,7 +171,7 @@ struct pcm_config pcm_config_mm_ul = {
 };
 
 struct pcm_config pcm_config_vx = {
-    .channels = 1,
+    .channels = 2,
     .rate = VX_NB_SAMPLING_RATE,
     .period_size = 160,
     .period_count = 2,
