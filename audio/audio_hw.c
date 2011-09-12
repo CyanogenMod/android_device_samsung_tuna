@@ -416,7 +416,7 @@ struct tuna_audio_device {
     int tty_mode;
     int sidetone_capture;
     struct echo_reference_itfe *echo_reference;
-
+    bool bluetooth_nrec;
     /* RIL */
     struct ril_handle ril;
 };
@@ -595,7 +595,10 @@ static void set_incall_device(struct tuna_audio_device *adev)
         case AUDIO_DEVICE_OUT_BLUETOOTH_SCO:
         case AUDIO_DEVICE_OUT_BLUETOOTH_SCO_HEADSET:
         case AUDIO_DEVICE_OUT_BLUETOOTH_SCO_CARKIT:
-            device_type = SOUND_AUDIO_PATH_BLUETOOTH;
+            if (adev->bluetooth_nrec)
+                device_type = SOUND_AUDIO_PATH_BLUETOOTH;
+            else
+                device_type = SOUND_AUDIO_PATH_BLUETOOTH_NO_NR;
             break;
         default:
             device_type = SOUND_AUDIO_PATH_HANDSET;
@@ -2003,6 +2006,14 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
         pthread_mutex_unlock(&adev->lock);
     }
 
+    ret = str_parms_get_str(parms, AUDIO_PARAMETER_KEY_BT_NREC, value, sizeof(value));
+    if (ret >= 0) {
+        if (strcmp(value, AUDIO_PARAMETER_VALUE_ON) == 0)
+            adev->bluetooth_nrec = true;
+        else
+            adev->bluetooth_nrec = false;
+    }
+
     str_parms_destroy(parms);
     return ret;
 }
@@ -2301,6 +2312,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->voice_volume = 1.0f;
     adev->tty_mode = TTY_MODE_OFF;
     adev->sidetone_capture = needs_sidetone_capture();
+    adev->bluetooth_nrec = true;
 
     /* RIL */
     ril_open(&adev->ril);
