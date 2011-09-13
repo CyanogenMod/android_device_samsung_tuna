@@ -244,7 +244,7 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_SDT_UL_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB - 13,
+        .intval = MIXER_ABE_GAIN_0DB - 19,
     },
     {
         .ctl_name = MIXER_SIDETONE_MIXER_CAPTURE,
