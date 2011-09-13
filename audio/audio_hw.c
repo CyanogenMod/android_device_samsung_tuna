@@ -877,8 +877,6 @@ static int start_output_stream(struct tuna_stream_out *out)
 
     if (adev->mode != AUDIO_MODE_IN_CALL) {
         /* FIXME: only works if only one output can be active at a time */
-        adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
-        adev->devices |= out->device;
         select_output_device(adev);
     }
 
@@ -1077,7 +1075,6 @@ static int do_output_standby(struct tuna_stream_out *out)
         be done when the call is ended */
         if (adev->mode != AUDIO_MODE_IN_CALL) {
             /* FIXME: only works if only one output can be active at a time */
-            adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
             set_route_by_array(adev->mixer, hs_output, 0);
             set_route_by_array(adev->mixer, hf_output, 0);
         }
