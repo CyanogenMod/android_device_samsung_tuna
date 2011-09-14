@@ -68,7 +68,7 @@
 #define MIXER_HS_RIGHT_PLAYBACK             "HS Right Playback"
 #define MIXER_HF_LEFT_PLAYBACK              "HF Left Playback"
 #define MIXER_HF_RIGHT_PLAYBACK             "HF Right Playback"
-#define MIXER_EARPHONE_ENABLE_SWITCH        "Earphone Enable Switch"
+#define MIXER_EARPHONE_PLAYBACK             "Earphone Playback"
 
 #define MIXER_ANALOG_LEFT_CAPTURE_ROUTE     "Analog Left Capture Route"
 #define MIXER_ANALOG_RIGHT_CAPTURE_ROUTE    "Analog Right Capture Route"
@@ -389,7 +389,7 @@ struct mixer_ctls
     struct mixer_ctl *mm_dl2;
     struct mixer_ctl *vx_dl1;
     struct mixer_ctl *vx_dl2;
-    struct mixer_ctl *earpiece_enable;
+    struct mixer_ctl *earpiece_playback;
     struct mixer_ctl *dl1_headset;
     struct mixer_ctl *dl1_bt;
     struct mixer_ctl *left_capture;
@@ -752,10 +752,11 @@ static void select_output_device(struct tuna_audio_device *adev)
     mixer_ctl_set_value(adev->mixer_ctls.dl1_headset, 0,
                         headset_on | headphone_on | earpiece_on);
     mixer_ctl_set_value(adev->mixer_ctls.dl1_bt, 0, bt_on);
-    mixer_ctl_set_value(adev->mixer_ctls.earpiece_enable, 0, earpiece_on);
 
     /* select output stage */
-    set_route_by_array(adev->mixer, hs_output, headset_on | headphone_on | earpiece_on);
+    mixer_ctl_set_enum_by_string(adev->mixer_ctls.earpiece_playback,
+                        earpiece_on ? MIXER_PLAYBACK_HS_DAC : "Off");
+    set_route_by_array(adev->mixer, hs_output, headset_on | headphone_on);
     set_route_by_array(adev->mixer, hf_output, speaker_on);
 
     /* Special case: select input path if in a call, otherwise
@@ -1075,6 +1076,7 @@ static int do_output_standby(struct tuna_stream_out *out)
         be done when the call is ended */
         if (adev->mode != AUDIO_MODE_IN_CALL) {
             /* FIXME: only works if only one output can be active at a time */
+            mixer_ctl_set_enum_by_string(adev->mixer_ctls.earpiece_playback, "Off");
             set_route_by_array(adev->mixer, hs_output, 0);
             set_route_by_array(adev->mixer, hf_output, 0);
         }
@@ -2274,8 +2276,8 @@ static int adev_open(const hw_module_t* module, const char* name,
                                            MIXER_DL1_PDM_SWITCH);
     adev->mixer_ctls.dl1_bt = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL1_BT_VX_SWITCH);
-    adev->mixer_ctls.earpiece_enable = mixer_get_ctl_by_name(adev->mixer,
-                                           MIXER_EARPHONE_ENABLE_SWITCH);
+    adev->mixer_ctls.earpiece_playback = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_EARPHONE_PLAYBACK);
     adev->mixer_ctls.left_capture = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_ANALOG_LEFT_CAPTURE_ROUTE);
     adev->mixer_ctls.right_capture = mixer_get_ctl_by_name(adev->mixer,
@@ -2288,7 +2290,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     if (!adev->mixer_ctls.mm_dl1 || !adev->mixer_ctls.vx_dl1 ||
         !adev->mixer_ctls.mm_dl2 || !adev->mixer_ctls.vx_dl2 ||
         !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
-        !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
+        !adev->mixer_ctls.earpiece_playback || !adev->mixer_ctls.left_capture ||
         !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume ||
         !adev->mixer_ctls.sidetone_capture) {
         mixer_close(adev->mixer);
