@@ -28,7 +28,7 @@ on post-fs-data
 on boot
 	mount debugfs /sys/kernel/debug /sys/kernel/debug
 	chmod 0666 /dev/pvrsrvkm
-	setprop ro.crypto.keyfile.userdata /efs/userdata_footer
+	setprop ro.crypto.keyfile.userdata /dev/block/platform/omap/omap_hsmmc.0/by-name/metadata
 
 on fs
 	mkdir /efs 0775 radio radio
