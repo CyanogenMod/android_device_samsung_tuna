@@ -34,9 +34,9 @@ on fs
 	mkdir /efs 0775 radio radio
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/system /system wait ro
 	setprop ro.crypto.tmpfs_options size=128m,mode=0771,uid=1000,gid=1000
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata /data wait noatime nosuid nodev nomblk_io_submit
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/cache /cache wait noatime nosuid nodev nomblk_io_submit
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /efs wait noatime nosuid nodev nomblk_io_submit
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata /data wait noatime nosuid nodev nomblk_io_submit,errors=panic
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/cache /cache wait noatime nosuid nodev nomblk_io_submit,errors=panic
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /efs wait noatime nosuid nodev nomblk_io_submit,errors=panic
 	setprop ro.crypto.fuse_sdcard true
 
 # change permissions for Tiler driver
