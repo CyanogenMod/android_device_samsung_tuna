@@ -140,8 +140,7 @@ ifneq ($(TARGET_BUILD_VARIANT),user)
 		system/extras/bugmailer/send_bug:system/bin/send_bug
 endif
 
-# XXX: should be including hd-phone-dalvik-heap.mk or something?
-$(call inherit-product, frameworks/base/build/tablet-dalvik-heap.mk)
+$(call inherit-product, frameworks/base/build/phone-xhdpi-1024-dalvik-heap.mk)
 
 $(call inherit-product-if-exists, vendor/nxp/pn544/nxp-pn544-fw-vendor.mk)
 $(call inherit-product, hardware/ti/omap4xxx/omap4.mk)
