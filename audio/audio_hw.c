@@ -94,6 +94,12 @@
 #define MIXER_BT_RIGHT                      "BT Right"
 #define MIXER_450HZ_HIGH_PASS               "450Hz High-pass"
 
+
+/* ALSA cards for OMAP4 */
+#define CARD_OMAP4_ABE 0
+#define CARD_OMAP4_HDMI 1
+#define CARD_TUNA_DEFAULT CARD_OMAP4_ABE
+
 /* ALSA ports for OMAP4 */
 #define PORT_MM 0
 #define PORT_MM2_UL 1
@@ -587,6 +593,7 @@ static void set_incall_device(struct tuna_audio_device *adev)
             device_type = SOUND_AUDIO_PATH_HANDSET;
             break;
         case AUDIO_DEVICE_OUT_SPEAKER:
+        case AUDIO_DEVICE_OUT_AUX_DIGITAL:
             device_type = SOUND_AUDIO_PATH_SPEAKER;
             break;
         case AUDIO_DEVICE_OUT_WIRED_HEADSET:
@@ -738,6 +745,10 @@ static void select_output_device(struct tuna_audio_device *adev)
                 break;
             case TTY_MODE_OFF:
             default:
+                /* force speaker on when in call and HDMI is selected as voice DL audio
+                 * cannot be routed to HDMI by ABE */
+                if (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL)
+                    speaker_on = 1;
                 break;
         }
     }
@@ -874,6 +885,7 @@ static void select_input_device(struct tuna_audio_device *adev)
 static int start_output_stream(struct tuna_stream_out *out)
 {
     struct tuna_audio_device *adev = out->dev;
+    unsigned int card = CARD_TUNA_DEFAULT;
 
     adev->active_output = out;
 
@@ -881,8 +893,10 @@ static int start_output_stream(struct tuna_stream_out *out)
         /* FIXME: only works if only one output can be active at a time */
         select_output_device(adev);
     }
-
-    out->pcm = pcm_open(0, PORT_MM, PCM_OUT, &out->config);
+    /* in the case of multiple devices, this will cause use of HDMI only */
+    if(adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL)
+        card = CARD_OMAP4_HDMI;
+    out->pcm = pcm_open(card, PORT_MM, PCM_OUT, &out->config);
     if (!pcm_is_ready(out->pcm)) {
         LOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
         pcm_close(out->pcm);
@@ -1137,6 +1151,10 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
                         adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION) {
                     force_input_standby = true;
                 }
+                /* force standby if moving to/from HDMI */
+                if ((out->device & AUDIO_DEVICE_OUT_AUX_DIGITAL) ^
+                    (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL))
+                        do_output_standby(out);
             }
             adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
             adev->devices |= out->device;
