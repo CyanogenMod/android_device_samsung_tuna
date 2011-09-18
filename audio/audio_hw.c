@@ -478,6 +478,7 @@ static void select_input_device(struct tuna_audio_device *adev);
 static int adev_set_voice_volume(struct audio_hw_device *dev, float volume);
 static int do_input_standby(struct tuna_stream_in *in);
 static int do_output_standby(struct tuna_stream_out *out);
+static void set_incall_device(struct tuna_audio_device *adev);
 
 /* Returns true on devices that must use sidetone capture,
  * false otherwise. */
@@ -550,6 +551,8 @@ static int start_call(struct tuna_audio_device *adev)
 
     pcm_start(adev->pcm_modem_dl);
     pcm_start(adev->pcm_modem_ul);
+
+    set_incall_device(adev);
 
     return 0;
 
@@ -807,8 +810,6 @@ static void select_output_device(struct tuna_audio_device *adev)
             /* enable sidetone mixer capture if needed */
             sidetone_capture_on = earpiece_on && adev->sidetone_capture;
         }
-
-        set_incall_device(adev);
     }
 
     mixer_ctl_set_value(adev->mixer_ctls.sidetone_capture, 0, sidetone_capture_on);
