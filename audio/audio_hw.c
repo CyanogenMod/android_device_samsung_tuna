@@ -433,7 +433,6 @@ struct tuna_stream_out {
     pthread_mutex_t lock;       /* see note below on mutex acquisition order */
     struct pcm_config config;
     struct pcm *pcm;
-    int device;
     struct resampler_itfe *resampler;
     char *buffer;
     int standby;
@@ -670,6 +669,14 @@ static void set_input_volumes(struct tuna_audio_device *adev, int main_mic_on,
 static void force_all_standby(struct tuna_audio_device *adev)
 {
     struct tuna_stream_in *in;
+    struct tuna_stream_out *out;
+
+    if (adev->active_output) {
+        out = adev->active_output;
+        pthread_mutex_lock(&out->lock);
+        do_output_standby(out);
+        pthread_mutex_unlock(&out->lock);
+    }
 
     if (adev->active_input) {
         in = adev->active_input;
@@ -685,6 +692,21 @@ static void select_mode(struct tuna_audio_device *adev)
         LOGE("Entering IN_CALL state, in_call=%d", adev->in_call);
         if (!adev->in_call) {
             force_all_standby(adev);
+            /* force earpiece route for in call state if speaker is the
+            only currently selected route. This prevents having to tear
+            down the modem PCMs to change route from speaker to earpiece
+            after the ringtone is played, but doesn't cause a route
+            change if a headset or bt device is already connected. If
+            speaker is not the only thing active, just remove it from
+            the route. We'll assume it'll never be used initally during
+            a call. This works because we're sure that the audio policy
+            manager will update the output device after the audio mode
+            change, even if the device selection did not change. */
+            if ((adev->devices & AUDIO_DEVICE_OUT_ALL) == AUDIO_DEVICE_OUT_SPEAKER)
+                adev->devices = AUDIO_DEVICE_OUT_EARPIECE |
+                                AUDIO_DEVICE_IN_BUILTIN_MIC;
+            else
+                adev->devices &= ~AUDIO_DEVICE_OUT_SPEAKER;
             select_output_device(adev);
             start_call(adev);
             ril_set_call_clock_sync(&adev->ril, SOUND_CLOCK_START);
@@ -1141,8 +1163,7 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
         val = atoi(value);
         pthread_mutex_lock(&adev->lock);
         pthread_mutex_lock(&out->lock);
-        if ((out->device != val) && (val != 0)) {
-            out->device = val;
+        if (((adev->devices & AUDIO_DEVICE_OUT_ALL) != val) && (val != 0)) {
             if (out == adev->active_output) {
                 /* a change in output device may change the microphone selection */
                 if (adev->active_input &&
@@ -1150,12 +1171,12 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
                     force_input_standby = true;
                 }
                 /* force standby if moving to/from HDMI */
-                if ((out->device & AUDIO_DEVICE_OUT_AUX_DIGITAL) ^
+                if ((val & AUDIO_DEVICE_OUT_AUX_DIGITAL) ^
                     (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL))
                         do_output_standby(out);
             }
             adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
-            adev->devices |= out->device;
+            adev->devices |= val;
             select_output_device(adev);
         }
         pthread_mutex_unlock(&out->lock);
@@ -1951,7 +1972,6 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 
     out->config = pcm_config_mm;
 
-    out->device = devices;
     out->dev = ladev;
     out->standby = 1;
 
