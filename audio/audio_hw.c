@@ -313,7 +313,7 @@ struct route_setting mm_ul2_bt[] = {
     },
     {
         .ctl_name = MIXER_MUX_UL11,
-        .strval = MIXER_BT_RIGHT,
+        .strval = MIXER_BT_LEFT,
     },
     {
         .ctl_name = NULL,
@@ -327,7 +327,7 @@ struct route_setting mm_ul2_amic[] = {
     },
     {
         .ctl_name = MIXER_MUX_UL11,
-        .strval = MIXER_AMIC1,
+        .strval = MIXER_AMIC0,
     },
     {
         .ctl_name = NULL,
@@ -342,7 +342,7 @@ struct route_setting vx_ul_amic_left[] = {
     },
     {
         .ctl_name = MIXER_MUX_VX1,
-        .strval = MIXER_AMIC1,
+        .strval = MIXER_AMIC0,
     },
     {
         .ctl_name = MIXER_VOICE_CAPTURE_MIXER_CAPTURE,
@@ -360,7 +360,7 @@ struct route_setting vx_ul_amic_right[] = {
     },
     {
         .ctl_name = MIXER_MUX_VX1,
-        .strval = MIXER_AMIC0,
+        .strval = MIXER_AMIC1,
     },
     {
         .ctl_name = MIXER_VOICE_CAPTURE_MIXER_CAPTURE,
@@ -378,7 +378,7 @@ struct route_setting vx_ul_bt[] = {
     },
     {
         .ctl_name = MIXER_MUX_VX1,
-        .strval = MIXER_BT_RIGHT,
+        .strval = MIXER_BT_LEFT,
     },
     {
         .ctl_name = MIXER_VOICE_CAPTURE_MIXER_CAPTURE,
