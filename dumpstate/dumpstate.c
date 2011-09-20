@@ -34,4 +34,6 @@ void dumpstate_board()
     dump_file("audio codec_reg", "/sys/devices/platform/soc-audio/PDM-DL1/codec_reg");
     dump_file("ducati trace1", "/d/remoteproc/omap-rproc.1/trace1");
     dump_file("ducati trace1_last", "/d/remoteproc/omap-rproc.1/trace1_last");
+    dump_file("fsa9480 device_type", "/sys/bus/i2c/drivers/fsa9480/4-0025/device_type");
+    dump_file("fsa9480 control", "/sys/bus/i2c/drivers/fsa9480/4-0025/control");
 };
