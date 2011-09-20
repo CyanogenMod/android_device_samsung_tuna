@@ -115,7 +115,8 @@ PRODUCT_COPY_FILES += \
 
 # Melfas touchscreen firmware
 PRODUCT_COPY_FILES += \
-    device/samsung/tuna/mms144_ts_rev31.fw:system/vendor/firmware/mms144_ts_rev31.fw
+    device/samsung/tuna/mms144_ts_rev31.fw:system/vendor/firmware/mms144_ts_rev31.fw \
+    device/samsung/tuna/mms144_ts_rev32.fw:system/vendor/firmware/mms144_ts_rev32.fw
 
 PRODUCT_PROPERTY_OVERRIDES += \
 	ro.opengles.version=131072
