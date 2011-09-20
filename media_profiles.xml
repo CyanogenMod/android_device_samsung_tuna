@@ -88,11 +88,11 @@
     <!-- Each camcorder profile defines a set of predefined configuration parameters -->
     <CamcorderProfiles cameraId="0">
 
-        <EncoderProfile quality="qcif" fileFormat="mp4" duration="60">
+        <EncoderProfile quality="qvga" fileFormat="mp4" duration="60">
             <Video codec="m4v"
                    bitRate="128000"
-                   width="176"
-                   height="144"
+                   width="320"
+                   height="240"
                    frameRate="15" />
             <Audio codec="amrnb"
                    bitRate="12200"
@@ -222,11 +222,11 @@
 
     <CamcorderProfiles cameraId="1">
 
-        <EncoderProfile quality="qcif" fileFormat="mp4" duration="60">
+        <EncoderProfile quality="qvga" fileFormat="mp4" duration="60">
             <Video codec="m4v"
                    bitRate="128000"
-                   width="176"
-                   height="144"
+                   width="320"
+                   height="240"
                    frameRate="15" />
             <Audio codec="amrnb"
                    bitRate="12200"
