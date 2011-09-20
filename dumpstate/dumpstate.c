@@ -32,4 +32,6 @@ void dumpstate_board()
     dump_file("audio media state", "/d/asoc/Tuna/SDP4430\ Media/state");
     dump_file("audio modem state", "/d/asoc/Tuna/SDP4430\ MODEM/state");
     dump_file("audio codec_reg", "/sys/devices/platform/soc-audio/PDM-DL1/codec_reg");
+    dump_file("ducati trace1", "/d/remoteproc/omap-rproc.1/trace1");
+    dump_file("ducati trace1_last", "/d/remoteproc/omap-rproc.1/trace1_last");
 };
