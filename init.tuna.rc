@@ -15,6 +15,10 @@ on post-fs-data
 	mkdir /data/misc/dhcp 0770 dhcp dhcp
 	chown dhcp dhcp /data/misc/dhcp
 
+	# camera calibration
+	mkdir /data/misc/camera 0770 media media
+	mkdir /data/misc/camera/R5_MVEN003_LD2_ND0_IR0_SH0_FL1_SVEN003_DCCID1044 0770 media media
+
 	setprop vold.post_fs_data_done 1
 
 # LTE
@@ -38,6 +42,14 @@ on fs
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/cache /cache wait noatime nosuid nodev nomblk_io_submit,errors=panic
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /factory wait ro
 	setprop ro.crypto.fuse_sdcard true
+
+# change permissions for mtd device
+	chmod 0660 /dev/mtd/mtd0
+	chown media media /dev/mtd/mtd0
+
+# change permissions for i2c-2 device
+	chmod 0660 /dev/i2c-2
+	chown media media /dev/i2c-2
 
 # change permissions for Tiler driver
     chmod 0777 /dev/tiler
@@ -83,6 +95,14 @@ on fs
 # ril control auto-suspend
 	chmod 0660 /sys/bus/usb/devices/usb1/power/control
 	chown radio radio /sys/bus/usb/devices/usb1/power/control
+
+service fRom /system/bin/fRom \
+	-x /data/misc/camera/R5_MVEN003_LD2_ND0_IR0_SH0_FL1_SVEN003_DCCID1044 \
+	-d /dev/mtd/mtd0
+	user media
+	group media
+	class late_start
+	oneshot
 
 service hciattach /system/bin/brcm_patchram_plus --enable_hci --no2bytes --enable_lpm \
 	--tosleep 50000 --baudrate 3000000 --use_baudrate_for_download --i2s=1,1,0,1 \
