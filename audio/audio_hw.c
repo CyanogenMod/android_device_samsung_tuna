@@ -750,11 +750,6 @@ static void select_output_device(struct tuna_audio_device *adev)
     int dl1_on;
     int sidetone_capture_on = 0;
 
-    /* tear down call stream before changing route,
-    otherwise microphone does not function */
-    if (adev->in_call)
-        end_call(adev);
-
     headset_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET;
     headphone_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADPHONE;
     speaker_on = adev->devices & AUDIO_DEVICE_OUT_SPEAKER;
@@ -859,9 +854,6 @@ static void select_output_device(struct tuna_audio_device *adev)
     }
 
     mixer_ctl_set_value(adev->mixer_ctls.sidetone_capture, 0, sidetone_capture_on);
-
-    if (adev->in_call)
-        start_call(adev);
 }
 
 static void select_input_device(struct tuna_audio_device *adev)
@@ -883,12 +875,6 @@ static void select_input_device(struct tuna_audio_device *adev)
             main_mic_on = adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC;
         }
     }
-
-    /* tear down call stream before changing route,
-     * otherwise microphone does not function
-     */
-    if (adev->in_call)
-        end_call(adev);
 
    /* TODO: check how capture is possible during voice calls or if
     * both use cases are mutually exclusive.
@@ -913,9 +899,6 @@ static void select_input_device(struct tuna_audio_device *adev)
     }
 
     set_input_volumes(adev, main_mic_on, headset_on, sub_mic_on);
-
-    if (adev->in_call)
-        start_call(adev);
 }
 
 /* must be called with hw device and output stream mutexes locked */
