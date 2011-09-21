@@ -320,7 +320,7 @@ struct route_setting mm_ul2_bt[] = {
     },
 };
 
-struct route_setting mm_ul2_amic[] = {
+struct route_setting mm_ul2_amic_left[] = {
     {
         .ctl_name = MIXER_MUX_UL10,
         .strval = MIXER_AMIC0,
@@ -328,6 +328,20 @@ struct route_setting mm_ul2_amic[] = {
     {
         .ctl_name = MIXER_MUX_UL11,
         .strval = MIXER_AMIC0,
+    },
+    {
+        .ctl_name = NULL,
+    },
+};
+
+struct route_setting mm_ul2_amic_right[] = {
+    {
+        .ctl_name = MIXER_MUX_UL10,
+        .strval = MIXER_AMIC1,
+    },
+    {
+        .ctl_name = MIXER_MUX_UL11,
+        .strval = MIXER_AMIC1,
     },
     {
         .ctl_name = NULL,
@@ -856,7 +870,6 @@ static void select_input_device(struct tuna_audio_device *adev)
     int main_mic_on = 0;
     int sub_mic_on = 0;
     int bt_on = adev->devices & AUDIO_DEVICE_IN_ALL_SCO;
-    int anlg_mic_on;
 
     if (!bt_on) {
         if ((adev->mode != AUDIO_MODE_IN_CALL) && (adev->active_input != 0)) {
@@ -871,8 +884,6 @@ static void select_input_device(struct tuna_audio_device *adev)
         }
     }
 
-    anlg_mic_on = headset_on | main_mic_on | sub_mic_on;
-
     /* tear down call stream before changing route,
      * otherwise microphone does not function
      */
@@ -886,7 +897,12 @@ static void select_input_device(struct tuna_audio_device *adev)
         set_route_by_array(adev->mixer, mm_ul2_bt, 1);
     else {
         /* Select front end */
-        set_route_by_array(adev->mixer, mm_ul2_amic, anlg_mic_on);
+        if (main_mic_on || headset_on)
+            set_route_by_array(adev->mixer, mm_ul2_amic_left, 1);
+        else if (sub_mic_on)
+            set_route_by_array(adev->mixer, mm_ul2_amic_right, 1);
+        else
+            set_route_by_array(adev->mixer, mm_ul2_amic_left, 0);
 
         /* Select back end */
         mixer_ctl_set_enum_by_string(adev->mixer_ctls.right_capture,
