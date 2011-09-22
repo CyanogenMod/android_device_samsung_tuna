@@ -999,11 +999,13 @@ static int start_output_stream(struct tuna_stream_out *out)
     }
     /* S/PDIF takes priority over HDMI audio. In the case of multiple
      * devices, this will cause use of S/PDIF or HDMI only */
+    out->config.rate = MM_FULL_POWER_SAMPLING_RATE;
     if (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)
         port = PORT_SPDIF;
     else if(adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL) {
         card = CARD_OMAP4_HDMI;
         port = PORT_HDMI;
+        out->config.rate = MM_LOW_POWER_SAMPLING_RATE;
     }
     out->pcm = pcm_open(card, port, PCM_OUT, &out->config);
     if (!pcm_is_ready(out->pcm)) {
@@ -1311,9 +1313,9 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     size_t frame_size = audio_stream_frame_size(&out->stream.common);
     size_t in_frames = bytes / frame_size;
     size_t out_frames = RESAMPLER_BUFFER_SIZE / frame_size;
-    unsigned int total_bytes;
-    unsigned int max_bytes;
-    unsigned int remaining_bytes;
+    unsigned int total_bytes = 0;
+    unsigned int max_bytes = 0;
+    unsigned int remaining_bytes = 0;
     unsigned int pos;
     bool force_input_standby = false;
     struct tuna_stream_in *in;
@@ -1336,15 +1338,18 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     }
     pthread_mutex_unlock(&adev->lock);
 
-    out->resampler->resample_from_input(out->resampler,
-                                        (int16_t *)buffer,
-                                        &in_frames,
-                                        (int16_t *)out->buffer,
-                                        &out_frames);
-
-    total_bytes = out_frames * frame_size;
-    max_bytes = out->config.period_size * frame_size;
-    remaining_bytes = total_bytes;
+    /* only use resampler if required */
+    if (out->config.rate != DEFAULT_OUT_SAMPLING_RATE) {
+        out->resampler->resample_from_input(out->resampler,
+                                            (int16_t *)buffer,
+                                            &in_frames,
+                                            (int16_t *)out->buffer,
+                                            &out_frames);
+        total_bytes = out_frames * frame_size;
+        max_bytes = out->config.period_size * frame_size;
+        remaining_bytes = total_bytes;
+    } else
+        out_frames = in_frames;
 
     if (out->echo_reference != NULL) {
         struct echo_reference_buffer b;
@@ -1355,19 +1360,18 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
         out->echo_reference->write(out->echo_reference, &b);
     }
 
-    for (pos = 0; pos < total_bytes; pos += max_bytes) {
-        int bytes_to_write = MIN(max_bytes, remaining_bytes);
+    if (out->config.rate != DEFAULT_OUT_SAMPLING_RATE) {
+        for (pos = 0; pos < total_bytes; pos += max_bytes) {
+            int bytes_to_write = MIN(max_bytes, remaining_bytes);
 
-        ret = pcm_write(out->pcm, (void *)(out->buffer + pos), bytes_to_write);
+            if (pcm_write(out->pcm, (void *)(out->buffer + pos), bytes_to_write) != 0)
+                goto error;
 
-        if (ret != 0) {
-            usleep(bytes * 1000000 / audio_stream_frame_size(&stream->common) /
-                   out_get_sample_rate(&stream->common));
-            pthread_mutex_unlock(&out->lock);
-            return bytes;
+            remaining_bytes -= bytes_to_write;
         }
-
-        remaining_bytes -= bytes_to_write;
+    } else {
+        if (pcm_write(out->pcm, (void *)buffer, bytes) != 0)
+            goto error;
     }
 
     pthread_mutex_unlock(&out->lock);
@@ -1383,6 +1387,12 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
         pthread_mutex_unlock(&adev->lock);
     }
 
+    return bytes;
+
+error:
+    usleep(bytes * 1000000 / audio_stream_frame_size(&stream->common) /
+           out_get_sample_rate(&stream->common));
+    pthread_mutex_unlock(&out->lock);
     return bytes;
 }
 
