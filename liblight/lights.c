@@ -39,6 +39,8 @@ char const *const LED_FILE = "/dev/an30259a_leds";
 #define SLOPE_UP_2		(500-SLOPE_UP_1)
 #define SLOPE_DOWN_1	SLOPE_UP_2
 #define SLOPE_DOWN_2	SLOPE_UP_1
+// brightness at mid-slope, on 0 - 127 scale
+#define MID_BRIGHTNESS  31
 
 void init_g_lock(void)
 {
@@ -144,12 +146,15 @@ static int set_light_leds(struct light_state_t const *state, int type)
 	case LIGHT_FLASH_HARDWARE:
 		led.state = LED_LIGHT_SLOPE;
 		led.color = state->color & 0x00ffffff;
+		// tweak to eliminate purplish tint from white color
+		if (led.color == 0x00ffffff)
+		    led.color = 0x80ff80;
 		// scale slope times based on flashOnMS
 		led.time_slope_up_1 = (SLOPE_UP_1 * state->flashOnMS) / 1000;
 		led.time_slope_up_2 = (SLOPE_UP_2 * state->flashOnMS) / 1000;
 		led.time_slope_down_1 = (SLOPE_DOWN_1 * state->flashOnMS) / 1000;
 		led.time_slope_down_2 = (SLOPE_DOWN_2 * state->flashOnMS) / 1000;
-		led.mid_brightness = 127;
+		led.mid_brightness = MID_BRIGHTNESS;
 		led.time_off = state->flashOffMS;
 		break;
 	default:
