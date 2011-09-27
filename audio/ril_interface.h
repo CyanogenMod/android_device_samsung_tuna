@@ -28,6 +28,10 @@
 #define RIL_CLIENT_ERR_RESOURCE     6 // Resource not available
 #define RIL_CLIENT_ERR_UNKNOWN      7
 
+#define RIL_OEM_UNSOL_RESPONSE_BASE 11000 // RIL response base index
+#define RIL_UNSOL_WB_AMR_STATE \
+    (RIL_OEM_UNSOL_RESPONSE_BASE + 17)    // RIL AMR state index
+
 struct ril_handle
 {
     void *handle;
@@ -63,5 +67,6 @@ int ril_set_call_volume(struct ril_handle *ril, enum ril_sound_type sound_type,
                         float volume);
 int ril_set_call_audio_path(struct ril_handle *ril, enum ril_audio_path path);
 int ril_set_call_clock_sync(struct ril_handle *ril, enum ril_clock_state state);
+void ril_register_set_wb_amr_callback(void *function, void *data);
 #endif
 
