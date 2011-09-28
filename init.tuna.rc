@@ -49,6 +49,8 @@ on fs
 # We chown/chmod /factory because mount is run as root + defaults
 	chown radio radio /factory
 	chmod 0775 /factory
+	mkdir /data/radio 0775 radio radio
+	mkdir /data/radio/log 0775 radio radio
 
 # nfc
     setprop ro.nfc.port "COM4"
