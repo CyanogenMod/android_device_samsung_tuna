@@ -31,12 +31,12 @@ on boot
 	setprop ro.crypto.keyfile.userdata /dev/block/platform/omap/omap_hsmmc.0/by-name/metadata
 
 on fs
-	mkdir /efs 0775 radio radio
+	mkdir /factory 0775 radio radio
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/system /system wait ro
 	setprop ro.crypto.tmpfs_options size=128m,mode=0771,uid=1000,gid=1000
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata /data wait noatime nosuid nodev nomblk_io_submit,errors=panic
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/cache /cache wait noatime nosuid nodev nomblk_io_submit,errors=panic
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /efs wait noatime nosuid nodev nomblk_io_submit,errors=panic
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /factory wait noatime nosuid nodev nomblk_io_submit,errors=panic
 	setprop ro.crypto.fuse_sdcard true
 
 # change permissions for Tiler driver
@@ -46,9 +46,9 @@ on fs
 # change permissions for ION driver
     chmod 0777 /dev/ion
 
-# We chown/chmod /efs because mount is run as root + defaults
-	chown radio radio /efs
-	chmod 0775 /efs
+# We chown/chmod /factory because mount is run as root + defaults
+	chown radio radio /factory
+	chmod 0775 /factory
 
 # nfc
     setprop ro.nfc.port "COM4"
@@ -58,7 +58,7 @@ on fs
     chown nfc nfc /sys/devices/platform/nfc-power/nfc_power
 
 # permissions for bluetooth.
-	setprop ro.bt.bdaddr_path "/efs/bluetooth/bt_addr"
+	setprop ro.bt.bdaddr_path "/factory/bluetooth/bt_addr"
 	chown bluetooth bluetooth ro.bt.bdaddr_path
 	chown bluetooth bluetooth /dev/ttyO1
 	chmod 0600 /dev/ttyO1
