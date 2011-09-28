@@ -35,7 +35,7 @@ char const *const LED_FILE = "/dev/an30259a_leds";
 #define IMAX 0 // 12.75mA power consumption
 
 // Slope values, based on total blink of 1000ms
-#define SLOPE_UP_1		400
+#define SLOPE_UP_1		450
 #define SLOPE_UP_2		(500-SLOPE_UP_1)
 #define SLOPE_DOWN_1	SLOPE_UP_2
 #define SLOPE_DOWN_2	SLOPE_UP_1
