@@ -154,12 +154,16 @@
 #define NORMAL_SPEAKER_VOLUME 0
 #define VOICE_CALL_SPEAKER_VOLUME 6
 
-#define HEADSET_VOLUME -6
-#define HEADPHONE_VOLUME 0 /* allow louder output for headphones */
+#define HEADSET_VOLUME_DEFAULT -6
+#define HEADSET_VOLUME_EUROPE -11
+#define HEADPHONE_VOLUME_DEFAULT -4 /* allow louder output for headphones */
+#define HEADPHONE_VOLUME_EUROPE -11
 
 /* product-specific defines */
 #define PRODUCT_DEVICE_PROPERTY "ro.product.device"
+#define PRODUCT_NAME_PROPERTY   "ro.product.name"
 #define PRODUCT_DEVICE_TORO     "toro"
+#define PRODUCT_NAME_YAKJU      "yakju"
 
 enum tty_modes {
     TTY_MODE_OFF,
@@ -439,6 +443,8 @@ struct tuna_audio_device {
     int sidetone_capture;
     struct echo_reference_itfe *echo_reference;
     bool bluetooth_nrec;
+    bool headphone_volume_europe;
+
     /* RIL */
     struct ril_handle ril;
 };
@@ -510,6 +516,15 @@ static int is_device_toro(void)
 
     /* return true if the property matches the given value */
     return strcmp(property, PRODUCT_DEVICE_TORO) == 0;
+}
+
+static int is_product_yakju(void)
+{
+    char property[PROPERTY_VALUE_MAX];
+
+    property_get(PRODUCT_NAME_PROPERTY, property, PRODUCT_NAME_YAKJU);
+
+    return strcmp(property, PRODUCT_NAME_YAKJU) == 0;
 }
 
 
@@ -690,8 +705,12 @@ static void set_output_volumes(struct tuna_audio_device *adev)
     speaker_volume = adev->mode == AUDIO_MODE_IN_CALL ? VOICE_CALL_SPEAKER_VOLUME :
                                                         NORMAL_SPEAKER_VOLUME;
     headset_volume = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET ?
-                                                        HEADSET_VOLUME :
-                                                        HEADPHONE_VOLUME;
+                                                        (adev->headphone_volume_europe ?
+                                                            HEADSET_VOLUME_EUROPE :
+                                                            HEADSET_VOLUME_DEFAULT) :
+                                                        (adev->headphone_volume_europe ?
+                                                                HEADPHONE_VOLUME_EUROPE :
+                                                                HEADPHONE_VOLUME_DEFAULT);
 
     for (channel = 0; channel < 2; channel++) {
         mixer_ctl_set_value(adev->mixer_ctls.speaker_volume, channel,
@@ -2377,6 +2396,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->voice_volume = 1.0f;
     adev->tty_mode = TTY_MODE_OFF;
     adev->sidetone_capture = is_device_toro();
+    adev->headphone_volume_europe = is_product_yakju();
     adev->bluetooth_nrec = true;
 
     /* RIL */
