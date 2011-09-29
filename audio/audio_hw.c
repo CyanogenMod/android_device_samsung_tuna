@@ -128,7 +128,7 @@
 #define DB_TO_SPEAKER_VOLUME(x) (((x) + 52) / 2)
 #define DB_TO_EARPIECE_VOLUME(x) (((x) + 24) / 2)
 
-/* use-case specific volumes, all in dB */
+/* use-case specific mic volumes, all in dB */
 #define CAPTURE_MAIN_MIC_VOLUME 13
 #define CAPTURE_SUB_MIC_VOLUME 18
 #define CAPTURE_HEADSET_MIC_VOLUME 12
@@ -146,12 +146,20 @@
 #define VOIP_HEADSET_MIC_VOLUME 12
 
 #define VOICE_CALL_MAIN_MIC_VOLUME 0
-#define VOICE_CALL_SUB_MIC_VOLUME -4
+#define VOICE_CALL_SUB_MIC_VOLUME_MAGURO -4
+#define VOICE_CALL_SUB_MIC_VOLUME_TORO -2
 #define VOICE_CALL_HEADSET_MIC_VOLUME 8
+
+/* use-case specific output volumes */
+#define NORMAL_SPEAKER_VOLUME 0
+#define VOICE_CALL_SPEAKER_VOLUME 6
+
+#define HEADSET_VOLUME -6
+#define HEADPHONE_VOLUME 0 /* allow louder output for headphones */
 
 /* product-specific defines */
 #define PRODUCT_DEVICE_PROPERTY "ro.product.device"
-#define PRODUCT_DEVICE_VALUE    "toro"
+#define PRODUCT_DEVICE_TORO     "toro"
 
 enum tty_modes {
     TTY_MODE_OFF,
@@ -225,16 +233,8 @@ struct route_setting defaults[] = {
         .intval = MIXER_ABE_GAIN_0DB,
     },
     {
-        .ctl_name = MIXER_HEADSET_PLAYBACK_VOLUME,
-        .intval = DB_TO_HEADSET_VOLUME(-6),
-    },
-    {
         .ctl_name = MIXER_EARPHONE_PLAYBACK_VOLUME,
         .intval = DB_TO_EARPIECE_VOLUME(6),
-    },
-    {
-        .ctl_name = MIXER_HANDSFREE_PLAYBACK_VOLUME,
-        .intval = DB_TO_SPEAKER_VOLUME(0),
     },
     {
         .ctl_name = MIXER_AUDUL_VOICE_UL_VOLUME,
@@ -416,6 +416,8 @@ struct mixer_ctls
     struct mixer_ctl *right_capture;
     struct mixer_ctl *amic_ul_volume;
     struct mixer_ctl *sidetone_capture;
+    struct mixer_ctl *headset_volume;
+    struct mixer_ctl *speaker_volume;
 };
 
 struct tuna_audio_device {
@@ -500,14 +502,14 @@ static int do_output_standby(struct tuna_stream_out *out);
 
 /* Returns true on devices that must use sidetone capture,
  * false otherwise. */
-static int needs_sidetone_capture(void)
+static int is_device_toro(void)
 {
     char property[PROPERTY_VALUE_MAX];
 
-    property_get(PRODUCT_DEVICE_PROPERTY, property, PRODUCT_DEVICE_VALUE);
+    property_get(PRODUCT_DEVICE_PROPERTY, property, PRODUCT_DEVICE_TORO);
 
     /* return true if the property matches the given value */
-    return strcmp(property, PRODUCT_DEVICE_VALUE) == 0;
+    return strcmp(property, PRODUCT_DEVICE_TORO) == 0;
 }
 
 
@@ -636,10 +638,12 @@ static void set_input_volumes(struct tuna_audio_device *adev, int main_mic_on,
     int volume = MIXER_ABE_GAIN_0DB;
 
     if (adev->mode == AUDIO_MODE_IN_CALL) {
+        int sub_mic_volume = is_device_toro() ? VOICE_CALL_SUB_MIC_VOLUME_TORO :
+	                                        VOICE_CALL_SUB_MIC_VOLUME_MAGURO;
         /* special case: don't look at input source for IN_CALL state */
         volume = DB_TO_ABE_GAIN(main_mic_on ? VOICE_CALL_MAIN_MIC_VOLUME :
                 (headset_mic_on ? VOICE_CALL_HEADSET_MIC_VOLUME :
-                (sub_mic_on ? VOICE_CALL_SUB_MIC_VOLUME : 0)));
+                (sub_mic_on ? sub_mic_volume : 0)));
     } else if (adev->active_input) {
         /* determine input volume by use case */
         switch (adev->active_input->source) {
@@ -675,6 +679,26 @@ static void set_input_volumes(struct tuna_audio_device *adev, int main_mic_on,
 
     for (channel = 0; channel < 2; channel++)
         mixer_ctl_set_value(adev->mixer_ctls.amic_ul_volume, channel, volume);
+}
+
+static void set_output_volumes(struct tuna_audio_device *adev)
+{
+    unsigned int channel;
+    int speaker_volume;
+    int headset_volume;
+
+    speaker_volume = adev->mode == AUDIO_MODE_IN_CALL ? VOICE_CALL_SPEAKER_VOLUME :
+                                                        NORMAL_SPEAKER_VOLUME;
+    headset_volume = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET ?
+                                                        HEADSET_VOLUME :
+                                                        HEADPHONE_VOLUME;
+
+    for (channel = 0; channel < 2; channel++) {
+        mixer_ctl_set_value(adev->mixer_ctls.speaker_volume, channel,
+            DB_TO_SPEAKER_VOLUME(speaker_volume));
+        mixer_ctl_set_value(adev->mixer_ctls.headset_volume, channel,
+            DB_TO_HEADSET_VOLUME(headset_volume));
+    }
 }
 
 static void force_all_standby(struct tuna_audio_device *adev)
@@ -797,8 +821,10 @@ static void select_output_device(struct tuna_audio_device *adev)
     mixer_ctl_set_value(adev->mixer_ctls.earpiece_enable, 0, earpiece_on);
 
     /* select output stage */
-    set_route_by_array(adev->mixer, hs_output, headset_on | headphone_on | earpiece_on);
+    set_route_by_array(adev->mixer, hs_output, headset_on | headphone_on);
     set_route_by_array(adev->mixer, hf_output, speaker_on);
+
+    set_output_volumes(adev);
 
     /* Special case: select input path if in a call, otherwise
        in_set_parameters is used to update the input route
@@ -2321,13 +2347,18 @@ static int adev_open(const hw_module_t* module, const char* name,
                                            MIXER_AMIC_UL_VOLUME);
     adev->mixer_ctls.sidetone_capture = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_SIDETONE_MIXER_CAPTURE);
+    adev->mixer_ctls.headset_volume = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_HEADSET_PLAYBACK_VOLUME);
+    adev->mixer_ctls.speaker_volume = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_HANDSFREE_PLAYBACK_VOLUME);
 
     if (!adev->mixer_ctls.mm_dl1 || !adev->mixer_ctls.vx_dl1 ||
         !adev->mixer_ctls.mm_dl2 || !adev->mixer_ctls.vx_dl2 ||
         !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
         !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
         !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume ||
-        !adev->mixer_ctls.sidetone_capture) {
+        !adev->mixer_ctls.sidetone_capture || !adev->mixer_ctls.headset_volume ||
+        !adev->mixer_ctls.speaker_volume) {
         mixer_close(adev->mixer);
         free(adev);
         LOGE("Unable to locate all mixer controls, aborting.");
@@ -2345,7 +2376,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->pcm_modem_ul = NULL;
     adev->voice_volume = 1.0f;
     adev->tty_mode = TTY_MODE_OFF;
-    adev->sidetone_capture = needs_sidetone_capture();
+    adev->sidetone_capture = is_device_toro();
     adev->bluetooth_nrec = true;
 
     /* RIL */
