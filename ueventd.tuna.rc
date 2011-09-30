@@ -32,6 +32,7 @@
 /dev/lte_rfs0		    0660	radio	radio
 /dev/lte_spi		    0660	radio	radio
 /dev/cdma_rmnet5	    0660	radio	radio
+/dev/cdma_rmnet6	    0660	radio	radio
 /dev/lte_rmnet4		    0660	radio	radio
 /dev/ttyGS1			    0660	radio	radio
 /dev/block/mmcblk0p4	0660 	radio	radio
