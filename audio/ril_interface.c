@@ -37,6 +37,33 @@ int (*_ril_disconnect)(void *);
 int (*_ril_set_call_volume)(void *, enum ril_sound_type, int);
 int (*_ril_set_call_audio_path)(void *, enum ril_audio_path);
 int (*_ril_set_call_clock_sync)(void *, enum ril_clock_state);
+int (*_ril_register_unsolicited_handler)(void *, int, void *);
+
+/* Audio WB AMR callback */
+void (*_audio_set_wb_amr_callback)(void *, int);
+void *callback_data = NULL;
+
+void ril_register_set_wb_amr_callback(void *function, void *data)
+{
+    _audio_set_wb_amr_callback = function;
+    callback_data = data;
+}
+
+/* This is the callback function that the RIL uses to
+set the wideband AMR state */
+static int ril_set_wb_amr_callback(void *ril_client,
+                                   const void *data,
+                                   size_t datalen)
+{
+    int enable = ((int *)data)[0];
+
+    if (!callback_data || !_audio_set_wb_amr_callback)
+        return -1;
+
+    _audio_set_wb_amr_callback(callback_data, enable);
+
+    return 0;
+}
 
 static int ril_connect_if_required(struct ril_handle *ril)
 {
@@ -72,10 +99,13 @@ int ril_open(struct ril_handle *ril)
     _ril_set_call_volume = dlsym(ril->handle, "SetCallVolume");
     _ril_set_call_audio_path = dlsym(ril->handle, "SetCallAudioPath");
     _ril_set_call_clock_sync = dlsym(ril->handle, "SetCallClockSync");
+    _ril_register_unsolicited_handler = dlsym(ril->handle,
+                                              "RegisterUnsolicitedHandler");
 
     if (!_ril_open_client || !_ril_close_client || !_ril_connect ||
         !_ril_is_connected || !_ril_disconnect || !_ril_set_call_volume ||
-        !_ril_set_call_audio_path || !_ril_set_call_clock_sync) {
+        !_ril_set_call_audio_path || !_ril_set_call_clock_sync ||
+        !_ril_register_unsolicited_handler) {
         LOGE("Cannot get symbols from '%s'", RIL_CLIENT_LIBPATH);
         dlclose(ril->handle);
         return -1;
@@ -87,6 +117,10 @@ int ril_open(struct ril_handle *ril)
         dlclose(ril->handle);
         return -1;
     }
+
+    /* register the wideband AMR callback */
+    _ril_register_unsolicited_handler(ril->client, RIL_UNSOL_WB_AMR_STATE,
+                                      ril_set_wb_amr_callback);
 
     property_get(VOLUME_STEPS_PROPERTY, property, VOLUME_STEPS_DEFAULT);
     ril->volume_steps_max = atoi(property);
