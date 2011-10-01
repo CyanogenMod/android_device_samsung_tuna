@@ -129,7 +129,7 @@
 #define DB_TO_EARPIECE_VOLUME(x) (((x) + 24) / 2)
 
 /* use-case specific mic volumes, all in dB */
-#define CAPTURE_MAIN_MIC_VOLUME 13
+#define CAPTURE_MAIN_MIC_VOLUME 10
 #define CAPTURE_SUB_MIC_VOLUME 18
 #define CAPTURE_HEADSET_MIC_VOLUME 12
 
@@ -138,7 +138,7 @@
 #define VOICE_RECOGNITION_HEADSET_MIC_VOLUME 14
 
 #define CAMCORDER_MAIN_MIC_VOLUME 13
-#define CAMCORDER_SUB_MIC_VOLUME 18
+#define CAMCORDER_SUB_MIC_VOLUME 12
 #define CAMCORDER_HEADSET_MIC_VOLUME 12
 
 #define VOIP_MAIN_MIC_VOLUME 13
@@ -155,9 +155,12 @@
 #define VOICE_CALL_SPEAKER_VOLUME 6
 
 #define HEADSET_VOLUME_DEFAULT -6
-#define HEADSET_VOLUME_EUROPE -11
-#define HEADPHONE_VOLUME_DEFAULT -4 /* allow louder output for headphones */
-#define HEADPHONE_VOLUME_EUROPE -11
+#define HEADSET_VOLUME_EUROPE -12
+#define HEADPHONE_VOLUME_DEFAULT -6
+#define HEADPHONE_VOLUME_EUROPE -6 /* allow louder output for headphones */
+
+#define EARPIECE_VOLUME_TORO 2
+#define EARPIECE_VOLUME_MAGURO 6
 
 /* product-specific defines */
 #define PRODUCT_DEVICE_PROPERTY "ro.product.device"
@@ -237,10 +240,6 @@ struct route_setting defaults[] = {
         .intval = MIXER_ABE_GAIN_0DB,
     },
     {
-        .ctl_name = MIXER_EARPHONE_PLAYBACK_VOLUME,
-        .intval = DB_TO_EARPIECE_VOLUME(6),
-    },
-    {
         .ctl_name = MIXER_AUDUL_VOICE_UL_VOLUME,
         .intval = MIXER_ABE_GAIN_0DB,
     },
@@ -254,7 +253,7 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_SDT_UL_VOLUME,
-        .intval = MIXER_ABE_GAIN_0DB - 19,
+        .intval = MIXER_ABE_GAIN_0DB - 17,
     },
     {
         .ctl_name = MIXER_SIDETONE_MIXER_CAPTURE,
@@ -422,6 +421,7 @@ struct mixer_ctls
     struct mixer_ctl *sidetone_capture;
     struct mixer_ctl *headset_volume;
     struct mixer_ctl *speaker_volume;
+    struct mixer_ctl *earpiece_volume;
 };
 
 struct tuna_audio_device {
@@ -444,6 +444,7 @@ struct tuna_audio_device {
     struct echo_reference_itfe *echo_reference;
     bool bluetooth_nrec;
     bool headphone_volume_europe;
+    bool earpiece_volume_toro;
 
     /* RIL */
     struct ril_handle ril;
@@ -701,6 +702,7 @@ static void set_output_volumes(struct tuna_audio_device *adev)
     unsigned int channel;
     int speaker_volume;
     int headset_volume;
+    int earpiece_volume;
 
     speaker_volume = adev->mode == AUDIO_MODE_IN_CALL ? VOICE_CALL_SPEAKER_VOLUME :
                                                         NORMAL_SPEAKER_VOLUME;
@@ -711,6 +713,8 @@ static void set_output_volumes(struct tuna_audio_device *adev)
                                                         (adev->headphone_volume_europe ?
                                                                 HEADPHONE_VOLUME_EUROPE :
                                                                 HEADPHONE_VOLUME_DEFAULT);
+    earpiece_volume = adev->earpiece_volume_toro ? EARPIECE_VOLUME_TORO :
+                                                   EARPIECE_VOLUME_MAGURO;
 
     for (channel = 0; channel < 2; channel++) {
         mixer_ctl_set_value(adev->mixer_ctls.speaker_volume, channel,
@@ -718,6 +722,8 @@ static void set_output_volumes(struct tuna_audio_device *adev)
         mixer_ctl_set_value(adev->mixer_ctls.headset_volume, channel,
             DB_TO_HEADSET_VOLUME(headset_volume));
     }
+    mixer_ctl_set_value(adev->mixer_ctls.earpiece_volume, 0,
+        DB_TO_EARPIECE_VOLUME(earpiece_volume));
 }
 
 static void force_all_standby(struct tuna_audio_device *adev)
@@ -2370,6 +2376,8 @@ static int adev_open(const hw_module_t* module, const char* name,
                                            MIXER_HEADSET_PLAYBACK_VOLUME);
     adev->mixer_ctls.speaker_volume = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_HANDSFREE_PLAYBACK_VOLUME);
+    adev->mixer_ctls.earpiece_volume = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_EARPHONE_PLAYBACK_VOLUME);
 
     if (!adev->mixer_ctls.mm_dl1 || !adev->mixer_ctls.vx_dl1 ||
         !adev->mixer_ctls.mm_dl2 || !adev->mixer_ctls.vx_dl2 ||
@@ -2377,7 +2385,7 @@ static int adev_open(const hw_module_t* module, const char* name,
         !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
         !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume ||
         !adev->mixer_ctls.sidetone_capture || !adev->mixer_ctls.headset_volume ||
-        !adev->mixer_ctls.speaker_volume) {
+        !adev->mixer_ctls.speaker_volume || !adev->mixer_ctls.earpiece_volume) {
         mixer_close(adev->mixer);
         free(adev);
         LOGE("Unable to locate all mixer controls, aborting.");
@@ -2397,6 +2405,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->tty_mode = TTY_MODE_OFF;
     adev->sidetone_capture = is_device_toro();
     adev->headphone_volume_europe = is_product_yakju();
+    adev->earpiece_volume_toro = is_device_toro();
     adev->bluetooth_nrec = true;
 
     /* RIL */
