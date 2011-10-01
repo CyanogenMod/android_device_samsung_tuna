@@ -119,6 +119,8 @@
 #define MM_FULL_POWER_SAMPLING_RATE 48000
 /* sampling rate when using VX port for narrow band */
 #define VX_NB_SAMPLING_RATE 8000
+/* sampling rate when using VX port for wide band */
+#define VX_WB_SAMPLING_RATE 16000
 
 /* conversions from dB to ABE and codec gains */
 #define DB_TO_ABE_GAIN(x) ((x) + MIXER_ABE_GAIN_0DB)
@@ -445,6 +447,7 @@ struct tuna_audio_device {
     bool bluetooth_nrec;
     bool headphone_volume_europe;
     bool earpiece_volume_toro;
+    int wb_amr;
 
     /* RIL */
     struct ril_handle ril;
@@ -568,6 +571,8 @@ static int start_call(struct tuna_audio_device *adev)
 {
     LOGE("Opening modem PCMs");
 
+    pcm_config_vx.rate = adev->wb_amr ? VX_WB_SAMPLING_RATE : VX_NB_SAMPLING_RATE;
+
     /* Open modem PCM channels */
     if (adev->pcm_modem_dl == NULL) {
         adev->pcm_modem_dl = pcm_open(0, PORT_MODEM, PCM_OUT, &pcm_config_vx);
@@ -610,6 +615,18 @@ static void end_call(struct tuna_audio_device *adev)
     pcm_close(adev->pcm_modem_ul);
     adev->pcm_modem_dl = NULL;
     adev->pcm_modem_ul = NULL;
+}
+
+void audio_set_wb_amr_callback(void *data, int enable)
+{
+    struct tuna_audio_device *adev = (struct tuna_audio_device *)data;
+    adev->wb_amr = enable;
+
+    /* reopen the modem PCMs at the new rate */
+    if (adev->in_call) {
+        end_call(adev);
+        start_call(adev);
+    }
 }
 
 static void set_incall_device(struct tuna_audio_device *adev)
@@ -2407,10 +2424,13 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->headphone_volume_europe = is_product_yakju();
     adev->earpiece_volume_toro = is_device_toro();
     adev->bluetooth_nrec = true;
+    adev->wb_amr = 0;
 
     /* RIL */
     ril_open(&adev->ril);
     pthread_mutex_unlock(&adev->lock);
+    /* register callback for wideband AMR setting */
+    ril_register_set_wb_amr_callback(audio_set_wb_amr_callback, (void *)adev);
 
     *device = &adev->hw_device.common;
 
