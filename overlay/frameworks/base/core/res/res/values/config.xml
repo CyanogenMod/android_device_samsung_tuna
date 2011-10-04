@@ -193,4 +193,9 @@
          specified -->
     <string name="default_wallpaper_component">com.android.phasebeam/.PhaseBeamWallpaper</string>
 
+    <!-- Vibrator pattern for feedback about touching a virtual key -->
+    <integer-array name="config_virtualKeyVibePattern">
+        <item>10</item>
+    </integer-array>
+
 </resources>
