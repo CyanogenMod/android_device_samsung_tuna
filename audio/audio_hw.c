@@ -595,12 +595,12 @@ static int start_call(struct tuna_audio_device *adev)
 
     return 0;
 
-err_open_dl:
-    pcm_close(adev->pcm_modem_dl);
-    adev->pcm_modem_dl = NULL;
 err_open_ul:
     pcm_close(adev->pcm_modem_ul);
     adev->pcm_modem_ul = NULL;
+err_open_dl:
+    pcm_close(adev->pcm_modem_dl);
+    adev->pcm_modem_dl = NULL;
 
     return -ENOMEM;
 }
