@@ -1325,7 +1325,7 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     if (out->echo_reference != NULL) {
         struct echo_reference_buffer b;
         b.raw = (void *)buffer;
-        b.frame_count = out_frames;
+        b.frame_count = in_frames;
 
         get_playback_delay(out, out_frames, &b);
         out->echo_reference->write(out->echo_reference, &b);
