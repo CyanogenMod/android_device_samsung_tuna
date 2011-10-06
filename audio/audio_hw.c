@@ -108,6 +108,8 @@
 #define PORT_VIBRA 4
 #define PORT_MODEM 5
 #define PORT_MM_LP 6
+#define PORT_SPDIF 9
+#define PORT_HDMI 0
 
 #define RESAMPLER_BUFFER_SIZE 8192
 
@@ -973,6 +975,7 @@ static int start_output_stream(struct tuna_stream_out *out)
 {
     struct tuna_audio_device *adev = out->dev;
     unsigned int card = CARD_TUNA_DEFAULT;
+    unsigned int port = PORT_MM;
 
     adev->active_output = out;
 
@@ -980,10 +983,15 @@ static int start_output_stream(struct tuna_stream_out *out)
         /* FIXME: only works if only one output can be active at a time */
         select_output_device(adev);
     }
-    /* in the case of multiple devices, this will cause use of HDMI only */
-    if(adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL)
+    /* S/PDIF takes priority over HDMI audio. In the case of multiple
+     * devices, this will cause use of S/PDIF or HDMI only */
+    if (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)
+        port = PORT_SPDIF;
+    else if(adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL) {
         card = CARD_OMAP4_HDMI;
-    out->pcm = pcm_open(card, PORT_MM, PCM_OUT, &out->config);
+        port = PORT_HDMI;
+    }
+    out->pcm = pcm_open(card, port, PCM_OUT, &out->config);
     if (!pcm_is_ready(out->pcm)) {
         LOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
         pcm_close(out->pcm);
@@ -1237,9 +1245,11 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
                     force_input_standby = true;
                 }
                 /* force standby if moving to/from HDMI */
-                if ((val & AUDIO_DEVICE_OUT_AUX_DIGITAL) ^
-                    (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL))
-                        do_output_standby(out);
+                if (((val & AUDIO_DEVICE_OUT_AUX_DIGITAL) ^
+                        (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL)) ||
+                        ((val & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET) ^
+                        (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)))
+                    do_output_standby(out);
             }
             adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
             adev->devices |= val;
