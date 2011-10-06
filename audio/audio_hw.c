@@ -623,13 +623,18 @@ static void end_call(struct tuna_audio_device *adev)
 void audio_set_wb_amr_callback(void *data, int enable)
 {
     struct tuna_audio_device *adev = (struct tuna_audio_device *)data;
-    adev->wb_amr = enable;
 
-    /* reopen the modem PCMs at the new rate */
-    if (adev->in_call) {
-        end_call(adev);
-        start_call(adev);
+    pthread_mutex_lock(&adev->lock);
+    if (adev->wb_amr != enable) {
+        adev->wb_amr = enable;
+
+        /* reopen the modem PCMs at the new rate */
+        if (adev->in_call) {
+            end_call(adev);
+            start_call(adev);
+        }
     }
+    pthread_mutex_unlock(&adev->lock);
 }
 
 static void set_incall_device(struct tuna_audio_device *adev)
