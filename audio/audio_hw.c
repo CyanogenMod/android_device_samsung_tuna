@@ -162,6 +162,7 @@
 #define HEADSET_VOLUME_EUROPE -12
 #define HEADPHONE_VOLUME_DEFAULT -6
 #define HEADPHONE_VOLUME_EUROPE -6 /* allow louder output for headphones */
+#define HEADPHONE_VOLUME_TTY -2
 
 #define EARPIECE_VOLUME_TORO 2
 #define EARPIECE_VOLUME_MAGURO 6
@@ -716,22 +717,28 @@ static void set_input_volumes(struct tuna_audio_device *adev, int main_mic_on,
         mixer_ctl_set_value(adev->mixer_ctls.amic_ul_volume, channel, volume);
 }
 
-static void set_output_volumes(struct tuna_audio_device *adev)
+static void set_output_volumes(struct tuna_audio_device *adev, bool tty_volume)
 {
     unsigned int channel;
     int speaker_volume;
     int headset_volume;
     int earpiece_volume;
 
+    if (tty_volume)
+        headset_volume = HEADPHONE_VOLUME_TTY;
+    else if (adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET) {
+        if (adev->headphone_volume_europe)
+            headset_volume = HEADSET_VOLUME_EUROPE;
+        else
+            headset_volume = HEADSET_VOLUME_DEFAULT;
+    } else {
+        if (adev->headphone_volume_europe)
+            headset_volume = HEADPHONE_VOLUME_EUROPE;
+        else
+            headset_volume = HEADPHONE_VOLUME_DEFAULT;
+    }
     speaker_volume = adev->mode == AUDIO_MODE_IN_CALL ? VOICE_CALL_SPEAKER_VOLUME :
                                                         NORMAL_SPEAKER_VOLUME;
-    headset_volume = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET ?
-                                                        (adev->headphone_volume_europe ?
-                                                            HEADSET_VOLUME_EUROPE :
-                                                            HEADSET_VOLUME_DEFAULT) :
-                                                        (adev->headphone_volume_europe ?
-                                                                HEADPHONE_VOLUME_EUROPE :
-                                                                HEADPHONE_VOLUME_DEFAULT);
     earpiece_volume = adev->earpiece_volume_toro ? EARPIECE_VOLUME_TORO :
                                                    EARPIECE_VOLUME_MAGURO;
 
@@ -814,6 +821,7 @@ static void select_output_device(struct tuna_audio_device *adev)
     int bt_on;
     int dl1_on;
     int sidetone_capture_on = 0;
+    bool tty_volume = false;
 
     headset_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET;
     headphone_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADPHONE;
@@ -831,6 +839,7 @@ static void select_output_device(struct tuna_audio_device *adev)
                 headset_on = 0;
                 speaker_on = 0;
                 earpiece_on = 0;
+                tty_volume = true;
                 break;
             case TTY_MODE_HCO:
                 /* rx path to device speaker */
@@ -868,7 +877,7 @@ static void select_output_device(struct tuna_audio_device *adev)
     set_route_by_array(adev->mixer, hs_output, headset_on | headphone_on);
     set_route_by_array(adev->mixer, hf_output, speaker_on);
 
-    set_output_volumes(adev);
+    set_output_volumes(adev, tty_volume);
 
     /* Special case: select input path if in a call, otherwise
        in_set_parameters is used to update the input route
