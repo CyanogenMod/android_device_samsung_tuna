@@ -467,6 +467,7 @@ struct mixer_ctls
     struct mixer_ctl *left_capture;
     struct mixer_ctl *right_capture;
     struct mixer_ctl *amic_ul_volume;
+    struct mixer_ctl *voice_ul_volume;
     struct mixer_ctl *sidetone_capture;
     struct mixer_ctl *headset_volume;
     struct mixer_ctl *speaker_volume;
@@ -909,6 +910,16 @@ static void select_output_device(struct tuna_audio_device *adev)
     int dl1_on;
     int sidetone_capture_on = 0;
     bool tty_volume = false;
+    unsigned int channel;
+
+    /* Mute VX_UL to avoid pop noises in the tx path
+     * during call before switch changes.
+     */
+    if (adev->mode == AUDIO_MODE_IN_CALL) {
+        for (channel = 0; channel < 2; channel++)
+            mixer_ctl_set_value(adev->mixer_ctls.voice_ul_volume,
+                                channel, 0);
+    }
 
     headset_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET;
     headphone_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADPHONE;
@@ -1019,6 +1030,12 @@ static void select_output_device(struct tuna_audio_device *adev)
         }
 
         set_incall_device(adev);
+
+        /* Unmute VX_UL after the switch */
+        for (channel = 0; channel < 2; channel++) {
+            mixer_ctl_set_value(adev->mixer_ctls.voice_ul_volume,
+                                channel, MIXER_ABE_GAIN_0DB);
+        }
     }
 
     mixer_ctl_set_value(adev->mixer_ctls.sidetone_capture, 0, sidetone_capture_on);
@@ -2548,6 +2565,8 @@ static int adev_open(const hw_module_t* module, const char* name,
                                            MIXER_ANALOG_RIGHT_CAPTURE_ROUTE);
     adev->mixer_ctls.amic_ul_volume = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_AMIC_UL_VOLUME);
+    adev->mixer_ctls.voice_ul_volume = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_AUDUL_VOICE_UL_VOLUME);
     adev->mixer_ctls.sidetone_capture = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_SIDETONE_MIXER_CAPTURE);
     adev->mixer_ctls.headset_volume = mixer_get_ctl_by_name(adev->mixer,
@@ -2564,8 +2583,9 @@ static int adev_open(const hw_module_t* module, const char* name,
         !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
         !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
         !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume ||
-        !adev->mixer_ctls.sidetone_capture || !adev->mixer_ctls.headset_volume ||
-        !adev->mixer_ctls.speaker_volume || !adev->mixer_ctls.earpiece_volume) {
+        !adev->mixer_ctls.voice_ul_volume || !adev->mixer_ctls.sidetone_capture ||
+        !adev->mixer_ctls.headset_volume || !adev->mixer_ctls.speaker_volume ||
+        !adev->mixer_ctls.earpiece_volume) {
         mixer_close(adev->mixer);
         free(adev);
         LOGE("Unable to locate all mixer controls, aborting.");
