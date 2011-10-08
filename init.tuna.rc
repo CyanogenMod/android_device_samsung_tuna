@@ -14,6 +14,7 @@ on post-fs-data
 	mkdir /data/misc/wifi/sockets 0770 wifi wifi
 	mkdir /data/misc/dhcp 0770 dhcp dhcp
 	chown dhcp dhcp /data/misc/dhcp
+	mkdir /data/smc 0770 drmrpc drmrpc
 
 	# camera calibration
 	mkdir /data/misc/camera 0770 media media
