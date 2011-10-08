@@ -132,6 +132,20 @@ service setup_fs /system/bin/setup_fs \
         group root
         oneshot
 
+service tf_daemon /system/bin/tf_daemon \
+        -d -c /vendor/etc/smc_normal_world_android_cfg.ini
+        class core
+        user root
+        group root
+
+service smc_pa_wvdrm /system/bin/smc_pa_ctrl \
+        -c /vendor/etc/smc_normal_world_android_cfg.ini \
+        start /vendor/firmware/smc_pa_wvdrm.ift
+        class core
+        user root
+        group root
+        oneshot
+
 # create virtual SD card at /mnt/sdcard, based on the /data/media directory
 # daemon will drop to user/group system/media_rw after initializing
 # underlying files in /data/media will be created with user and group media_rw (1023)
