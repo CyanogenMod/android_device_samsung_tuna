@@ -3,8 +3,10 @@
 /dev/tiler                0666   system     system
 
 #for SYSLINK
-/dev/rpmsg-omx0           0666   system     system
-/dev/rpmsg-omx1           0666   system     system
+/dev/rpmsg-omx0           0660   drmrpc    drmrpc
+/dev/rpmsg-omx1           0660   drmrpc    drmrpc
+/dev/rproc_user           0660   drmrpc    drmrpc
+/dev/tf_driver            0660   drmrpc    drmrpc
 
 #for Sensors
 /dev/mpu                  0660   system     system
