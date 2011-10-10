@@ -16,7 +16,8 @@
 
 #define LOG_NDEBUG 0
 #define LOG_TAG "Sensors"
-#define FUNC_LOG LOGV("%s", __PRETTY_FUNCTION__)
+//#define FUNC_LOG LOGV("%s", __PRETTY_FUNCTION__)
+#define FUNC_LOG
 
 #include <hardware/sensors.h>
 #include <fcntl.h>
@@ -355,7 +356,7 @@ static int poll__setDelay(struct sensors_poll_device_t *dev,
 static int poll__poll(struct sensors_poll_device_t *dev,
                       sensors_event_t* data, int count)
 {
-    //FUNC_LOG;
+    FUNC_LOG;
     sensors_poll_context_t *ctx = (sensors_poll_context_t *)dev;
     return ctx->pollEvents(data, count);
 }
