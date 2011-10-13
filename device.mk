@@ -43,6 +43,9 @@ PRODUCT_PACKAGES += \
 	audio.a2dp.default \
 	libaudioutils
 
+PRODUCT_PACKAGES += \
+	tuna_hdcp_keys
+
 PRODUCT_COPY_FILES := \
 	$(LOCAL_KERNEL):kernel \
 	device/samsung/tuna/init.tuna.rc:root/init.tuna.rc \
