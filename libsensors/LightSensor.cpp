@@ -34,7 +34,15 @@ LightSensor::LightSensor()
     mPreviousLight = -1;
 }
 
+int LightSensor::handleEnable(int en) {
+    mPreviousLight = -1;
+    return 0;
+}
+
 bool LightSensor::handleEvent(input_event const *event) {
+    if (event->value == -1) {
+        return false;
+    }
     mPendingEvent.light = indexToValue(event->value);
     if (mPendingEvent.light != mPreviousLight) {
         mPreviousLight = mPendingEvent.light;
