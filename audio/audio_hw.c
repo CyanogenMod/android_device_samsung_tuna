@@ -111,7 +111,25 @@
 #define PORT_SPDIF 9
 #define PORT_HDMI 0
 
-#define RESAMPLER_BUFFER_SIZE 8192
+/* constraint imposed by ABE: all period sizes must be multiples of 24 */
+#define ABE_BASE_FRAME_COUNT 24
+/* number of base blocks in a short period (low latency) */
+#define SHORT_PERIOD_MULTIPLIER 40  /* 20 ms */
+/* number of frames per short period (low latency) */
+#define SHORT_PERIOD_SIZE (ABE_BASE_FRAME_COUNT * SHORT_PERIOD_MULTIPLIER)
+/* number of short periods in a long period (low power) */
+#define LONG_PERIOD_MULTIPLIER 6  /* 120 ms */
+/* number of frames per long period (low power) */
+#define LONG_PERIOD_SIZE (SHORT_PERIOD_SIZE * LONG_PERIOD_MULTIPLIER)
+/* number of periods for playback */
+#define PLAYBACK_PERIOD_COUNT 4
+/* number of periods for capture */
+#define CAPTURE_PERIOD_COUNT 2
+/* minimum sleep time in out_write() when write threshold is not reached */
+#define MIN_WRITE_SLEEP_US 5000
+
+#define RESAMPLER_BUFFER_FRAMES (SHORT_PERIOD_SIZE * 2)
+#define RESAMPLER_BUFFER_SIZE (4 * RESAMPLER_BUFFER_FRAMES)
 
 #define DEFAULT_OUT_SAMPLING_RATE 44100
 
@@ -183,16 +201,16 @@ enum tty_modes {
 struct pcm_config pcm_config_mm = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
-    .period_size = 1056,
-    .period_count = 4,
+    .period_size = LONG_PERIOD_SIZE,
+    .period_count = PLAYBACK_PERIOD_COUNT,
     .format = PCM_FORMAT_S16_LE,
 };
 
 struct pcm_config pcm_config_mm_ul = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
-    .period_size = 1056,
-    .period_count = 2,
+    .period_size = SHORT_PERIOD_SIZE,
+    .period_count = CAPTURE_PERIOD_COUNT,
     .format = PCM_FORMAT_S16_LE,
 };
 
@@ -451,6 +469,7 @@ struct tuna_audio_device {
     bool headphone_volume_europe;
     bool earpiece_volume_toro;
     int wb_amr;
+    bool low_power;
 
     /* RIL */
     struct ril_handle ril;
@@ -466,8 +485,9 @@ struct tuna_stream_out {
     char *buffer;
     int standby;
     struct echo_reference_itfe *echo_reference;
-
     struct tuna_audio_device *dev;
+    int write_threshold;
+    bool low_power;
 };
 
 #define MAX_PREPROCESSORS 3 /* maximum one AGC + one NS + one AEC per input stream */
@@ -1007,7 +1027,16 @@ static int start_output_stream(struct tuna_stream_out *out)
         port = PORT_HDMI;
         out->config.rate = MM_LOW_POWER_SAMPLING_RATE;
     }
-    out->pcm = pcm_open(card, port, PCM_OUT, &out->config);
+    /* default to low power: will be corrected in out_write if necessary before first write to
+     * tinyalsa.
+     */
+    out->write_threshold = PLAYBACK_PERIOD_COUNT * LONG_PERIOD_SIZE;
+    out->config.start_threshold = SHORT_PERIOD_SIZE * 2;
+    out->config.avail_min = LONG_PERIOD_SIZE,
+    out->low_power = 1;
+
+    out->pcm = pcm_open(card, port, PCM_OUT | PCM_MMAP | PCM_NOIRQ, &out->config);
+
     if (!pcm_is_ready(out->pcm)) {
         LOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
         pcm_close(out->pcm);
@@ -1166,8 +1195,7 @@ static size_t out_get_buffer_size(const struct audio_stream *stream)
     /* take resampling into account and return the closest majoring
     multiple of 16 frames, as audioflinger expects audio buffers to
     be a multiple of 16 frames */
-    size_t size = (out->config.period_size * DEFAULT_OUT_SAMPLING_RATE) /
-                  out->config.rate;
+    size_t size = (SHORT_PERIOD_SIZE * DEFAULT_OUT_SAMPLING_RATE) / out->config.rate;
     size = ((size + 15) / 16) * 16;
     return size * audio_stream_frame_size((struct audio_stream *)stream);
 }
@@ -1294,8 +1322,7 @@ static uint32_t out_get_latency(const struct audio_stream_out *stream)
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
-    return (out->config.period_size * out->config.period_count * 1000) /
-            out->config.rate;
+    return (SHORT_PERIOD_SIZE * PLAYBACK_PERIOD_COUNT * 1000) / out->config.rate;
 }
 
 static int out_set_volume(struct audio_stream_out *stream, float left,
@@ -1313,12 +1340,11 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     size_t frame_size = audio_stream_frame_size(&out->stream.common);
     size_t in_frames = bytes / frame_size;
     size_t out_frames = RESAMPLER_BUFFER_SIZE / frame_size;
-    unsigned int total_bytes = 0;
-    unsigned int max_bytes = 0;
-    unsigned int remaining_bytes = 0;
-    unsigned int pos;
     bool force_input_standby = false;
     struct tuna_stream_in *in;
+    bool low_power;
+    int kernel_frames;
+    void *buf;
 
     /* acquiring hw device mutex systematically is useful if a low priority thread is waiting
      * on the output stream mutex - e.g. executing select_mode() while holding the hw device
@@ -1328,15 +1354,30 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     pthread_mutex_lock(&out->lock);
     if (out->standby) {
         ret = start_output_stream(out);
-        if (ret == 0) {
-            out->standby = 0;
-            /* a change in output device may change the microphone selection */
-            if (adev->active_input &&
-                    adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION)
-                force_input_standby = true;
+        if (ret != 0) {
+            pthread_mutex_unlock(&adev->lock);
+            goto exit;
         }
+        out->standby = 0;
+        /* a change in output device may change the microphone selection */
+        if (adev->active_input &&
+                adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION)
+            force_input_standby = true;
     }
+    low_power = adev->low_power;
     pthread_mutex_unlock(&adev->lock);
+
+    if (low_power != out->low_power) {
+        if (low_power) {
+            out->write_threshold = LONG_PERIOD_SIZE * PLAYBACK_PERIOD_COUNT;
+            out->config.avail_min = LONG_PERIOD_SIZE;
+        } else {
+            out->write_threshold = SHORT_PERIOD_SIZE * PLAYBACK_PERIOD_COUNT;
+            out->config.avail_min = SHORT_PERIOD_SIZE;
+        }
+        pcm_set_avail_min(out->pcm, out->config.avail_min);
+        out->low_power = low_power;
+    }
 
     /* only use resampler if required */
     if (out->config.rate != DEFAULT_OUT_SAMPLING_RATE) {
@@ -1345,12 +1386,11 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
                                             &in_frames,
                                             (int16_t *)out->buffer,
                                             &out_frames);
-        total_bytes = out_frames * frame_size;
-        max_bytes = out->config.period_size * frame_size;
-        remaining_bytes = total_bytes;
-    } else
+        buf = out->buffer;
+    } else {
         out_frames = in_frames;
-
+        buf = (void *)buffer;
+    }
     if (out->echo_reference != NULL) {
         struct echo_reference_buffer b;
         b.raw = (void *)buffer;
@@ -1360,21 +1400,33 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
         out->echo_reference->write(out->echo_reference, &b);
     }
 
-    if (out->config.rate != DEFAULT_OUT_SAMPLING_RATE) {
-        for (pos = 0; pos < total_bytes; pos += max_bytes) {
-            int bytes_to_write = MIN(max_bytes, remaining_bytes);
+    /* do not allow more than out->write_threshold frames in kernel pcm driver buffer */
+    do {
+        struct timespec time_stamp;
 
-            if (pcm_write(out->pcm, (void *)(out->buffer + pos), bytes_to_write) != 0)
-                goto error;
+        if (pcm_get_htimestamp(out->pcm, (unsigned int *)&kernel_frames, &time_stamp) < 0)
+            break;
+        kernel_frames = pcm_get_buffer_size(out->pcm) - kernel_frames;
 
-            remaining_bytes -= bytes_to_write;
+        if (kernel_frames > out->write_threshold) {
+            unsigned long time = (unsigned long)
+                    (((int64_t)(kernel_frames - out->write_threshold) * 1000000) /
+                            MM_FULL_POWER_SAMPLING_RATE);
+            if (time < MIN_WRITE_SLEEP_US)
+                time = MIN_WRITE_SLEEP_US;
+            usleep(time);
         }
-    } else {
-        if (pcm_write(out->pcm, (void *)buffer, bytes) != 0)
-            goto error;
-    }
+    } while (kernel_frames > out->write_threshold);
 
+    ret = pcm_mmap_write(out->pcm, (void *)buf, out_frames * frame_size);
+
+exit:
     pthread_mutex_unlock(&out->lock);
+
+    if (ret != 0) {
+        usleep(bytes * 1000000 / audio_stream_frame_size(&stream->common) /
+               out_get_sample_rate(&stream->common));
+    }
 
     if (force_input_standby) {
         pthread_mutex_lock(&adev->lock);
@@ -1387,12 +1439,6 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
         pthread_mutex_unlock(&adev->lock);
     }
 
-    return bytes;
-
-error:
-    usleep(bytes * 1000000 / audio_stream_frame_size(&stream->common) /
-           out_get_sample_rate(&stream->common));
-    pthread_mutex_unlock(&out->lock);
     return bytes;
 }
 
@@ -2148,6 +2194,14 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
             adev->bluetooth_nrec = true;
         else
             adev->bluetooth_nrec = false;
+    }
+
+    ret = str_parms_get_str(parms, "screen_state", value, sizeof(value));
+    if (ret >= 0) {
+        if (strcmp(value, AUDIO_PARAMETER_VALUE_ON) == 0)
+            adev->low_power = false;
+        else
+            adev->low_power = true;
     }
 
     str_parms_destroy(parms);
