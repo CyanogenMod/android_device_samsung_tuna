@@ -38,6 +38,7 @@ int (*_ril_set_call_volume)(void *, enum ril_sound_type, int);
 int (*_ril_set_call_audio_path)(void *, enum ril_audio_path);
 int (*_ril_set_call_clock_sync)(void *, enum ril_clock_state);
 int (*_ril_register_unsolicited_handler)(void *, int, void *);
+int (*_ril_get_wb_amr)(void *, void *);
 
 /* Audio WB AMR callback */
 void (*_audio_set_wb_amr_callback)(void *, int);
@@ -74,6 +75,12 @@ static int ril_connect_if_required(struct ril_handle *ril)
         LOGE("ril_connect() failed");
         return -1;
     }
+
+    /* get wb amr status to set pcm samplerate depending on
+       wb amr status when ril is connected. */
+    if(_ril_get_wb_amr)
+        _ril_get_wb_amr(ril->client, ril_set_wb_amr_callback);
+
     return 0;
 }
 
@@ -101,6 +108,8 @@ int ril_open(struct ril_handle *ril)
     _ril_set_call_clock_sync = dlsym(ril->handle, "SetCallClockSync");
     _ril_register_unsolicited_handler = dlsym(ril->handle,
                                               "RegisterUnsolicitedHandler");
+    /* since this function is not supported in all RILs, don't require it */
+    _ril_get_wb_amr = dlsym(ril->handle, "GetWB_AMR");
 
     if (!_ril_open_client || !_ril_close_client || !_ril_connect ||
         !_ril_is_connected || !_ril_disconnect || !_ril_set_call_volume ||
