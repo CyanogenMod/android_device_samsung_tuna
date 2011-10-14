@@ -183,7 +183,7 @@ enum tty_modes {
 struct pcm_config pcm_config_mm = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
-    .period_size = 1024,
+    .period_size = 1056,
     .period_count = 4,
     .format = PCM_FORMAT_S16_LE,
 };
@@ -191,7 +191,7 @@ struct pcm_config pcm_config_mm = {
 struct pcm_config pcm_config_mm_ul = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
-    .period_size = 1024,
+    .period_size = 1056,
     .period_count = 2,
     .format = PCM_FORMAT_S16_LE,
 };
