@@ -60,6 +60,7 @@
 #define MIXER_DL2_MIXER_VOICE               "DL2 Mixer Voice"
 #define MIXER_SIDETONE_MIXER_PLAYBACK       "Sidetone Mixer Playback"
 #define MIXER_SIDETONE_MIXER_CAPTURE        "Sidetone Mixer Capture"
+#define MIXER_DL2_MONO_MIXER                "DL2 Mono Mixer"
 #define MIXER_DL1_PDM_SWITCH                "DL1 PDM Switch"
 #define MIXER_DL1_BT_VX_SWITCH              "DL1 BT_VX Switch"
 #define MIXER_VOICE_CAPTURE_MIXER_CAPTURE   "Voice Capture Mixer Capture"
@@ -290,6 +291,12 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_DL1_PDM_SWITCH,
+        .intval = 1,
+    },
+
+    /* speaker */
+    {
+        .ctl_name = MIXER_DL2_MONO_MIXER,
         .intval = 1,
     },
 
