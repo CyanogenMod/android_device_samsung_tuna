@@ -1371,7 +1371,7 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
                 adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION)
             force_input_standby = true;
     }
-    low_power = adev->low_power;
+    low_power = adev->low_power && !adev->active_input;
     pthread_mutex_unlock(&adev->lock);
 
     if (low_power != out->low_power) {
