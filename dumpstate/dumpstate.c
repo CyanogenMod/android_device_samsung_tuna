@@ -36,4 +36,5 @@ void dumpstate_board()
     dump_file("ducati trace1_last", "/d/remoteproc/omap-rproc.1/trace1_last");
     dump_file("fsa9480 device_type", "/sys/bus/i2c/drivers/fsa9480/4-0025/device_type");
     dump_file("fsa9480 control", "/sys/bus/i2c/drivers/fsa9480/4-0025/control");
+    dump_file("tiler 2x1 map", "/d/tiler/map/2x1");
 };
