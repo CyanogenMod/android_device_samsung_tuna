@@ -17,6 +17,7 @@
 
 #for HSPA RIL
 /dev/umts_boot0           0660   radio      radio
+/dev/umts_boot1           0660   radio      radio
 /dev/umts_ipc0            0660   radio      radio
 /dev/umts_rfs0            0660   radio      radio
 /dev/block/mmcblk0p9      0660   radio      radio
