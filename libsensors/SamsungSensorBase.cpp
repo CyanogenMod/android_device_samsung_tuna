@@ -146,14 +146,13 @@ int SamsungSensorBase::readEvents(sensors_event_t* data, int count)
     pthread_mutex_lock(&mLock);
     int numEventReceived = 0;
 
-    if (!mEnabled)
-        goto done;
-
     if (mHasPendingEvent) {
         mHasPendingEvent = false;
-        mPendingEvent.timestamp = getTimestamp();
-        *data = mPendingEvent;
-        numEventReceived++;
+        if (mEnabled) {
+            mPendingEvent.timestamp = getTimestamp();
+            *data = mPendingEvent;
+            numEventReceived++;
+        }
         goto done;
     }
 
@@ -161,7 +160,7 @@ int SamsungSensorBase::readEvents(sensors_event_t* data, int count)
     while (count && mInputReader.readEvent(data_fd, &event)) {
         if (event->type == EV_ABS) {
             if (event->code == mSensorCode) {
-                if (handleEvent(event)) {
+                if (mEnabled && handleEvent(event)) {
                     mPendingEvent.timestamp = timevalToNano(event->time);
                     *data++ = mPendingEvent;
                     count--;
