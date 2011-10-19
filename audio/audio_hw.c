@@ -54,6 +54,7 @@
 #define MIXER_EARPHONE_PLAYBACK_VOLUME      "Earphone Playback Volume"
 #define MIXER_BT_UL_VOLUME                  "BT UL Volume"
 
+#define MIXER_DL1_EQUALIZER                 "DL1 Equalizer"
 #define MIXER_DL1_MIXER_MULTIMEDIA          "DL1 Mixer Multimedia"
 #define MIXER_DL1_MIXER_VOICE               "DL1 Mixer Voice"
 #define MIXER_DL2_MIXER_MULTIMEDIA          "DL2 Mixer Multimedia"
@@ -94,6 +95,8 @@
 #define MIXER_BT_LEFT                       "BT Left"
 #define MIXER_BT_RIGHT                      "BT Right"
 #define MIXER_450HZ_HIGH_PASS               "450Hz High-pass"
+#define MIXER_FLAT_RESPONSE                 "Flat response"
+#define MIXER_4KHZ_LPF_0DB                  "4Khz LPF   0dB"
 
 
 /* ALSA cards for OMAP4 */
@@ -438,6 +441,7 @@ struct route_setting vx_ul_bt[] = {
 
 struct mixer_ctls
 {
+    struct mixer_ctl *dl1_eq;
     struct mixer_ctl *mm_dl1;
     struct mixer_ctl *mm_dl2;
     struct mixer_ctl *vx_dl1;
@@ -647,6 +651,20 @@ static void end_call(struct tuna_audio_device *adev)
     adev->pcm_modem_ul = NULL;
 }
 
+static void set_eq_filter(struct tuna_audio_device *adev)
+{
+    /* DL1_EQ can't be used for bt */
+    int dl1_eq_applicable = adev->devices & (AUDIO_DEVICE_OUT_WIRED_HEADSET |
+                    AUDIO_DEVICE_OUT_WIRED_HEADPHONE | AUDIO_DEVICE_OUT_EARPIECE);
+
+    /* 4Khz LPF is used only in NB-AMR voicecall */
+    if ((adev->mode == AUDIO_MODE_IN_CALL) && dl1_eq_applicable &&
+            (adev->tty_mode == TTY_MODE_OFF) && !adev->wb_amr)
+        mixer_ctl_set_enum_by_string(adev->mixer_ctls.dl1_eq, MIXER_4KHZ_LPF_0DB);
+    else
+        mixer_ctl_set_enum_by_string(adev->mixer_ctls.dl1_eq, MIXER_FLAT_RESPONSE);
+}
+
 void audio_set_wb_amr_callback(void *data, int enable)
 {
     struct tuna_audio_device *adev = (struct tuna_audio_device *)data;
@@ -658,6 +676,7 @@ void audio_set_wb_amr_callback(void *data, int enable)
         /* reopen the modem PCMs at the new rate */
         if (adev->in_call) {
             end_call(adev);
+            set_eq_filter(adev);
             start_call(adev);
         }
     }
@@ -909,6 +928,7 @@ static void select_output_device(struct tuna_audio_device *adev)
     set_route_by_array(adev->mixer, hs_output, headset_on | headphone_on);
     set_route_by_array(adev->mixer, hf_output, speaker_on);
 
+    set_eq_filter(adev);
     set_output_volumes(adev, tty_volume);
 
     /* Special case: select input path if in a call, otherwise
@@ -2462,6 +2482,8 @@ static int adev_open(const hw_module_t* module, const char* name,
         return -EINVAL;
     }
 
+    adev->mixer_ctls.dl1_eq = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL1_EQUALIZER);
     adev->mixer_ctls.mm_dl1 = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL1_MIXER_MULTIMEDIA);
     adev->mixer_ctls.vx_dl1 = mixer_get_ctl_by_name(adev->mixer,
@@ -2491,13 +2513,14 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->mixer_ctls.earpiece_volume = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_EARPHONE_PLAYBACK_VOLUME);
 
-    if (!adev->mixer_ctls.mm_dl1 || !adev->mixer_ctls.vx_dl1 ||
-        !adev->mixer_ctls.mm_dl2 || !adev->mixer_ctls.vx_dl2 ||
-        !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
-        !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
-        !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume ||
-        !adev->mixer_ctls.sidetone_capture || !adev->mixer_ctls.headset_volume ||
-        !adev->mixer_ctls.speaker_volume || !adev->mixer_ctls.earpiece_volume) {
+    if (!adev->mixer_ctls.dl1_eq || !adev->mixer_ctls.mm_dl1 ||
+        !adev->mixer_ctls.vx_dl1 || !adev->mixer_ctls.mm_dl2 ||
+        !adev->mixer_ctls.vx_dl2 || !adev->mixer_ctls.dl1_headset ||
+        !adev->mixer_ctls.dl1_bt || !adev->mixer_ctls.earpiece_enable ||
+        !adev->mixer_ctls.left_capture || !adev->mixer_ctls.right_capture ||
+        !adev->mixer_ctls.amic_ul_volume || !adev->mixer_ctls.sidetone_capture ||
+        !adev->mixer_ctls.headset_volume || !adev->mixer_ctls.speaker_volume ||
+        !adev->mixer_ctls.earpiece_volume) {
         mixer_close(adev->mixer);
         free(adev);
         LOGE("Unable to locate all mixer controls, aborting.");
