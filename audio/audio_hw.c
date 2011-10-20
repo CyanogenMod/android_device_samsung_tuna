@@ -118,15 +118,17 @@
 /* constraint imposed by ABE: all period sizes must be multiples of 24 */
 #define ABE_BASE_FRAME_COUNT 24
 /* number of base blocks in a short period (low latency) */
-#define SHORT_PERIOD_MULTIPLIER 40  /* 20 ms */
+#define SHORT_PERIOD_MULTIPLIER 44  /* 22 ms */
 /* number of frames per short period (low latency) */
 #define SHORT_PERIOD_SIZE (ABE_BASE_FRAME_COUNT * SHORT_PERIOD_MULTIPLIER)
 /* number of short periods in a long period (low power) */
-#define LONG_PERIOD_MULTIPLIER 6  /* 120 ms */
+#define LONG_PERIOD_MULTIPLIER 14  /* 308 ms */
 /* number of frames per long period (low power) */
 #define LONG_PERIOD_SIZE (SHORT_PERIOD_SIZE * LONG_PERIOD_MULTIPLIER)
-/* number of periods for playback */
-#define PLAYBACK_PERIOD_COUNT 4
+/* number of periods for low power playback */
+#define PLAYBACK_LONG_PERIOD_COUNT 2
+/* number of pseudo periods for low latency playback */
+#define PLAYBACK_SHORT_PERIOD_COUNT 4
 /* number of periods for capture */
 #define CAPTURE_PERIOD_COUNT 2
 /* minimum sleep time in out_write() when write threshold is not reached */
@@ -206,7 +208,7 @@ struct pcm_config pcm_config_mm = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
     .period_size = LONG_PERIOD_SIZE,
-    .period_count = PLAYBACK_PERIOD_COUNT,
+    .period_count = PLAYBACK_LONG_PERIOD_COUNT,
     .format = PCM_FORMAT_S16_LE,
 };
 
@@ -1057,9 +1059,9 @@ static int start_output_stream(struct tuna_stream_out *out)
     /* default to low power: will be corrected in out_write if necessary before first write to
      * tinyalsa.
      */
-    out->write_threshold = PLAYBACK_PERIOD_COUNT * LONG_PERIOD_SIZE;
+    out->write_threshold = PLAYBACK_LONG_PERIOD_COUNT * LONG_PERIOD_SIZE;
     out->config.start_threshold = SHORT_PERIOD_SIZE * 2;
-    out->config.avail_min = LONG_PERIOD_SIZE,
+    out->config.avail_min = LONG_PERIOD_SIZE;
     out->low_power = 1;
 
     out->pcm = pcm_open(card, port, PCM_OUT | PCM_MMAP | PCM_NOIRQ, &out->config);
@@ -1349,7 +1351,7 @@ static uint32_t out_get_latency(const struct audio_stream_out *stream)
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
-    return (SHORT_PERIOD_SIZE * PLAYBACK_PERIOD_COUNT * 1000) / out->config.rate;
+    return (SHORT_PERIOD_SIZE * PLAYBACK_SHORT_PERIOD_COUNT * 1000) / out->config.rate;
 }
 
 static int out_set_volume(struct audio_stream_out *stream, float left,
@@ -1396,10 +1398,10 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
 
     if (low_power != out->low_power) {
         if (low_power) {
-            out->write_threshold = LONG_PERIOD_SIZE * PLAYBACK_PERIOD_COUNT;
+            out->write_threshold = LONG_PERIOD_SIZE * PLAYBACK_LONG_PERIOD_COUNT;
             out->config.avail_min = LONG_PERIOD_SIZE;
         } else {
-            out->write_threshold = SHORT_PERIOD_SIZE * PLAYBACK_PERIOD_COUNT;
+            out->write_threshold = SHORT_PERIOD_SIZE * PLAYBACK_SHORT_PERIOD_COUNT;
             out->config.avail_min = SHORT_PERIOD_SIZE;
         }
         pcm_set_avail_min(out->pcm, out->config.avail_min);
