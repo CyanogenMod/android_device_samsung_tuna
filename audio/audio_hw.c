@@ -299,12 +299,6 @@ struct route_setting defaults[] = {
         .intval = 1,
     },
 
-    /* speaker */
-    {
-        .ctl_name = MIXER_DL2_MONO_MIXER,
-        .intval = 1,
-    },
-
     /* bt */
     {
         .ctl_name = MIXER_BT_UL_VOLUME,
@@ -449,6 +443,7 @@ struct mixer_ctls
     struct mixer_ctl *vx_dl1;
     struct mixer_ctl *vx_dl2;
     struct mixer_ctl *earpiece_enable;
+    struct mixer_ctl *dl2_mono;
     struct mixer_ctl *dl1_headset;
     struct mixer_ctl *dl1_bt;
     struct mixer_ctl *left_capture;
@@ -924,6 +919,8 @@ static void select_output_device(struct tuna_audio_device *adev)
     mixer_ctl_set_value(adev->mixer_ctls.dl1_headset, 0,
                         headset_on | headphone_on | earpiece_on);
     mixer_ctl_set_value(adev->mixer_ctls.dl1_bt, 0, bt_on);
+    mixer_ctl_set_value(adev->mixer_ctls.dl2_mono, 0,
+                        (adev->mode != AUDIO_MODE_IN_CALL) && speaker_on);
     mixer_ctl_set_value(adev->mixer_ctls.earpiece_enable, 0, earpiece_on);
 
     /* select output stage */
@@ -2494,6 +2491,8 @@ static int adev_open(const hw_module_t* module, const char* name,
                                            MIXER_DL2_MIXER_MULTIMEDIA);
     adev->mixer_ctls.vx_dl2 = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL2_MIXER_VOICE);
+    adev->mixer_ctls.dl2_mono = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL2_MONO_MIXER);
     adev->mixer_ctls.dl1_headset = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL1_PDM_SWITCH);
     adev->mixer_ctls.dl1_bt = mixer_get_ctl_by_name(adev->mixer,
@@ -2517,12 +2516,12 @@ static int adev_open(const hw_module_t* module, const char* name,
 
     if (!adev->mixer_ctls.dl1_eq || !adev->mixer_ctls.mm_dl1 ||
         !adev->mixer_ctls.vx_dl1 || !adev->mixer_ctls.mm_dl2 ||
-        !adev->mixer_ctls.vx_dl2 || !adev->mixer_ctls.dl1_headset ||
-        !adev->mixer_ctls.dl1_bt || !adev->mixer_ctls.earpiece_enable ||
-        !adev->mixer_ctls.left_capture || !adev->mixer_ctls.right_capture ||
-        !adev->mixer_ctls.amic_ul_volume || !adev->mixer_ctls.sidetone_capture ||
-        !adev->mixer_ctls.headset_volume || !adev->mixer_ctls.speaker_volume ||
-        !adev->mixer_ctls.earpiece_volume) {
+        !adev->mixer_ctls.vx_dl2 || !adev->mixer_ctls.dl2_mono ||
+        !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
+        !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
+        !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume ||
+        !adev->mixer_ctls.sidetone_capture || !adev->mixer_ctls.headset_volume ||
+        !adev->mixer_ctls.speaker_volume || !adev->mixer_ctls.earpiece_volume) {
         mixer_close(adev->mixer);
         free(adev);
         LOGE("Unable to locate all mixer controls, aborting.");
