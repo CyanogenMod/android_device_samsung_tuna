@@ -16,7 +16,7 @@
 
 #define LOG_NDEBUG 0
 #define LOG_TAG "Sensors"
-//#define FUNC_LOG LOGV("%s", __PRETTY_FUNCTION__)
+//#define FUNC_LOG ALOGV("%s", __PRETTY_FUNCTION__)
 #define FUNC_LOG
 
 #include <hardware/sensors.h>
