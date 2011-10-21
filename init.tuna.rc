@@ -15,6 +15,9 @@ on post-fs-data
 	mkdir /data/misc/dhcp 0770 dhcp dhcp
 	chown dhcp dhcp /data/misc/dhcp
 	mkdir /data/smc 0770 drmrpc drmrpc
+        chown drmrpc drmrpc /data/smc/counter.bin
+        chown drmrpc drmrpc /data/smc/storage.bin
+        chown drmrpc drmrpc /data/smc/system.bin
 
 	# camera calibration
 	mkdir /data/misc/camera 0770 media media
@@ -142,15 +145,15 @@ service setup_fs /system/bin/setup_fs \
 service tf_daemon /system/bin/tf_daemon \
         -d -c /vendor/etc/smc_normal_world_android_cfg.ini
         class core
-        user root
-        group root
+        user drmrpc
+        group drmrpc
 
 service smc_pa_wvdrm /system/bin/smc_pa_ctrl \
         -c /vendor/etc/smc_normal_world_android_cfg.ini \
         start /vendor/firmware/smc_pa_wvdrm.ift
         class core
-        user root
-        group root
+        user drmrpc
+        group drmrpc
         oneshot
 
 # create virtual SD card at /mnt/sdcard, based on the /data/media directory
