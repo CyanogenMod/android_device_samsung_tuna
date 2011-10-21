@@ -23,6 +23,9 @@ on post-fs-data
 	mkdir /data/misc/camera 0770 media media
 	mkdir /data/misc/camera/R5_MVEN003_LD2_ND0_IR0_SH0_FL1_SVEN003_DCCID1044 0770 media media
 
+	mkdir /data/radio 0775 radio radio
+	mkdir /data/radio/log 0775 radio radio
+
 	setprop vold.post_fs_data_done 1
 
 # LTE
@@ -77,8 +80,6 @@ on fs
 # We chown/chmod /factory because mount is run as root + defaults
 	chown radio radio /factory
 	chmod 0775 /factory
-	mkdir /data/radio 0775 radio radio
-	mkdir /data/radio/log 0775 radio radio
 
 # add symlink for HDCP key
         symlink /factory/hdcp.keys /system/vendor/firmware/hdcp.keys
