@@ -7,6 +7,7 @@
 /dev/rpmsg-omx1           0660   drmrpc    drmrpc
 /dev/rproc_user           0660   drmrpc    drmrpc
 /dev/tf_driver            0660   drmrpc    drmrpc
+/dev/tf_ctrl              0660   drmrpc    drmrpc
 
 #for Sensors
 /dev/mpu                  0660   system     system
