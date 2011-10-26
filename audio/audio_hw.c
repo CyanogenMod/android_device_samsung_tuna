@@ -206,6 +206,7 @@
 #define VOIP_EARPIECE_VOLUME_MAGURO 6
 
 #define HEADPHONE_VOLUME_TTY -2
+#define RINGTONE_HEADSET_VOLUME_OFFSET -14
 
 /* product-specific defines */
 #define PRODUCT_DEVICE_PROPERTY "ro.product.device"
@@ -817,6 +818,8 @@ static void set_output_volumes(struct tuna_audio_device *adev, bool tty_volume)
     }
     if (tty_volume)
         headset_volume = HEADPHONE_VOLUME_TTY;
+    else if (adev->mode == AUDIO_MODE_RINGTONE)
+        headset_volume += RINGTONE_HEADSET_VOLUME_OFFSET;
 
     /* If we have run out of range in the codec (analog) speaker volume,
        we have to apply the remainder of the dB increase to the DL2
