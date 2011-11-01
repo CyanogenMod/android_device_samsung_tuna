@@ -697,6 +697,7 @@ static void set_incall_device(struct tuna_audio_device *adev)
             break;
         case AUDIO_DEVICE_OUT_SPEAKER:
         case AUDIO_DEVICE_OUT_AUX_DIGITAL:
+        case AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET:
             device_type = SOUND_AUDIO_PATH_SPEAKER;
             break;
         case AUDIO_DEVICE_OUT_WIRED_HEADSET:
@@ -951,9 +952,11 @@ static void select_output_device(struct tuna_audio_device *adev)
                 break;
             case TTY_MODE_OFF:
             default:
-                /* force speaker on when in call and HDMI is selected as voice DL audio
-                 * cannot be routed to HDMI by ABE */
-                if (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL)
+                /* force speaker on when in call and HDMI or S/PDIF is selected
+                 * as voice DL audio cannot be routed there by ABE */
+                if (adev->devices &
+                        (AUDIO_DEVICE_OUT_AUX_DIGITAL |
+                         AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET))
                     speaker_on = 1;
                 break;
         }
