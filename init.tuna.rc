@@ -41,8 +41,8 @@ on boot
 # Lower maximum frequency when screen is off
 	write /sys/devices/system/cpu/cpu0/cpufreq/screen_off_max_freq 700000
 
-# cpufreq interactive governor: timer 100ms, min sample 10ms
-	write /sys/devices/system/cpu/cpufreq/interactive/timer_rate 100000
+# cpufreq interactive governor: timer 80ms, min sample 10ms
+	write /sys/devices/system/cpu/cpufreq/interactive/timer_rate 80000
 	write /sys/devices/system/cpu/cpufreq/interactive/min_sample_time 10000
 
 on fs
