@@ -15,7 +15,8 @@ ag0=252
 ag1=252
 aa2g=1
 aa5g=1
-ccode=GB
+ccode=EU
+regrev=5
 
 #for BT-coexistence
 btc_params80=0
