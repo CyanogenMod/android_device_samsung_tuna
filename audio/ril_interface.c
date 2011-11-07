@@ -36,7 +36,6 @@ int (*_ril_is_connected)(void *);
 int (*_ril_disconnect)(void *);
 int (*_ril_set_call_volume)(void *, enum ril_sound_type, int);
 int (*_ril_set_call_audio_path)(void *, enum ril_audio_path);
-int (*_ril_set_call_clock_sync)(void *, enum ril_clock_state);
 int (*_ril_register_unsolicited_handler)(void *, int, void *);
 int (*_ril_get_wb_amr)(void *, void *);
 
@@ -105,7 +104,6 @@ int ril_open(struct ril_handle *ril)
     _ril_disconnect = dlsym(ril->handle, "Disconnect_RILD");
     _ril_set_call_volume = dlsym(ril->handle, "SetCallVolume");
     _ril_set_call_audio_path = dlsym(ril->handle, "SetCallAudioPath");
-    _ril_set_call_clock_sync = dlsym(ril->handle, "SetCallClockSync");
     _ril_register_unsolicited_handler = dlsym(ril->handle,
                                               "RegisterUnsolicitedHandler");
     /* since this function is not supported in all RILs, don't require it */
@@ -113,8 +111,7 @@ int ril_open(struct ril_handle *ril)
 
     if (!_ril_open_client || !_ril_close_client || !_ril_connect ||
         !_ril_is_connected || !_ril_disconnect || !_ril_set_call_volume ||
-        !_ril_set_call_audio_path || !_ril_set_call_clock_sync ||
-        !_ril_register_unsolicited_handler) {
+        !_ril_set_call_audio_path || !_ril_register_unsolicited_handler) {
         LOGE("Cannot get symbols from '%s'", RIL_CLIENT_LIBPATH);
         dlclose(ril->handle);
         return -1;
@@ -172,12 +169,4 @@ int ril_set_call_audio_path(struct ril_handle *ril, enum ril_audio_path path)
         return 0;
 
     return _ril_set_call_audio_path(ril->client, path);
-}
-
-int ril_set_call_clock_sync(struct ril_handle *ril, enum ril_clock_state state)
-{
-    if (ril_connect_if_required(ril))
-        return 0;
-
-    return _ril_set_call_clock_sync(ril->client, state);
 }
