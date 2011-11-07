@@ -44,6 +44,9 @@ PRODUCT_PACKAGES += \
 	libinvensense_mpl
 
 PRODUCT_PACKAGES += \
+	nfc.tuna
+
+PRODUCT_PACKAGES += \
 	audio.primary.tuna \
 	audio.a2dp.default \
 	libaudioutils
