@@ -302,7 +302,9 @@ int sensors_poll_context_t::pollEvents(sensors_event_t* data, int count)
             // anything to return
             int i;
 
-            n = poll(mPollFds, numFds, nbEvents ? 0 : polltime);
+            do {
+                n = poll(mPollFds, numFds, nbEvents ? 0 : polltime);
+            } while (n < 0 && errno == EINTR);
             if (n<0) {
                 LOGE("poll() failed (%s)", strerror(errno));
                 return -errno;
