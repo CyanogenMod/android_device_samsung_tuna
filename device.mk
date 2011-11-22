@@ -133,6 +133,10 @@ PRODUCT_COPY_FILES += \
     device/samsung/tuna/mms144_ts_rev31.fw:system/vendor/firmware/mms144_ts_rev31.fw \
     device/samsung/tuna/mms144_ts_rev32.fw:system/vendor/firmware/mms144_ts_rev32.fw
 
+# Commands to migrate prefs from com.android.nfc3 to com.android.nfc
+PRODUCT_COPY_FILES += \
+	packages/apps/Nfc/migrate_nfc.txt:system/etc/updatecmds/migrate_nfc.txt
+
 # file that declares the MIFARE NFC constant
 PRODUCT_COPY_FILES += \
 	device/sample/nxp/com.nxp.mifare.xml:system/etc/permissions/com.nxp.mifare.xml
