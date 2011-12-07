@@ -176,12 +176,10 @@ PRODUCT_PACKAGES += \
 	setup_fs
 
 # for bugmailer
-ifneq ($(TARGET_BUILD_VARIANT),user)
-	PRODUCT_PACKAGES += send_bug
-	PRODUCT_COPY_FILES += \
-		system/extras/bugmailer/bugmailer.sh:system/bin/bugmailer.sh \
-		system/extras/bugmailer/send_bug:system/bin/send_bug
-endif
+PRODUCT_PACKAGES += send_bug
+PRODUCT_COPY_FILES += \
+	system/extras/bugmailer/bugmailer.sh:system/bin/bugmailer.sh \
+	system/extras/bugmailer/send_bug:system/bin/send_bug
 
 $(call inherit-product, frameworks/base/build/phone-xhdpi-1024-dalvik-heap.mk)
 
