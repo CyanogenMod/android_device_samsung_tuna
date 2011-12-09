@@ -147,8 +147,7 @@ service pvrsrvinit /vendor/bin/pvrsrvinit
 # create filesystems if necessary
 service setup_fs /system/bin/setup_fs \
 		/dev/block/platform/omap/omap_hsmmc.0/by-name/cache \
-		/dev/block/platform/omap/omap_hsmmc.0/by-name/userdata \
-		/dev/block/platform/omap/omap_hsmmc.0/by-name/efs
+		/dev/block/platform/omap/omap_hsmmc.0/by-name/userdata
         class core
         user root
         group root
