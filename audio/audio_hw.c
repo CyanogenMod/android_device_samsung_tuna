@@ -2456,6 +2456,10 @@ static void adev_close_input_stream(struct audio_hw_device *dev,
         free(in->buffer);
         release_resampler(in->resampler);
     }
+    if (in->proc_buf)
+        free(in->proc_buf);
+    if (in->ref_buf)
+        free(in->ref_buf);
 
     free(stream);
     return;
