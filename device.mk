@@ -44,6 +44,9 @@ PRODUCT_PACKAGES += \
 	libinvensense_mpl
 
 PRODUCT_PACKAGES += \
+	nfc.tuna
+
+PRODUCT_PACKAGES += \
 	audio.primary.tuna \
 	audio.a2dp.default \
 	libaudioutils
@@ -93,6 +96,11 @@ PRODUCT_PACKAGES += \
         VisualizationWallpapers \
         librs_jni
 
+# Key maps
+PRODUCT_COPY_FILES += \
+	device/samsung/tuna/tuna-gpio-keypad.kl:system/usr/keylayout/tuna-gpio-keypad.kl \
+	device/samsung/tuna/tuna-gpio-keypad.kcm:system/usr/keychars/tuna-gpio-keypad.kcm
+
 # Input device calibration files
 PRODUCT_COPY_FILES += \
 	device/samsung/tuna/Melfas_MMSxxx_Touchscreen.idc:system/usr/idc/Melfas_MMSxxx_Touchscreen.idc
@@ -125,6 +133,33 @@ PRODUCT_COPY_FILES += \
     device/samsung/tuna/mms144_ts_rev31.fw:system/vendor/firmware/mms144_ts_rev31.fw \
     device/samsung/tuna/mms144_ts_rev32.fw:system/vendor/firmware/mms144_ts_rev32.fw
 
+# Portrait dock image
+PRODUCT_COPY_FILES += \
+    device/samsung/tuna/dock.png:system/vendor/res/images/dock/dock.png
+
+# Commands to migrate prefs from com.android.nfc3 to com.android.nfc
+PRODUCT_COPY_FILES += \
+	packages/apps/Nfc/migrate_nfc.txt:system/etc/updatecmds/migrate_nfc.txt
+
+# file that declares the MIFARE NFC constant
+PRODUCT_COPY_FILES += \
+	device/sample/nxp/com.nxp.mifare.xml:system/etc/permissions/com.nxp.mifare.xml
+
+# NFC EXTRAS add-on API
+PRODUCT_PACKAGES += \
+	com.android.nfc_extras
+PRODUCT_COPY_FILES += \
+	frameworks/base/nfc-extras/com.android.nfc_extras.xml:system/etc/permissions/com.android.nfc_extras.xml
+
+# NFCEE access control
+ifeq ($(TARGET_BUILD_VARIANT),user)
+    NFCEE_ACCESS_PATH := device/samsung/tuna/nfcee_access.xml
+else
+    NFCEE_ACCESS_PATH := device/samsung/tuna/nfcee_access_debug.xml
+endif
+PRODUCT_COPY_FILES += \
+    $(NFCEE_ACCESS_PATH):system/etc/nfcee_access.xml
+
 PRODUCT_PROPERTY_OVERRIDES += \
 	ro.opengles.version=131072
 
@@ -145,12 +180,10 @@ PRODUCT_PACKAGES += \
 	setup_fs
 
 # for bugmailer
-ifneq ($(TARGET_BUILD_VARIANT),user)
-	PRODUCT_PACKAGES += send_bug
-	PRODUCT_COPY_FILES += \
-		system/extras/bugmailer/bugmailer.sh:system/bin/bugmailer.sh \
-		system/extras/bugmailer/send_bug:system/bin/send_bug
-endif
+PRODUCT_PACKAGES += send_bug
+PRODUCT_COPY_FILES += \
+	system/extras/bugmailer/bugmailer.sh:system/bin/bugmailer.sh \
+	system/extras/bugmailer/send_bug:system/bin/send_bug
 
 $(call inherit-product, frameworks/base/build/phone-xhdpi-1024-dalvik-heap.mk)
 

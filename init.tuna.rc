@@ -155,7 +155,7 @@ service setup_fs /system/bin/setup_fs \
 
 service tf_daemon /system/bin/tf_daemon \
         -d -c /vendor/etc/smc_normal_world_android_cfg.ini
-        class core
+        class main
         user drmrpc
         group drmrpc
 

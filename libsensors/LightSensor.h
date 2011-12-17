@@ -32,10 +32,7 @@ struct input_event;
 
 class LightSensor:public SamsungSensorBase {
 
-    float mPreviousLight;
-    virtual int handleEnable(int en);
     virtual bool handleEvent(input_event const * event);
-    float indexToValue(size_t index) const;
 public:
     LightSensor();
 };
