@@ -48,8 +48,7 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_PACKAGES += \
 	audio.primary.tuna \
-	audio.a2dp.default \
-	libaudioutils
+	audio.a2dp.default
 
 PRODUCT_PACKAGES += \
 	tuna_hdcp_keys
