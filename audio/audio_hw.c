@@ -1742,7 +1742,7 @@ static void get_capture_delay(struct tuna_stream_in *in,
         buffer->time_stamp.tv_sec  = 0;
         buffer->time_stamp.tv_nsec = 0;
         buffer->delay_ns           = 0;
-        LOGW("read get_capture_delay(): pcm_htimestamp error");
+        ALOGW("read get_capture_delay(): pcm_htimestamp error");
         return;
     }
 
@@ -1801,7 +1801,7 @@ static int32_t update_echo_reference(struct tuna_stream_in *in, size_t frames)
                  in->ref_frames_in, in->ref_buf_size, frames, b.frame_count);
         }
     } else
-        LOGW("update_echo_reference: NOT enough frames to read ref buffer");
+        ALOGW("update_echo_reference: NOT enough frames to read ref buffer");
     return b.delay_ns;
 }
 
