@@ -70,13 +70,13 @@ SamsungSensorBase::SamsungSensorBase(const char *dev_name,
         return;
     mInputSysfsEnable = makeSysfsName(input_name, "enable");
     if (!mInputSysfsEnable) {
-        LOGE("%s: unable to allocate mem for %s:enable", __func__,
+        ALOGE("%s: unable to allocate mem for %s:enable", __func__,
              data_name);
         return;
     }
     mInputSysfsPollDelay = makeSysfsName(input_name, "poll_delay");
     if (!mInputSysfsPollDelay) {
-        LOGE("%s: unable to allocate mem for %s:poll_delay", __func__,
+        ALOGE("%s: unable to allocate mem for %s:poll_delay", __func__,
              data_name);
         return;
     }
