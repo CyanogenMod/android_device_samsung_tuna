@@ -65,7 +65,7 @@ static int write_int(char const *path, int value)
 		return amt == -1 ? -errno : 0;
 	} else {
 		if (already_warned == 0) {
-			LOGE("write_int failed to open %s\n", path);
+			ALOGE("write_int failed to open %s\n", path);
 			already_warned = 1;
 		}
 		return -errno;
@@ -115,15 +115,15 @@ static int write_leds(struct an30259a_pr_control *led)
 	if (fd >= 0) {
 		err = ioctl(fd, AN30259A_PR_SET_IMAX, &imax);
 		if (err)
-			LOGE("failed to set imax");
+			ALOGE("failed to set imax");
 
 		err = ioctl(fd, AN30259A_PR_SET_LED, led);
 		if (err < 0)
-			LOGE("failed to set leds!");
+			ALOGE("failed to set leds!");
 
 		close(fd);
 	} else {
-		LOGE("failed to open %s!", LED_FILE);
+		ALOGE("failed to open %s!", LED_FILE);
 		err =  -errno;
 	}
 
