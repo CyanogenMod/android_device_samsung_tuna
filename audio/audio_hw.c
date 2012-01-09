@@ -607,7 +607,7 @@ static int set_route_by_array(struct mixer *mixer, struct route_setting *route,
 
 static int start_call(struct tuna_audio_device *adev)
 {
-    LOGE("Opening modem PCMs");
+    ALOGE("Opening modem PCMs");
 
     pcm_config_vx.rate = adev->wb_amr ? VX_WB_SAMPLING_RATE : VX_NB_SAMPLING_RATE;
 
@@ -615,7 +615,7 @@ static int start_call(struct tuna_audio_device *adev)
     if (adev->pcm_modem_dl == NULL) {
         adev->pcm_modem_dl = pcm_open(0, PORT_MODEM, PCM_OUT, &pcm_config_vx);
         if (!pcm_is_ready(adev->pcm_modem_dl)) {
-            LOGE("cannot open PCM modem DL stream: %s", pcm_get_error(adev->pcm_modem_dl));
+            ALOGE("cannot open PCM modem DL stream: %s", pcm_get_error(adev->pcm_modem_dl));
             goto err_open_dl;
         }
     }
@@ -623,7 +623,7 @@ static int start_call(struct tuna_audio_device *adev)
     if (adev->pcm_modem_ul == NULL) {
         adev->pcm_modem_ul = pcm_open(0, PORT_MODEM, PCM_IN, &pcm_config_vx);
         if (!pcm_is_ready(adev->pcm_modem_ul)) {
-            LOGE("cannot open PCM modem UL stream: %s", pcm_get_error(adev->pcm_modem_ul));
+            ALOGE("cannot open PCM modem UL stream: %s", pcm_get_error(adev->pcm_modem_ul));
             goto err_open_ul;
         }
     }
@@ -645,7 +645,7 @@ err_open_dl:
 
 static void end_call(struct tuna_audio_device *adev)
 {
-    LOGE("Closing modem PCMs");
+    ALOGE("Closing modem PCMs");
 
     pcm_stop(adev->pcm_modem_dl);
     pcm_stop(adev->pcm_modem_ul);
@@ -867,7 +867,7 @@ static void force_all_standby(struct tuna_audio_device *adev)
 static void select_mode(struct tuna_audio_device *adev)
 {
     if (adev->mode == AUDIO_MODE_IN_CALL) {
-        LOGE("Entering IN_CALL state, in_call=%d", adev->in_call);
+        ALOGE("Entering IN_CALL state, in_call=%d", adev->in_call);
         if (!adev->in_call) {
             force_all_standby(adev);
             /* force earpiece route for in call state if speaker is the
@@ -891,7 +891,7 @@ static void select_mode(struct tuna_audio_device *adev)
             adev->in_call = 1;
         }
     } else {
-        LOGE("Leaving IN_CALL state, in_call=%d, mode=%d",
+        ALOGE("Leaving IN_CALL state, in_call=%d, mode=%d",
              adev->in_call, adev->mode);
         if (adev->in_call) {
             adev->in_call = 0;
@@ -1125,7 +1125,7 @@ static int start_output_stream(struct tuna_stream_out *out)
     out->pcm = pcm_open(card, port, PCM_OUT | PCM_MMAP | PCM_NOIRQ, &out->config);
 
     if (!pcm_is_ready(out->pcm)) {
-        LOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
+        ALOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm));
         pcm_close(out->pcm);
         adev->active_output = NULL;
         return -ENOMEM;
@@ -1570,7 +1570,7 @@ static int start_input_stream(struct tuna_stream_in *in)
     /* this assumes routing is done previously */
     in->pcm = pcm_open(0, PORT_MM2_UL, PCM_IN, &in->config);
     if (!pcm_is_ready(in->pcm)) {
-        LOGE("cannot open pcm_in driver: %s", pcm_get_error(in->pcm));
+        ALOGE("cannot open pcm_in driver: %s", pcm_get_error(in->pcm));
         pcm_close(in->pcm);
         adev->active_input = NULL;
         return -ENOMEM;
@@ -1894,7 +1894,7 @@ static int get_next_buffer(struct resampler_buffer_provider *buffer_provider,
                                    in->config.period_size *
                                        audio_stream_frame_size(&in->stream.common));
         if (in->read_status != 0) {
-            LOGE("get_next_buffer() pcm_read error %d", in->read_status);
+            ALOGE("get_next_buffer() pcm_read error %d", in->read_status);
             buffer->raw = NULL;
             buffer->frame_count = 0;
             return in->read_status;
@@ -2542,7 +2542,7 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->mixer = mixer_open(0);
     if (!adev->mixer) {
         free(adev);
-        LOGE("Unable to open the mixer, aborting.");
+        ALOGE("Unable to open the mixer, aborting.");
         return -EINVAL;
     }
 
@@ -2597,7 +2597,7 @@ static int adev_open(const hw_module_t* module, const char* name,
         !adev->mixer_ctls.earpiece_volume) {
         mixer_close(adev->mixer);
         free(adev);
-        LOGE("Unable to locate all mixer controls, aborting.");
+        ALOGE("Unable to locate all mixer controls, aborting.");
         return -EINVAL;
     }
 
