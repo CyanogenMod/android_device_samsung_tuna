@@ -74,8 +74,7 @@ PRODUCT_COPY_FILES += \
 	device/samsung/tuna/bcmdhd.cal:system/etc/wifi/bcmdhd.cal
 
 PRODUCT_PROPERTY_OVERRIDES := \
-	wifi.interface=wlan0 \
-	wifi.supplicant_scan_interval=15
+	wifi.interface=wlan0
 
 # Set default USB interface
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
