@@ -29,7 +29,8 @@ const char* HEADERS[] = { "Volume up/down to move highlight;",
                           NULL };
 
 const char* ITEMS[] = { "reboot system now",
-                        "apply update from /cache",
+                        "apply update from ADB",
+                        "apply update from USB drive",
                         "wipe data/factory reset",
                         "wipe cache partition",
                         NULL };
@@ -90,9 +91,10 @@ class TunaDevice : public Device {
     BuiltinAction InvokeMenuItem(int menu_position) {
         switch (menu_position) {
           case 0: return REBOOT;
-          case 1: return APPLY_CACHE;
-          case 2: return WIPE_DATA;
-          case 3: return WIPE_CACHE;
+          case 1: return APPLY_ADB_SIDELOAD;
+          case 2: return APPLY_EXT;
+          case 3: return WIPE_DATA;
+          case 4: return WIPE_CACHE;
           default: return NO_ACTION;
         }
     }
