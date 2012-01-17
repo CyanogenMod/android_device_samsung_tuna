@@ -481,7 +481,7 @@ struct tuna_audio_device {
     pthread_mutex_t lock;       /* see note below on mutex acquisition order */
     struct mixer *mixer;
     struct mixer_ctls mixer_ctls;
-    int mode;
+    audio_mode_t mode;
     int devices;
     struct pcm *pcm_modem_dl;
     struct pcm *pcm_modem_ul;
@@ -2323,7 +2323,7 @@ static int adev_set_master_volume(struct audio_hw_device *dev, float volume)
     return -ENOSYS;
 }
 
-static int adev_set_mode(struct audio_hw_device *dev, int mode)
+static int adev_set_mode(struct audio_hw_device *dev, audio_mode_t mode)
 {
     struct tuna_audio_device *adev = (struct tuna_audio_device *)dev;
 
