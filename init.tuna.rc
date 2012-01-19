@@ -139,7 +139,7 @@ service hciattach /system/bin/brcm_patchram_plus --enable_hci --no2bytes --enabl
 	disabled
 	oneshot
 
-service pvrsrvinit /vendor/bin/pvrsrvinit
+service pvrsrvctl /vendor/bin/pvrsrvctl --start --no-module
 	class core
 	user root
 	group root
