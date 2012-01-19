@@ -35,7 +35,7 @@ BOARD_KERNEL_BASE := 0x80000000
 TARGET_NO_RADIOIMAGE := true
 TARGET_BOARD_PLATFORM := omap4
 TARGET_BOOTLOADER_BOARD_NAME := tuna
-TARGET_BOARD_INFO_FILE := device/samsung/tuna/board-info.txt
+TARGET_BOARD_INFO_FILE ?= device/samsung/tuna/board-info.txt
 
 BOARD_EGL_CFG := device/samsung/tuna/egl.cfg
 
