@@ -83,5 +83,5 @@ BOARD_LIB_DUMPSTATE := libdumpstate.tuna
 BOARD_USES_SECURE_SERVICES := true
 
 BOARD_HAS_NO_SELECT_BUTTON := true
-BOARD_XHDPI_RECOVERY := true
 BOARD_CUSTOM_RECOVERY_KEYMAPPING := ../../device/samsung/tuna/recovery_keys.c
+BOARD_USE_CUSTOM_RECOVERY_FONT := \"roboto_15x24.h\"
