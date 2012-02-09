@@ -53,6 +53,10 @@ on boot
 	write /sys/bus/usb/devices/usb1/power/autosuspend_delay_ms 0
 	write /sys/bus/usb/devices/usb2/power/autosuspend_delay_ms 0
 
+# Set up kernel tracing, but disable it by default
+    chmod 0222 /sys/kernel/debug/tracing/trace_marker
+    write /sys/kernel/debug/tracing/tracing_on 0
+
 on fs
 	mkdir /factory 0775 radio radio
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/system /system wait ro
