@@ -2506,6 +2506,7 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
     return 0;
 
 err:
+    free(in->buffer);
     if (in->resampler)
         release_resampler(in->resampler);
 
@@ -2521,8 +2522,8 @@ static void adev_close_input_stream(struct audio_hw_device *dev,
 
     in_standby(&stream->common);
 
+    free(in->buffer);
     if (in->resampler) {
-        free(in->buffer);
         release_resampler(in->resampler);
     }
     if (in->proc_buf)
