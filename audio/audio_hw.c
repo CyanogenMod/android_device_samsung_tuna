@@ -116,20 +116,70 @@
 #define PORT_SPDIF 9
 #define PORT_HDMI 0
 
-/* constraint imposed by ABE: all period sizes must be multiples of 24 */
+/* User serviceable */
+/* #define to use mmap no-irq mode for playback, #undef for non-mmap irq mode */
+#undef PLAYBACK_MMAP        // was #define
+/* short period (aka low latency) in milliseconds */
+#define SHORT_PERIOD_MS 4   // was 22
+/* long period (aka low power or deep buffer) in milliseconds */
+#define LONG_PERIOD_MS 308
+
+/* Constraint imposed by ABE: for playback, all period sizes must be multiples of 24 frames
+ * = 500 us at 48 kHz.  It seems to be either 48 or 96 for capture, or maybe it is because the
+ * limitation is actually a min number of bytes which translates to a different amount of frames
+ * according to the number of channels.
+ */
 #define ABE_BASE_FRAME_COUNT 24
+
+/* Derived from MM_FULL_POWER_SAMPLING_RATE=48000 and ABE_BASE_FRAME_COUNT=24 */
+#define MULTIPLIER_FACTOR 2
+
 /* number of base blocks in a short period (low latency) */
-#define SHORT_PERIOD_MULTIPLIER 44  /* 22 ms */
+#define SHORT_PERIOD_MULTIPLIER (SHORT_PERIOD_MS * MULTIPLIER_FACTOR)
 /* number of frames per short period (low latency) */
 #define SHORT_PERIOD_SIZE (ABE_BASE_FRAME_COUNT * SHORT_PERIOD_MULTIPLIER)
-/* number of short periods in a long period (low power) */
-#define LONG_PERIOD_MULTIPLIER 14  /* 308 ms */
+
+/* number of short periods in a long period */
+#define LONG_PERIOD_MULTIPLIER (LONG_PERIOD_MS / SHORT_PERIOD_MS)
 /* number of frames per long period (low power) */
 #define LONG_PERIOD_SIZE (SHORT_PERIOD_SIZE * LONG_PERIOD_MULTIPLIER)
 /* number of periods for low power playback */
 #define PLAYBACK_LONG_PERIOD_COUNT 2
-/* number of pseudo periods for low latency playback */
+/* Number of pseudo periods for low latency playback.
+ * These are called "pseudo" periods in that they are not known as periods by ALSA.
+ * Formerly, ALSA was configured in MMAP mode with 2 large periods, and this
+ * number was set to 4 (2 didn't work).
+ * The short periods size and count were only known by the audio HAL.
+ * Now for low latency, we are using non-MMAP mode and can set this to 2.
+ */
+#ifdef PLAYBACK_MMAP
 #define PLAYBACK_SHORT_PERIOD_COUNT 4
+#else
+#define PLAYBACK_SHORT_PERIOD_COUNT 2
+#endif
+
+/* write function */
+#ifdef PLAYBACK_MMAP
+#define PCM_WRITE pcm_mmap_write
+#else
+#define PCM_WRITE pcm_write
+#endif
+
+/* User serviceable */
+#define CAPTURE_PERIOD_MS 22
+
+/* Number of frames per period for capture.  This cannot be reduced below 96.
+ * Possibly related to the following rule in sound/soc/omap/omap-pcm.c:
+ *  ret = snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 384);
+ *      (where 96 * 4 = 384)
+ * The only constraints I can find are periods_min = 2, period_bytes_min = 32.
+ * If you define RULES_DEBUG in sound/core/pcm_native.c, you can see which rule
+ * caused capture to fail.
+ * Decoupling playback and capture period size may have impacts on echo canceler behavior:
+ * to be verified.  Currently 96 = 4 x 24 but it could be changed without noticing
+ * if we use separate defines.
+ */
+#define CAPTURE_PERIOD_SIZE (ABE_BASE_FRAME_COUNT * CAPTURE_PERIOD_MS * MULTIPLIER_FACTOR)
 /* number of periods for capture */
 #define CAPTURE_PERIOD_COUNT 2
 /* minimum sleep time in out_write() when write threshold is not reached */
@@ -138,12 +188,12 @@
 #define RESAMPLER_BUFFER_FRAMES (SHORT_PERIOD_SIZE * 2)
 #define RESAMPLER_BUFFER_SIZE (4 * RESAMPLER_BUFFER_FRAMES)
 
-#define DEFAULT_OUT_SAMPLING_RATE 44100
+#define DEFAULT_OUT_SAMPLING_RATE 44100 // 48000 is possible but interacts poorly with HDMI
 
 /* sampling rate when using MM low power port */
 #define MM_LOW_POWER_SAMPLING_RATE 44100
 /* sampling rate when using MM full power port */
-#define MM_FULL_POWER_SAMPLING_RATE 48000
+#define MM_FULL_POWER_SAMPLING_RATE 48000   // affects MULTIPLIER_FACTOR
 /* sampling rate when using VX port for narrow band */
 #define VX_NB_SAMPLING_RATE 8000
 /* sampling rate when using VX port for wide band */
@@ -225,17 +275,27 @@ enum tty_modes {
 struct pcm_config pcm_config_mm = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
+#ifdef PLAYBACK_MMAP
     .period_size = LONG_PERIOD_SIZE,
     .period_count = PLAYBACK_LONG_PERIOD_COUNT,
+#else
+    .period_size = SHORT_PERIOD_SIZE,
+    .period_count = PLAYBACK_SHORT_PERIOD_COUNT,
+#endif
     .format = PCM_FORMAT_S16_LE,
+#ifdef PLAYBACK_MMAP
     .start_threshold = SHORT_PERIOD_SIZE * 2,
     .avail_min = LONG_PERIOD_SIZE,
+#else
+    .start_threshold = 0,
+    .avail_min = 0,
+#endif
 };
 
 struct pcm_config pcm_config_mm_ul = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
-    .period_size = SHORT_PERIOD_SIZE,
+    .period_size = CAPTURE_PERIOD_SIZE,
     .period_count = CAPTURE_PERIOD_COUNT,
     .format = PCM_FORMAT_S16_LE,
 };
@@ -1181,7 +1241,11 @@ static void select_input_device(struct tuna_audio_device *adev)
 static int start_output_stream(struct tuna_stream_out *out)
 {
     struct tuna_audio_device *adev = out->dev;
+#ifdef PLAYBACK_MMAP
     unsigned int flags = PCM_OUT | PCM_MMAP | PCM_NOIRQ;
+#else
+    unsigned int flags = PCM_OUT;
+#endif
     int i;
     bool success = true;
 
@@ -1589,6 +1653,7 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     low_power = adev->low_power && !adev->active_input;
     pthread_mutex_unlock(&adev->lock);
 
+#ifdef PLAYBACK_MMAP
     if (low_power != out->low_power) {
         if (low_power) {
             out->write_threshold = LONG_PERIOD_SIZE * PLAYBACK_LONG_PERIOD_COUNT;
@@ -1600,6 +1665,7 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
         }
         out->low_power = low_power;
     }
+#endif
 
     for (i = 0; i < PCM_TOTAL; i++) {
         if (out->pcm[i]) {
@@ -1634,6 +1700,7 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
         out->echo_reference->write(out->echo_reference, &b);
     }
 
+#ifdef PLAYBACK_MMAP
     /* do not allow more than out->write_threshold frames in kernel pcm driver buffer */
     do {
         struct timespec time_stamp;
@@ -1651,16 +1718,17 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
             usleep(time);
         }
     } while (kernel_frames > out->write_threshold);
+#endif
 
     /* Write to all active PCMs */
     for (i = 0; i < PCM_TOTAL; i++) {
         if (out->pcm[i]) {
             if (out->config[i].rate == DEFAULT_OUT_SAMPLING_RATE) {
                 /* PCM uses native sample rate */
-                ret = pcm_mmap_write(out->pcm[i], (void *)buffer, bytes);
+                ret = PCM_WRITE(out->pcm[i], (void *)buffer, bytes);
             } else {
                 /* PCM needs resampler */
-                ret = pcm_mmap_write(out->pcm[i], (void *)out->buffer, out_frames * frame_size);
+                ret = PCM_WRITE(out->pcm[i], (void *)out->buffer, out_frames * frame_size);
             }
             if (ret)
                 break;
