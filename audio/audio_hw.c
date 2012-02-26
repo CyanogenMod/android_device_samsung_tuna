@@ -1,4 +1,5 @@
 /*
+ * Portions Copyright (C) 2012 VMware, Inc. All Rights Reserved.
  * Copyright (C) 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -182,7 +183,7 @@
 #define VOICE_CALL_HEADSET_MIC_VOLUME 8
 
 /* use-case specific output volumes */
-#define NORMAL_SPEAKER_VOLUME_TORO 4
+#define NORMAL_SPEAKER_VOLUME_TORO 9
 #define NORMAL_SPEAKER_VOLUME_MAGURO 7
 #define NORMAL_HEADSET_VOLUME_TORO -12
 #define NORMAL_HEADSET_VOLUME_MAGURO -12
