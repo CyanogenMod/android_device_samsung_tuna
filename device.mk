@@ -69,6 +69,7 @@ PRODUCT_COPY_FILES += \
 	$(LOCAL_KERNEL):kernel \
 	device/samsung/tuna/init.tuna.rc:root/init.tuna.rc \
 	device/samsung/tuna/init.tuna.usb.rc:root/init.tuna.usb.rc \
+	device/samsung/tuna/fstab.tuna:root/fstab.tuna \
 	device/samsung/tuna/ueventd.tuna.rc:root/ueventd.tuna.rc \
 	device/samsung/tuna/media_profiles.xml:system/etc/media_profiles.xml \
 	device/samsung/tuna/media_codecs.xml:system/etc/media_codecs.xml \
@@ -192,6 +193,7 @@ PRODUCT_PACKAGES += \
 # Filesystem management tools
 PRODUCT_PACKAGES += \
 	make_ext4fs \
+	e2fsck \
 	setup_fs
 
 # for bugmailer
