@@ -41,7 +41,6 @@ on post-fs-data
 on boot
 	mount debugfs /sys/kernel/debug /sys/kernel/debug
 	chmod 0666 /dev/pvrsrvkm
-	setprop ro.crypto.keyfile.userdata /dev/block/platform/omap/omap_hsmmc.0/by-name/metadata
 
 # autosuspend root hubs immediatly after attached devices
 	write /sys/bus/usb/devices/usb1/power/autosuspend_delay_ms 0
@@ -49,11 +48,7 @@ on boot
 
 on fs
 	mkdir /factory 0775 radio radio
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/system /system wait ro
-	setprop ro.crypto.tmpfs_options size=128m,mode=0771,uid=1000,gid=1000
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata /data wait noatime nosuid nodev nomblk_io_submit,errors=panic
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/cache /cache wait noatime nosuid nodev nomblk_io_submit,errors=panic
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /factory wait ro
+	mount_all /fstab.tuna
 	setprop ro.crypto.fuse_sdcard true
 
 # change permissions for mtd device
