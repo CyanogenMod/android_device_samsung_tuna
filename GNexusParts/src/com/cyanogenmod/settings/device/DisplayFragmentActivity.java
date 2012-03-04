@@ -31,6 +31,7 @@ import com.cyanogenmod.settings.device.R;
 
 public class DisplayFragmentActivity extends PreferenceFragment {
 
+    private ColorTuningPreference mColorTuning;
     private GammaTuningPreference mGammaTuning;
 
     @Override
@@ -38,6 +39,9 @@ public class DisplayFragmentActivity extends PreferenceFragment {
         super.onCreate(savedInstanceState);
 
         addPreferencesFromResource(R.xml.display_preferences);
+
+        mColorTuning = (ColorTuningPreference) findPreference(DeviceSettings.KEY_COLOR_TUNING);
+        mColorTuning.setEnabled(ColorTuningPreference.isSupported());
 
         mGammaTuning = (GammaTuningPreference) findPreference(DeviceSettings.KEY_GAMMA_TUNING);
         mGammaTuning.setEnabled(GammaTuningPreference.isSupported());

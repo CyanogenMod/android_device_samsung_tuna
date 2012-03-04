@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- General settings -->
+    <PreferenceCategory android:key="category_cpu"
+        android:title="@string/category_cpu_title">
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

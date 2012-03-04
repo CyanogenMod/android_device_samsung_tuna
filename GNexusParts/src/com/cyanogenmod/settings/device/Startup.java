@@ -8,6 +8,7 @@ public class Startup extends BroadcastReceiver {
 
     @Override
     public void onReceive(final Context context, final Intent bootintent) {
+        ColorTuningPreference.restore(context);
         GammaTuningPreference.restore(context);
         GeneralFragmentActivity.restore(context);
         if (Hspa.isSupported()) {
