@@ -1681,7 +1681,7 @@ static size_t out_get_buffer_size_hdmi(const struct audio_stream *stream)
     return HDMI_MULTI_PERIOD_SIZE * audio_stream_frame_size((struct audio_stream *)stream);
 }
 
-static uint32_t out_get_channels(const struct audio_stream *stream)
+static audio_channel_mask_t out_get_channels(const struct audio_stream *stream)
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
@@ -2240,7 +2240,7 @@ static size_t in_get_buffer_size(const struct audio_stream *stream)
                                  popcount(in->main_channels));
 }
 
-static uint32_t in_get_channels(const struct audio_stream *stream)
+static audio_channel_mask_t in_get_channels(const struct audio_stream *stream)
 {
     struct tuna_stream_in *in = (struct tuna_stream_in *)stream;
 
