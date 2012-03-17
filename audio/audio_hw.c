@@ -1415,12 +1415,24 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
                 }
                 /* force standby if moving to/from HDMI/SPDIF or if the output
                  * device changes when in HDMI/SPDIF mode */
+
+                /* FIXME workaround for audio being dropped when switching path without forcing standby
+                 * (several hundred ms of audio can be lost: e.g beginning of a ringtone. We must understand
+                 * the root cause in audio HAL, driver or ABE.
                 if (((val & AUDIO_DEVICE_OUT_AUX_DIGITAL) ^
                         (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL)) ||
                         ((val & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET) ^
                         (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
                         (adev->devices & (AUDIO_DEVICE_OUT_AUX_DIGITAL |
                                          AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)))
+                */
+                if (((val & AUDIO_DEVICE_OUT_AUX_DIGITAL) ^
+                        (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL)) ||
+                        ((val & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET) ^
+                        (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
+                        (adev->devices & (AUDIO_DEVICE_OUT_AUX_DIGITAL |
+                                         AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
+                         (val == AUDIO_DEVICE_OUT_SPEAKER))
                     do_output_standby(out);
             }
             adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
