@@ -1680,11 +1680,7 @@ static uint32_t in_get_channels(const struct audio_stream *stream)
 {
     struct tuna_stream_in *in = (struct tuna_stream_in *)stream;
 
-    if (in->config.channels == 1) {
-        return AUDIO_CHANNEL_IN_MONO;
-    } else {
-        return AUDIO_CHANNEL_IN_STEREO;
-    }
+    return audio_channel_in_mask_from_count(in->config.channels);
 }
 
 static audio_format_t in_get_format(const struct audio_stream *stream)
