@@ -46,9 +46,14 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
 	nfc.tuna
 
+# Audio
 PRODUCT_PACKAGES += \
 	audio.primary.tuna \
 	audio.a2dp.default
+
+PRODUCT_COPY_FILES += \
+	device/samsung/tuna/audio/audio_policy.conf:system/etc/audio_policy.conf
+
 
 PRODUCT_PACKAGES += \
 	tuna_hdcp_keys
@@ -56,7 +61,7 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
 	keystore.tuna
 
-PRODUCT_COPY_FILES := \
+PRODUCT_COPY_FILES += \
 	$(LOCAL_KERNEL):kernel \
 	device/samsung/tuna/init.tuna.rc:root/init.tuna.rc \
 	device/samsung/tuna/init.tuna.usb.rc:root/init.tuna.usb.rc \
