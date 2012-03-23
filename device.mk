@@ -186,7 +186,7 @@ PRODUCT_COPY_FILES += \
 	system/extras/bugmailer/bugmailer.sh:system/bin/bugmailer.sh \
 	system/extras/bugmailer/send_bug:system/bin/send_bug
 
-$(call inherit-product, frameworks/base/build/phone-xhdpi-1024-dalvik-heap.mk)
+$(call inherit-product, frameworks/native/build/phone-xhdpi-1024-dalvik-heap.mk)
 
 $(call inherit-product-if-exists, vendor/nxp/pn544/nxp-pn544-fw-vendor.mk)
 $(call inherit-product, hardware/ti/omap4xxx/omap4.mk)
