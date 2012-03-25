@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Galaxy Nexus Einstellungen</string>
+
+    <!-- Page Headers -->
+    <string name="general_title">ALLGEMEIN</string>
+    <string name="display_title">BILDSCHIRM</string>
+
+    <string name="category_cpu_title">Prozessor</string>
+    <string name="category_screen_title">WM8994 Einstellungen ( voodoo )</string>
+    <string name="color_tuning_title_head">Farbmultiplikator</string>
+    <string name="color_tuning_summary_head">Farbmultiplikator einstellen</string>
+    <string name="gamma_tuning_title_head">Gammakorrektur</string>
+    <string name="gamma_tuning_summary_head">Gammawert einstellen</string>
+    <string name="color_red_title">Rot</string>
+    <string name="color_green_title">Grün</string>
+    <string name="color_blue_title">Blau</string>
+
+    <string name="category_radio_title">Mobilfunk</string>
+    <string name="hspa_title_head">HSPA</string>
+    <string name="hspa_summary_head">HSDPA/HSUPA aktivieren</string>
+
+</resources>
