@@ -15,7 +15,7 @@
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_C_INCLUDES := frameworks/base/cmds/dumpstate
+LOCAL_C_INCLUDES := frameworks/native/cmds/dumpstate
 
 LOCAL_SRC_FILES := dumpstate.c
 
