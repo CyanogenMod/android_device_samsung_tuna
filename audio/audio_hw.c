@@ -1431,7 +1431,8 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
                         (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
                         (adev->devices & (AUDIO_DEVICE_OUT_AUX_DIGITAL |
                                          AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
-                         (val == AUDIO_DEVICE_OUT_SPEAKER))
+                        ((val & AUDIO_DEVICE_OUT_SPEAKER) ^
+                        (adev->devices & AUDIO_DEVICE_OUT_SPEAKER)))
                     do_output_standby(out);
             }
             adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
