@@ -99,7 +99,9 @@ PRODUCT_PACKAGES += \
 # Key maps
 PRODUCT_COPY_FILES += \
 	device/samsung/tuna/tuna-gpio-keypad.kl:system/usr/keylayout/tuna-gpio-keypad.kl \
-	device/samsung/tuna/tuna-gpio-keypad.kcm:system/usr/keychars/tuna-gpio-keypad.kcm
+	device/samsung/tuna/tuna-gpio-keypad.kcm:system/usr/keychars/tuna-gpio-keypad.kcm \
+	device/samsung/tuna/sec_jack.kl:system/usr/keylayout/sec_jack.kl \
+	device/samsung/tuna/sec_jack.kcm:system/usr/keychars/sec_jack.kcm
 
 # Input device calibration files
 PRODUCT_COPY_FILES += \

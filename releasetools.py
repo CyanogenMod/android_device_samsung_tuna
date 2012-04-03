@@ -32,6 +32,8 @@ def FullOTA_InstallEnd(info):
   else:
     WriteRadio(info, radio_img)
 
+  FsSizeFix(info)
+
 def IncrementalOTA_VerifyEnd(info):
   try:
     target_radio_img = info.target_zip.read("RADIO/radio.img")
@@ -73,6 +75,12 @@ def IncrementalOTA_InstallEnd(info):
     WriteRadio(info, target_radio_img, source_radio_img)
   except KeyError:
     print "no radio.img in target target_files; skipping install"
+
+  FsSizeFix(info)
+
+def FsSizeFix(info):
+  info.script.Print("Fixing fs_size in crypto footer...")
+  info.script.AppendExtra('''assert(samsung.fs_size_fix());''')
 
 def WriteBootloader(info, bootloader_img):
   common.ZipWriteStr(info.output_zip, "bootloader.img", bootloader_img)
