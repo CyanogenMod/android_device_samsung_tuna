@@ -1431,7 +1431,8 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
                         (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
                         (adev->devices & (AUDIO_DEVICE_OUT_AUX_DIGITAL |
                                          AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
-                         (val == AUDIO_DEVICE_OUT_SPEAKER))
+                        ((val & AUDIO_DEVICE_OUT_SPEAKER) ^
+                        (adev->devices & AUDIO_DEVICE_OUT_SPEAKER)))
                     do_output_standby(out);
             }
             adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
@@ -1828,8 +1829,11 @@ static void get_capture_delay(struct tuna_stream_in *in,
     /* read frames available in audio HAL input buffer
      * add number of frames being read as we want the capture time of first sample
      * in current buffer */
-    buf_delay = (long)(((int64_t)(in->frames_in + in->proc_frames_in) * 1000000000)
-                                    / in->config.rate);
+    /* frames in in->buffer are at driver sampling rate while frames in in->proc_buf are
+     * at requested sampling rate */
+    buf_delay = (long)(((int64_t)(in->frames_in) * 1000000000) / in->config.rate +
+                       ((int64_t)(in->proc_frames_in) * 1000000000) / in->requested_rate);
+
     /* add delay introduced by resampler */
     rsmp_delay = 0;
     if (in->resampler) {
