@@ -58,8 +58,8 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PACKAGES += \
 	tuna_hdcp_keys
 
-PRODUCT_PACKAGES += \
-	keystore.tuna
+#PRODUCT_PACKAGES += \
+#	keystore.tuna
 
 PRODUCT_COPY_FILES += \
 	$(LOCAL_KERNEL):kernel \
