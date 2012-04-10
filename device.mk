@@ -46,6 +46,9 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
 	nfc.tuna
 
+PRODUCT_PACKAGES += \
+	power.tuna
+
 # Audio
 PRODUCT_PACKAGES += \
 	audio.primary.tuna \
