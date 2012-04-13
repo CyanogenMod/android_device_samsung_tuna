@@ -45,8 +45,10 @@
 #define MIXER_DL2_RIGHT_EQUALIZER           "DL2 Right Equalizer"
 #define MIXER_DL1_MEDIA_PLAYBACK_VOLUME     "DL1 Media Playback Volume"
 #define MIXER_DL1_VOICE_PLAYBACK_VOLUME     "DL1 Voice Playback Volume"
+#define MIXER_DL1_TONES_PLAYBACK_VOLUME     "DL1 Tones Playback Volume"
 #define MIXER_DL2_MEDIA_PLAYBACK_VOLUME     "DL2 Media Playback Volume"
 #define MIXER_DL2_VOICE_PLAYBACK_VOLUME     "DL2 Voice Playback Volume"
+#define MIXER_DL2_TONES_PLAYBACK_VOLUME     "DL2 Tones Playback Volume"
 #define MIXER_SDT_DL_VOLUME                 "SDT DL Volume"
 #define MIXER_SDT_UL_VOLUME                 "SDT UL Volume"
 
@@ -58,8 +60,10 @@
 #define MIXER_DL1_EQUALIZER                 "DL1 Equalizer"
 #define MIXER_DL1_MIXER_MULTIMEDIA          "DL1 Mixer Multimedia"
 #define MIXER_DL1_MIXER_VOICE               "DL1 Mixer Voice"
+#define MIXER_DL1_MIXER_TONES               "DL1 Mixer Tones"
 #define MIXER_DL2_MIXER_MULTIMEDIA          "DL2 Mixer Multimedia"
 #define MIXER_DL2_MIXER_VOICE               "DL2 Mixer Voice"
+#define MIXER_DL2_MIXER_TONES               "DL2 Mixer Tones"
 #define MIXER_SIDETONE_MIXER_PLAYBACK       "Sidetone Mixer Playback"
 #define MIXER_SIDETONE_MIXER_CAPTURE        "Sidetone Mixer Capture"
 #define MIXER_DL2_MONO_MIXER                "DL2 Mono Mixer"
@@ -185,9 +189,6 @@
 /* minimum sleep time in out_write() when write threshold is not reached */
 #define MIN_WRITE_SLEEP_US 5000
 
-#define RESAMPLER_BUFFER_FRAMES (SHORT_PERIOD_SIZE * 2)
-#define RESAMPLER_BUFFER_SIZE (4 * RESAMPLER_BUFFER_FRAMES)
-
 #define DEFAULT_OUT_SAMPLING_RATE 44100 // 48000 is possible but interacts poorly with HDMI
 
 /* sampling rate when using MM low power port */
@@ -275,17 +276,22 @@ enum tty_modes {
 struct pcm_config pcm_config_mm = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
-#ifdef PLAYBACK_MMAP
     .period_size = LONG_PERIOD_SIZE,
     .period_count = PLAYBACK_LONG_PERIOD_COUNT,
-#else
+    .format = PCM_FORMAT_S16_LE,
+    .start_threshold = LONG_PERIOD_SIZE,
+    .avail_min = LONG_PERIOD_SIZE,
+};
+
+struct pcm_config pcm_config_tones = {
+    .channels = 2,
+    .rate = MM_FULL_POWER_SAMPLING_RATE,
     .period_size = SHORT_PERIOD_SIZE,
     .period_count = PLAYBACK_SHORT_PERIOD_COUNT,
-#endif
     .format = PCM_FORMAT_S16_LE,
 #ifdef PLAYBACK_MMAP
-    .start_threshold = SHORT_PERIOD_SIZE * 2,
-    .avail_min = LONG_PERIOD_SIZE,
+    .start_threshold = SHORT_PERIOD_SIZE,
+    .avail_min = SHORT_PERIOD_SIZE,
 #else
     .start_threshold = 0,
     .avail_min = 0,
@@ -342,6 +348,14 @@ struct route_setting defaults[] = {
     },
     {
         .ctl_name = MIXER_DL2_VOICE_PLAYBACK_VOLUME,
+        .intval = MIXER_ABE_GAIN_0DB,
+    },
+    {
+        .ctl_name = MIXER_DL1_TONES_PLAYBACK_VOLUME,
+        .intval = MIXER_ABE_GAIN_0DB,
+    },
+    {
+        .ctl_name = MIXER_DL2_TONES_PLAYBACK_VOLUME,
         .intval = MIXER_ABE_GAIN_0DB,
     },
     {
@@ -556,6 +570,8 @@ struct mixer_ctls
     struct mixer_ctl *mm_dl2;
     struct mixer_ctl *vx_dl1;
     struct mixer_ctl *vx_dl2;
+    struct mixer_ctl *tones_dl1;
+    struct mixer_ctl *tones_dl2;
     struct mixer_ctl *earpiece_enable;
     struct mixer_ctl *dl2_mono;
     struct mixer_ctl *dl1_headset;
@@ -570,6 +586,13 @@ struct mixer_ctls
     struct mixer_ctl *earpiece_volume;
 };
 
+enum output_type {
+    OUTPUT_DEEP_BUF,      // deep PCM buffers output stream
+    OUTPUT_LOW_LATENCY,   // low latency output stream
+    OUTPUT_TOTAL
+};
+
+
 struct tuna_audio_device {
     struct audio_hw_device hw_device;
 
@@ -583,14 +606,13 @@ struct tuna_audio_device {
     int in_call;
     float voice_volume;
     struct tuna_stream_in *active_input;
-    struct tuna_stream_out *active_output;
+    struct tuna_stream_out *outputs[OUTPUT_TOTAL];
     bool mic_mute;
     int tty_mode;
     struct echo_reference_itfe *echo_reference;
     bool bluetooth_nrec;
     bool device_is_toro;
     int wb_amr;
-    bool low_power;
 
     /* RIL */
     struct ril_handle ril;
@@ -611,11 +633,10 @@ struct tuna_stream_out {
     struct pcm *pcm[PCM_TOTAL];
     struct resampler_itfe *resampler;
     char *buffer;
+    size_t buffer_frames;
     int standby;
     struct echo_reference_itfe *echo_reference;
     struct tuna_audio_device *dev;
-    int write_threshold;
-    bool low_power;
 };
 
 #define MAX_PREPROCESSORS 3 /* maximum one AGC + one NS + one AEC per input stream */
@@ -975,8 +996,11 @@ static void force_all_standby(struct tuna_audio_device *adev)
     struct tuna_stream_in *in;
     struct tuna_stream_out *out;
 
-    if (adev->active_output) {
-        out = adev->active_output;
+    /* only needed for low latency output streams as other streams are not used
+     * for voice use cases */
+    if (adev->outputs[OUTPUT_LOW_LATENCY] != NULL &&
+            !adev->outputs[OUTPUT_LOW_LATENCY]->standby) {
+        out = adev->outputs[OUTPUT_LOW_LATENCY];
         pthread_mutex_lock(&out->lock);
         do_output_standby(out);
         pthread_mutex_unlock(&out->lock);
@@ -1091,9 +1115,11 @@ static void select_output_device(struct tuna_audio_device *adev)
 
     /* Select front end */
     mixer_ctl_set_value(adev->mixer_ctls.mm_dl2, 0, speaker_on);
+    mixer_ctl_set_value(adev->mixer_ctls.tones_dl2, 0, speaker_on);
     mixer_ctl_set_value(adev->mixer_ctls.vx_dl2, 0,
                         speaker_on && (adev->mode == AUDIO_MODE_IN_CALL));
     mixer_ctl_set_value(adev->mixer_ctls.mm_dl1, 0, dl1_on);
+    mixer_ctl_set_value(adev->mixer_ctls.tones_dl1, 0, dl1_on);
     mixer_ctl_set_value(adev->mixer_ctls.vx_dl1, 0,
                         dl1_on && (adev->mode == AUDIO_MODE_IN_CALL));
     /* Select back end */
@@ -1238,7 +1264,7 @@ static void select_input_device(struct tuna_audio_device *adev)
 }
 
 /* must be called with hw device and output stream mutexes locked */
-static int start_output_stream(struct tuna_stream_out *out)
+static int start_output_stream_low_latency(struct tuna_stream_out *out)
 {
     struct tuna_audio_device *adev = out->dev;
 #ifdef PLAYBACK_MMAP
@@ -1249,39 +1275,37 @@ static int start_output_stream(struct tuna_stream_out *out)
     int i;
     bool success = true;
 
-    adev->active_output = out;
-
     if (adev->mode != AUDIO_MODE_IN_CALL) {
-        /* FIXME: only works if only one output can be active at a time */
         select_output_device(adev);
     }
 
     /* default to low power: will be corrected in out_write if necessary before first write to
      * tinyalsa.
      */
-    out->write_threshold = PLAYBACK_LONG_PERIOD_COUNT * LONG_PERIOD_SIZE;
-    out->low_power = 1;
 
     if (adev->devices & (AUDIO_DEVICE_OUT_ALL &
                          ~(AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET | AUDIO_DEVICE_OUT_AUX_DIGITAL))) {
         /* Something not a dock in use */
-        out->config[PCM_NORMAL] = pcm_config_mm;
+        out->config[PCM_NORMAL] = pcm_config_tones;
         out->config[PCM_NORMAL].rate = MM_FULL_POWER_SAMPLING_RATE;
-        out->pcm[PCM_NORMAL] = pcm_open(CARD_TUNA_DEFAULT, PORT_MM, flags, &out->config[PCM_NORMAL]);
+        out->pcm[PCM_NORMAL] = pcm_open(CARD_TUNA_DEFAULT, PORT_TONES,
+                                            flags, &out->config[PCM_NORMAL]);
     }
 
     if (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET) {
         /* SPDIF output in use */
-        out->config[PCM_SPDIF] = pcm_config_mm;
+        out->config[PCM_SPDIF] = pcm_config_tones;
         out->config[PCM_SPDIF].rate = MM_FULL_POWER_SAMPLING_RATE;
-        out->pcm[PCM_SPDIF] = pcm_open(CARD_TUNA_DEFAULT, PORT_SPDIF, flags, &out->config[PCM_SPDIF]);
+        out->pcm[PCM_SPDIF] = pcm_open(CARD_TUNA_DEFAULT, PORT_SPDIF,
+                                           flags, &out->config[PCM_SPDIF]);
     }
 
     if(adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL) {
         /* HDMI output in use */
-        out->config[PCM_HDMI] = pcm_config_mm;
+        out->config[PCM_HDMI] = pcm_config_tones;
         out->config[PCM_HDMI].rate = MM_LOW_POWER_SAMPLING_RATE;
-        out->pcm[PCM_HDMI] = pcm_open(CARD_OMAP4_HDMI, PORT_HDMI, flags, &out->config[PCM_HDMI]);
+        out->pcm[PCM_HDMI] = pcm_open(CARD_OMAP4_HDMI, PORT_HDMI,
+                                          flags, &out->config[PCM_HDMI]);
     }
 
     /* Close any PCMs that could not be opened properly and return an error */
@@ -1295,6 +1319,10 @@ static int start_output_stream(struct tuna_stream_out *out)
     }
 
     if (success) {
+        out->buffer_frames = pcm_config_tones.period_size * 2;
+        if (out->buffer == NULL)
+            out->buffer = malloc(out->buffer_frames * audio_stream_frame_size(&out->stream.common));
+
         if (adev->echo_reference != NULL)
             out->echo_reference = adev->echo_reference;
         out->resampler->reset(out->resampler);
@@ -1302,8 +1330,33 @@ static int start_output_stream(struct tuna_stream_out *out)
         return 0;
     }
 
-    adev->active_output = NULL;
     return -ENOMEM;
+}
+
+/* must be called with hw device and output stream mutexes locked */
+static int start_output_stream_deep_buffer(struct tuna_stream_out *out)
+{
+    struct tuna_audio_device *adev = out->dev;
+
+    if (adev->mode != AUDIO_MODE_IN_CALL) {
+        select_output_device(adev);
+    }
+
+    out->config[PCM_NORMAL] = pcm_config_mm;
+    out->config[PCM_NORMAL].rate = MM_FULL_POWER_SAMPLING_RATE;
+    out->pcm[PCM_NORMAL] = pcm_open(CARD_TUNA_DEFAULT, PORT_MM,
+                                        PCM_OUT | PCM_MMAP | PCM_NOIRQ, &out->config[PCM_NORMAL]);
+    if (out->pcm[PCM_NORMAL] && !pcm_is_ready(out->pcm[PCM_NORMAL])) {
+        ALOGE("cannot open pcm_out driver: %s", pcm_get_error(out->pcm[PCM_NORMAL]));
+        pcm_close(out->pcm[PCM_NORMAL]);
+        out->pcm[PCM_NORMAL] = NULL;
+        return -ENOMEM;
+    }
+    out->buffer_frames = pcm_config_mm.period_size * 2;
+    if (out->buffer == NULL)
+        out->buffer = malloc(out->buffer_frames * audio_stream_frame_size(&out->stream.common));
+
+    return 0;
 }
 
 static int check_input_parameters(uint32_t sample_rate, audio_format_t format, int channel_count)
@@ -1373,8 +1426,11 @@ static void put_echo_reference(struct tuna_audio_device *adev,
 {
     if (adev->echo_reference != NULL &&
             reference == adev->echo_reference) {
-        if (adev->active_output != NULL)
-            remove_echo_reference(adev->active_output, reference);
+        /* echo reference is taken from the low latency output stream used
+         * for voice use cases */
+        if (adev->outputs[OUTPUT_LOW_LATENCY] != NULL &&
+                !adev->outputs[OUTPUT_LOW_LATENCY]->standby)
+            remove_echo_reference(adev->outputs[OUTPUT_LOW_LATENCY], reference);
         release_echo_reference(reference);
         adev->echo_reference = NULL;
     }
@@ -1386,8 +1442,12 @@ static struct echo_reference_itfe *get_echo_reference(struct tuna_audio_device *
                                                uint32_t sampling_rate)
 {
     put_echo_reference(adev, adev->echo_reference);
-    if (adev->active_output != NULL) {
-        struct audio_stream *stream = &adev->active_output->stream.common;
+    /* echo reference is taken from the low latency output stream used
+     * for voice use cases */
+    if (adev->outputs[OUTPUT_LOW_LATENCY] != NULL &&
+            !adev->outputs[OUTPUT_LOW_LATENCY]->standby) {
+        struct audio_stream *stream =
+                &adev->outputs[OUTPUT_LOW_LATENCY]->stream.common;
         uint32_t wr_channel_count = popcount(stream->get_channels(stream));
         uint32_t wr_sampling_rate = stream->get_sample_rate(stream);
 
@@ -1399,7 +1459,8 @@ static struct echo_reference_itfe *get_echo_reference(struct tuna_audio_device *
                                            wr_sampling_rate,
                                            &adev->echo_reference);
         if (status == 0)
-            add_echo_reference(adev->active_output, adev->echo_reference);
+            add_echo_reference(adev->outputs[OUTPUT_LOW_LATENCY],
+                               adev->echo_reference);
     }
     return adev->echo_reference;
 }
@@ -1447,7 +1508,20 @@ static int out_set_sample_rate(struct audio_stream *stream, uint32_t rate)
     return 0;
 }
 
-static size_t out_get_buffer_size(const struct audio_stream *stream)
+static size_t out_get_buffer_size_low_latency(const struct audio_stream *stream)
+{
+    struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
+
+    /* take resampling into account and return the closest majoring
+    multiple of 16 frames, as audioflinger expects audio buffers to
+    be a multiple of 16 frames. Note: we use the default rate here
+    from pcm_config_tones.rate. */
+    size_t size = (SHORT_PERIOD_SIZE * DEFAULT_OUT_SAMPLING_RATE) / pcm_config_tones.rate;
+    size = ((size + 15) / 16) * 16;
+    return size * audio_stream_frame_size((struct audio_stream *)stream);
+}
+
+static size_t out_get_buffer_size_deep_buffer(const struct audio_stream *stream)
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
@@ -1455,7 +1529,7 @@ static size_t out_get_buffer_size(const struct audio_stream *stream)
     multiple of 16 frames, as audioflinger expects audio buffers to
     be a multiple of 16 frames. Note: we use the default rate here
     from pcm_config_mm.rate. */
-    size_t size = (SHORT_PERIOD_SIZE * DEFAULT_OUT_SAMPLING_RATE) / pcm_config_mm.rate;
+    size_t size = (LONG_PERIOD_SIZE * DEFAULT_OUT_SAMPLING_RATE) / pcm_config_mm.rate;
     size = ((size + 15) / 16) * 16;
     return size * audio_stream_frame_size((struct audio_stream *)stream);
 }
@@ -1480,8 +1554,11 @@ static int do_output_standby(struct tuna_stream_out *out)
 {
     struct tuna_audio_device *adev = out->dev;
     int i;
+    bool all_outputs_in_standby = true;
 
     if (!out->standby) {
+        out->standby = 1;
+
         for (i = 0; i < PCM_TOTAL; i++) {
             if (out->pcm[i]) {
                 pcm_close(out->pcm[i]);
@@ -1489,12 +1566,15 @@ static int do_output_standby(struct tuna_stream_out *out)
             }
         }
 
-        adev->active_output = 0;
-
+        for (i = 0; i < OUTPUT_TOTAL; i++) {
+            if (adev->outputs[i] != NULL && !adev->outputs[i]->standby) {
+                all_outputs_in_standby = false;
+                break;
+            }
+        }
         /* if in call, don't turn off the output stage. This will
         be done when the call is ended */
-        if (adev->mode != AUDIO_MODE_IN_CALL) {
-            /* FIXME: only works if only one output can be active at a time */
+        if (all_outputs_in_standby && adev->mode != AUDIO_MODE_IN_CALL) {
             set_route_by_array(adev->mixer, hs_output, 0);
             set_route_by_array(adev->mixer, hf_output, 0);
         }
@@ -1504,8 +1584,6 @@ static int do_output_standby(struct tuna_stream_out *out)
             out->echo_reference->write(out->echo_reference, NULL);
             out->echo_reference = NULL;
         }
-
-        out->standby = 1;
     }
     return 0;
 }
@@ -1547,7 +1625,10 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
         pthread_mutex_lock(&adev->lock);
         pthread_mutex_lock(&out->lock);
         if (((adev->devices & AUDIO_DEVICE_OUT_ALL) != val) && (val != 0)) {
-            if (out == adev->active_output) {
+            /* this is needed only when changing device on low latency output
+             * as other output streams are not used for voice use cases nor
+             * handle duplication to HDMI or SPDIF */
+            if (out == adev->outputs[OUTPUT_LOW_LATENCY] && !out->standby) {
                 /* a change in output device may change the microphone selection */
                 if (adev->active_input &&
                         adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION) {
@@ -1599,12 +1680,20 @@ static char * out_get_parameters(const struct audio_stream *stream, const char *
     return strdup("");
 }
 
-static uint32_t out_get_latency(const struct audio_stream_out *stream)
+static uint32_t out_get_latency_low_latency(const struct audio_stream_out *stream)
 {
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
     /*  Note: we use the default rate here from pcm_config_mm.rate */
-    return (SHORT_PERIOD_SIZE * PLAYBACK_SHORT_PERIOD_COUNT * 1000) / pcm_config_mm.rate;
+    return (SHORT_PERIOD_SIZE * PLAYBACK_SHORT_PERIOD_COUNT * 1000) / pcm_config_tones.rate;
+}
+
+static uint32_t out_get_latency_deep_buffer(const struct audio_stream_out *stream)
+{
+    struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
+
+    /*  Note: we use the default rate here from pcm_config_mm.rate */
+    return (LONG_PERIOD_SIZE * PLAYBACK_LONG_PERIOD_COUNT * 1000) / pcm_config_mm.rate;
 }
 
 static int out_set_volume(struct audio_stream_out *stream, float left,
@@ -1613,7 +1702,7 @@ static int out_set_volume(struct audio_stream_out *stream, float left,
     return -ENOSYS;
 }
 
-static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
+static ssize_t out_write_low_latency(struct audio_stream_out *stream, const void* buffer,
                          size_t bytes)
 {
     int ret;
@@ -1621,16 +1710,10 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     struct tuna_audio_device *adev = out->dev;
     size_t frame_size = audio_stream_frame_size(&out->stream.common);
     size_t in_frames = bytes / frame_size;
-    size_t out_frames = RESAMPLER_BUFFER_SIZE / frame_size;
+    size_t out_frames = in_frames;
     bool force_input_standby = false;
     struct tuna_stream_in *in;
-    bool low_power;
-    int kernel_frames;
-    /* If we're in out_write, we will find at least one pcm active */
-    int primary_pcm = -1;
     int i;
-    bool use_resampler = false;
-    int period_size = 0;
 
     /* acquiring hw device mutex systematically is useful if a low priority thread is waiting
      * on the output stream mutex - e.g. executing select_mode() while holding the hw device
@@ -1639,7 +1722,7 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
     pthread_mutex_lock(&adev->lock);
     pthread_mutex_lock(&out->lock);
     if (out->standby) {
-        ret = start_output_stream(out);
+        ret = start_output_stream_low_latency(out);
         if (ret != 0) {
             pthread_mutex_unlock(&adev->lock);
             goto exit;
@@ -1650,46 +1733,20 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
                 adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION)
             force_input_standby = true;
     }
-    low_power = adev->low_power && !adev->active_input;
     pthread_mutex_unlock(&adev->lock);
 
-#ifdef PLAYBACK_MMAP
-    if (low_power != out->low_power) {
-        if (low_power) {
-            out->write_threshold = LONG_PERIOD_SIZE * PLAYBACK_LONG_PERIOD_COUNT;
-            period_size = LONG_PERIOD_SIZE;
-        } else {
-            out->write_threshold = SHORT_PERIOD_SIZE * PLAYBACK_SHORT_PERIOD_COUNT;
-            period_size = SHORT_PERIOD_SIZE;
-
-        }
-        out->low_power = low_power;
-    }
-#endif
-
     for (i = 0; i < PCM_TOTAL; i++) {
-        if (out->pcm[i]) {
-            /* Make the first active PCM act as primary */
-            if (primary_pcm < 0)
-                primary_pcm = i;
-
-            if (period_size)
-                pcm_set_avail_min(out->pcm[i], period_size);
-
-            if (out->config[i].rate != DEFAULT_OUT_SAMPLING_RATE)
-                use_resampler = true;
+        /* only use resampler if required */
+        if (out->pcm[i] && (out->config[i].rate != DEFAULT_OUT_SAMPLING_RATE)) {
+            out_frames = out->buffer_frames;
+            out->resampler->resample_from_input(out->resampler,
+                                                (int16_t *)buffer,
+                                                &in_frames,
+                                                (int16_t *)out->buffer,
+                                                &out_frames);
+            break;
         }
     }
-
-    /* only use resampler if required */
-    if (use_resampler)
-        out->resampler->resample_from_input(out->resampler,
-                                            (int16_t *)buffer,
-                                            &in_frames,
-                                            (int16_t *)out->buffer,
-                                            &out_frames);
-    else
-        out_frames = in_frames;
 
     if (out->echo_reference != NULL) {
         struct echo_reference_buffer b;
@@ -1699,26 +1756,6 @@ static ssize_t out_write(struct audio_stream_out *stream, const void* buffer,
         get_playback_delay(out, out_frames, &b);
         out->echo_reference->write(out->echo_reference, &b);
     }
-
-#ifdef PLAYBACK_MMAP
-    /* do not allow more than out->write_threshold frames in kernel pcm driver buffer */
-    do {
-        struct timespec time_stamp;
-
-        if (pcm_get_htimestamp(out->pcm[primary_pcm], (unsigned int *)&kernel_frames, &time_stamp) < 0)
-            break;
-        kernel_frames = pcm_get_buffer_size(out->pcm[primary_pcm]) - kernel_frames;
-
-        if (kernel_frames > out->write_threshold) {
-            unsigned long time = (unsigned long)
-                    (((int64_t)(kernel_frames - out->write_threshold) * 1000000) /
-                            MM_FULL_POWER_SAMPLING_RATE);
-            if (time < MIN_WRITE_SLEEP_US)
-                time = MIN_WRITE_SLEEP_US;
-            usleep(time);
-        }
-    } while (kernel_frames > out->write_threshold);
-#endif
 
     /* Write to all active PCMs */
     for (i = 0; i < PCM_TOTAL; i++) {
@@ -1752,6 +1789,55 @@ exit:
             pthread_mutex_unlock(&in->lock);
         }
         pthread_mutex_unlock(&adev->lock);
+    }
+
+    return bytes;
+}
+
+static ssize_t out_write_deep_buffer(struct audio_stream_out *stream, const void* buffer,
+                         size_t bytes)
+{
+    int ret;
+    struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
+    struct tuna_audio_device *adev = out->dev;
+    size_t frame_size = audio_stream_frame_size(&out->stream.common);
+    size_t in_frames = bytes / frame_size;
+
+    /* acquiring hw device mutex systematically is useful if a low priority thread is waiting
+     * on the output stream mutex - e.g. executing select_mode() while holding the hw device
+     * mutex
+     */
+    pthread_mutex_lock(&adev->lock);
+    pthread_mutex_lock(&out->lock);
+    if (out->standby) {
+        ret = start_output_stream_deep_buffer(out);
+        if (ret != 0) {
+            pthread_mutex_unlock(&adev->lock);
+            goto exit;
+        }
+        out->standby = 0;
+    }
+    pthread_mutex_unlock(&adev->lock);
+
+    /* only use resampler if required */
+    if (out->config[PCM_NORMAL].rate != DEFAULT_OUT_SAMPLING_RATE) {
+        size_t out_frames = out->buffer_frames;
+
+        out->resampler->resample_from_input(out->resampler,
+                                            (int16_t *)buffer,
+                                            &in_frames,
+                                            (int16_t *)out->buffer,
+                                            &out_frames);
+        ret = pcm_mmap_write(out->pcm[PCM_NORMAL], (void *)out->buffer, out_frames * frame_size);
+    } else
+        ret = pcm_mmap_write(out->pcm[PCM_NORMAL], (void *)buffer, bytes);
+
+exit:
+    pthread_mutex_unlock(&out->lock);
+
+    if (ret != 0) {
+        usleep(bytes * 1000000 / audio_stream_frame_size(&stream->common) /
+               out_get_sample_rate(&stream->common));
     }
 
     return bytes;
@@ -2803,12 +2889,31 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     struct tuna_audio_device *ladev = (struct tuna_audio_device *)dev;
     struct tuna_stream_out *out;
     int ret;
+    int output_type;
 
     *stream_out = NULL;
 
     out = (struct tuna_stream_out *)calloc(1, sizeof(struct tuna_stream_out));
     if (!out)
         return -ENOMEM;
+
+    if (flags & AUDIO_OUTPUT_FLAG_DEEP_BUFFER) {
+        ALOGV("adev_open_output_stream() deep buffer");
+        if (ladev->outputs[OUTPUT_DEEP_BUF] != NULL)
+            return -ENOSYS;
+        output_type = OUTPUT_DEEP_BUF;
+        out->stream.common.get_buffer_size = out_get_buffer_size_deep_buffer;
+        out->stream.get_latency = out_get_latency_deep_buffer;
+        out->stream.write = out_write_deep_buffer;
+    } else {
+        ALOGV("adev_open_output_stream() normal buffer");
+        if (ladev->outputs[OUTPUT_LOW_LATENCY] != NULL)
+            return -ENOSYS;
+        output_type = OUTPUT_LOW_LATENCY;
+        out->stream.common.get_buffer_size = out_get_buffer_size_low_latency;
+        out->stream.get_latency = out_get_latency_low_latency;
+        out->stream.write = out_write_low_latency;
+    }
 
     ret = create_resampler(DEFAULT_OUT_SAMPLING_RATE,
                            MM_FULL_POWER_SAMPLING_RATE,
@@ -2818,11 +2923,9 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
                            &out->resampler);
     if (ret != 0)
         goto err_open;
-    out->buffer = malloc(RESAMPLER_BUFFER_SIZE); /* todo: allow for reallocing */
 
     out->stream.common.get_sample_rate = out_get_sample_rate;
     out->stream.common.set_sample_rate = out_set_sample_rate;
-    out->stream.common.get_buffer_size = out_get_buffer_size;
     out->stream.common.get_channels = out_get_channels;
     out->stream.common.get_format = out_get_format;
     out->stream.common.set_format = out_set_format;
@@ -2832,9 +2935,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     out->stream.common.get_parameters = out_get_parameters;
     out->stream.common.add_audio_effect = out_add_audio_effect;
     out->stream.common.remove_audio_effect = out_remove_audio_effect;
-    out->stream.get_latency = out_get_latency;
     out->stream.set_volume = out_set_volume;
-    out->stream.write = out_write;
     out->stream.get_render_position = out_get_render_position;
 
     out->dev = ladev;
@@ -2853,6 +2954,8 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     config->sample_rate = out_get_sample_rate(&out->stream.common);
 
     *stream_out = &out->stream;
+    ladev->outputs[output_type] = out;
+
     return 0;
 
 err_open:
@@ -2863,9 +2966,18 @@ err_open:
 static void adev_close_output_stream(struct audio_hw_device *dev,
                                      struct audio_stream_out *stream)
 {
+    struct tuna_audio_device *ladev = (struct tuna_audio_device *)dev;
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
+    int i;
 
     out_standby(&stream->common);
+    for (i = 0; i < OUTPUT_TOTAL; i++) {
+        if (ladev->outputs[i] == out) {
+            ladev->outputs[i] = NULL;
+            break;
+        }
+    }
+
     if (out->buffer)
         free(out->buffer);
     if (out->resampler)
@@ -2912,14 +3024,6 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
             adev->bluetooth_nrec = true;
         else
             adev->bluetooth_nrec = false;
-    }
-
-    ret = str_parms_get_str(parms, "screen_state", value, sizeof(value));
-    if (ret >= 0) {
-        if (strcmp(value, AUDIO_PARAMETER_VALUE_ON) == 0)
-            adev->low_power = false;
-        else
-            adev->low_power = true;
     }
 
     str_parms_destroy(parms);
@@ -3192,10 +3296,14 @@ static int adev_open(const hw_module_t* module, const char* name,
                                            MIXER_DL1_MIXER_MULTIMEDIA);
     adev->mixer_ctls.vx_dl1 = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL1_MIXER_VOICE);
+    adev->mixer_ctls.tones_dl1 = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL1_MIXER_TONES);
     adev->mixer_ctls.mm_dl2 = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL2_MIXER_MULTIMEDIA);
     adev->mixer_ctls.vx_dl2 = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL2_MIXER_VOICE);
+    adev->mixer_ctls.tones_dl2 = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL2_MIXER_TONES);
     adev->mixer_ctls.dl2_mono = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL2_MONO_MIXER);
     adev->mixer_ctls.dl1_headset = mixer_get_ctl_by_name(adev->mixer,
@@ -3223,8 +3331,9 @@ static int adev_open(const hw_module_t* module, const char* name,
 
     if (!adev->mixer_ctls.dl1_eq || !adev->mixer_ctls.vx_dl2_volume ||
         !adev->mixer_ctls.mm_dl2_volume || !adev->mixer_ctls.mm_dl1 ||
-        !adev->mixer_ctls.vx_dl1 || !adev->mixer_ctls.mm_dl2 ||
-        !adev->mixer_ctls.vx_dl2 || !adev->mixer_ctls.dl2_mono ||
+        !adev->mixer_ctls.vx_dl1 || !adev->mixer_ctls.tones_dl1 ||
+        !adev->mixer_ctls.mm_dl2 || !adev->mixer_ctls.vx_dl2 ||
+        !adev->mixer_ctls.tones_dl2 ||!adev->mixer_ctls.dl2_mono ||
         !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
         !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
         !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume ||
