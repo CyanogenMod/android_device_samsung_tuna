@@ -2726,13 +2726,17 @@ exit:
 
 
 static int adev_open_output_stream(struct audio_hw_device *dev,
-                                   uint32_t devices, audio_format_t *format,
-                                   uint32_t *channels, uint32_t *sample_rate,
+                                   audio_io_handle_t handle,
+                                   audio_devices_t devices,
+                                   audio_output_flags_t flags,
+                                   struct audio_config *config,
                                    struct audio_stream_out **stream_out)
 {
     struct tuna_audio_device *ladev = (struct tuna_audio_device *)dev;
     struct tuna_stream_out *out;
     int ret;
+
+    *stream_out = NULL;
 
     out = (struct tuna_stream_out *)calloc(1, sizeof(struct tuna_stream_out));
     if (!out)
@@ -2776,16 +2780,15 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
      * This is because out_set_parameters() with a route is not
      * guaranteed to be called after an output stream is opened. */
 
-    *format = out_get_format(&out->stream.common);
-    *channels = out_get_channels(&out->stream.common);
-    *sample_rate = out_get_sample_rate(&out->stream.common);
+    config->format = out_get_format(&out->stream.common);
+    config->channel_mask = out_get_channels(&out->stream.common);
+    config->sample_rate = out_get_sample_rate(&out->stream.common);
 
     *stream_out = &out->stream;
     return 0;
 
 err_open:
     free(out);
-    *stream_out = NULL;
     return ret;
 }
 
@@ -2916,29 +2919,30 @@ static int adev_get_mic_mute(const struct audio_hw_device *dev, bool *state)
 }
 
 static size_t adev_get_input_buffer_size(const struct audio_hw_device *dev,
-                                         uint32_t sample_rate, audio_format_t format,
-                                         int channel_count)
+                                         const struct audio_config *config)
 {
     size_t size;
-
-    if (check_input_parameters(sample_rate, format, channel_count) != 0)
+    int channel_count = popcount(config->channel_mask);
+    if (check_input_parameters(config->sample_rate, config->format, channel_count) != 0)
         return 0;
 
-    return get_input_buffer_size(sample_rate, format, channel_count);
+    return get_input_buffer_size(config->sample_rate, config->format, channel_count);
 }
 
-static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
-                                  audio_format_t *format, uint32_t *channel_mask,
-                                  uint32_t *sample_rate,
-                                  audio_in_acoustics_t acoustics,
+static int adev_open_input_stream(struct audio_hw_device *dev,
+                                  audio_io_handle_t handle,
+                                  audio_devices_t devices,
+                                  struct audio_config *config,
                                   struct audio_stream_in **stream_in)
 {
     struct tuna_audio_device *ladev = (struct tuna_audio_device *)dev;
     struct tuna_stream_in *in;
     int ret;
-    int channel_count = popcount(*channel_mask);
+    int channel_count = popcount(config->channel_mask);
 
-    if (check_input_parameters(*sample_rate, *format, channel_count) != 0)
+    *stream_in = NULL;
+
+    if (check_input_parameters(config->sample_rate, config->format, channel_count) != 0)
         return -EINVAL;
 
     in = (struct tuna_stream_in *)calloc(1, sizeof(struct tuna_stream_in));
@@ -2961,12 +2965,12 @@ static int adev_open_input_stream(struct audio_hw_device *dev, uint32_t devices,
     in->stream.read = in_read;
     in->stream.get_input_frames_lost = in_get_input_frames_lost;
 
-    in->requested_rate = *sample_rate;
+    in->requested_rate = config->sample_rate;
 
     memcpy(&in->config, &pcm_config_mm_ul, sizeof(pcm_config_mm_ul));
     in->config.channels = channel_count;
 
-    in->main_channels = *channel_mask;
+    in->main_channels = config->channel_mask;
 
     /* initialisation of preprocessor structure array is implicit with the calloc.
      * same for in->aux_channels and in->aux_channels_changed */
@@ -2999,7 +3003,6 @@ err:
         release_resampler(in->resampler);
 
     free(in);
-    *stream_in = NULL;
     return ret;
 }
 
@@ -3084,7 +3087,7 @@ static int adev_open(const hw_module_t* module, const char* name,
         return -ENOMEM;
 
     adev->hw_device.common.tag = HARDWARE_DEVICE_TAG;
-    adev->hw_device.common.version = 0;
+    adev->hw_device.common.version = AUDIO_DEVICE_API_VERSION_1_0;
     adev->hw_device.common.module = (struct hw_module_t *) module;
     adev->hw_device.common.close = adev_close;
 
@@ -3199,8 +3202,8 @@ static struct hw_module_methods_t hal_module_methods = {
 struct audio_module HAL_MODULE_INFO_SYM = {
     .common = {
         .tag = HARDWARE_MODULE_TAG,
-        .version_major = 1,
-        .version_minor = 0,
+        .module_api_version = AUDIO_MODULE_API_VERSION_0_1,
+        .hal_api_version = HARDWARE_HAL_API_VERSION,
         .id = AUDIO_HARDWARE_MODULE_ID,
         .name = "Tuna audio HW HAL",
         .author = "The Android Open Source Project",
