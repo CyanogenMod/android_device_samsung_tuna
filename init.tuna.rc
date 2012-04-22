@@ -225,11 +225,12 @@ service iprenew_bnep0 /system/bin/dhcpcd -n
 	oneshot
 
 # bugreport is triggered by holding down volume down, volume up and power
-service bugreport /system/bin/bugmailer.sh -v
-	class main
-	disabled
-	oneshot
-	keycodes 114 115 116
+# it's easy to trigger when wanting to take screenshots. let's disable it
+#service bugreport /system/bin/bugmailer.sh -v
+#	class main
+#	disabled
+#	oneshot
+#	keycodes 114 115 116
 
 service battery_charger /charger
 	class charger
