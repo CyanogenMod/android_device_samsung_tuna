@@ -149,11 +149,11 @@
                    channels="1" />
         </EncoderProfile>
 
-        <EncoderProfile quality="timelapseqcif" fileFormat="mp4" duration="30">
+        <EncoderProfile quality="timelapseqvga" fileFormat="mp4" duration="30">
             <Video codec="h264"
                    bitRate="192000"
-                   width="176"
-                   height="144"
+                   width="320"
+                   height="240"
                    frameRate="30" />
             <!-- audio setting is ignored -->
             <Audio codec="amrnb"
@@ -271,11 +271,11 @@
                    channels="1" />
         </EncoderProfile>
 
-        <EncoderProfile quality="timelapseqcif" fileFormat="mp4" duration="30">
+        <EncoderProfile quality="timelapseqvga" fileFormat="mp4" duration="30">
             <Video codec="h264"
                    bitRate="192000"
-                   width="176"
-                   height="144"
+                   width="320"
+                   height="240"
                    frameRate="30" />
             <!-- audio setting is ignored -->
             <Audio codec="amrnb"
