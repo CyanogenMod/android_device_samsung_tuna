@@ -12,9 +12,29 @@
     <string name="color_tuning_summary_head">Калибровка цвета мультипликатора</string>
     <string name="gamma_tuning_title_head">Настройка цветовой гаммы</string>
     <string name="gamma_tuning_summary_head">Калибровка коррекции цветовой гаммы</string>
+    <string name="color_hack_presets_title_head">Предустановки настроек</string>
+    <string name="color_hack_presets_summary_head">Установки для цветовой гаммы и мультипликатора проверенные некоторыми пользователями</string>
     <string name="color_red_title">Красный</string>
     <string name="color_green_title">Зелёный</string>
     <string name="color_blue_title">Синий</string>
+    <string name="gamma_default_title">По умолч.</string>
+    <string name="gamma_CM_title">Настр. CM</string>
+    <string name="gamma_bright_title">Ярко</string>
+    <string name="color_default_title">По умолч.</string>
+    <string name="color_CM_title">Настр. CM</string>
+    <string name="color_dark_title">Темно</string>
+
+    <string name="preset1_default_title">По умолчанию</string>
+    <string name="preset2_default_title">Естественный</string>
+    <string name="preset3_default_title">Тёмно-синий</string>
+    <string name="preset4_default_title">Тёплый</string>
+    <string name="preset5_default_title">Холодный тёмный</string>
+    <string name="preset6_default_title">Перекр. обработка</string>
+    <string name="credits_presets">Участники: ale.landra91 cpaixao provolinoo</string>
+
+    <string name="category_touchkey_title">Сенсорные копки</string>
+    <string name="touchkey_notification_title_head">Подсветка уведомлений</string>
+    <string name="touchkey_notification_summary_head">Подсветка сенсорных клавиш включена, когда есть уведомления</string>
 
     <string name="category_radio_title">Радио</string>
     <string name="hspa_summary_head">Включить HSDPA/HSUPA</string>
