@@ -52,7 +52,8 @@ PRODUCT_PACKAGES += \
 # Audio
 PRODUCT_PACKAGES += \
 	audio.primary.tuna \
-	audio.a2dp.default
+	audio.a2dp.default \
+	audio.usb.default
 
 PRODUCT_COPY_FILES += \
 	device/samsung/tuna/audio/audio_policy.conf:system/etc/audio_policy.conf
