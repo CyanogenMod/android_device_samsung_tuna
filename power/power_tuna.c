@@ -34,10 +34,6 @@
 static int sPowerStatefd;
 static const char *pwr_states[] = { "mem", "on" };
 
-#define BOOST_PATH      "/sys/devices/system/cpu/cpufreq/interactive/boost"
-static int boost_fd = -1;
-static int boost_warned;
-
 static void sysfs_write(char *path, char *s)
 {
     char buf[80];
@@ -115,27 +111,10 @@ static void tuna_power_hint(struct power_module *module, power_hint_t hint,
 
     switch (hint) {
     case POWER_HINT_VSYNC:
-        if (boost_fd < 0)
-            boost_fd = open(BOOST_PATH, O_WRONLY);
-
-        if (boost_fd < 0) {
-            if (!boost_warned) {
-                strerror_r(errno, buf, sizeof(buf));
-                ALOGE("Error opening %s: %s\n", BOOST_PATH, buf);
-                boost_warned = 1;
-            }
-            break;
-        }
-
-        len = write(boost_fd, (int) data ? "1" : "0", 1);
-        if (len < 0) {
-            strerror_r(errno, buf, sizeof(buf));
-            ALOGE("Error writing to %s: %s\n", BOOST_PATH, buf);
-        }
         break;
 
     default:
-            break;
+        break;
     }
 }
 
