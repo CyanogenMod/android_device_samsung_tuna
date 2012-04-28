@@ -28,8 +28,8 @@
     <string name="preset2_default_title">Естественный</string>
     <string name="preset3_default_title">Тёмно-синий</string>
     <string name="preset4_default_title">Тёплый</string>
-    <string name="preset5_default_title">Холодный тёмный</string>
-    <string name="preset6_default_title">Перекр. обработка</string>
+    <string name="preset5_default_title">Хол. тёмный</string>
+    <string name="preset6_default_title">Перекр. обраб.</string>
     <string name="credits_presets">Участники: ale.landra91 cpaixao provolinoo</string>
 
     <string name="category_touchkey_title">Сенсорные копки</string>
