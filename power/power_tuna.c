@@ -67,18 +67,18 @@ static void tuna_power_init(struct power_module *module)
     }
 
     /*
-     * cpufreq interactive governor: timer 20ms, min sample 100ms,
-     * hispeed 700MHz at load 40%, input boost enabled.
+     * cpufreq interactive governor: timer 20ms, min sample 60ms,
+     * hispeed 700MHz at load 50%, input boost enabled.
      */
 
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/timer_rate",
                 "20000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/min_sample_time",
-                "100000");
+                "60000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/hispeed_freq",
                 "700000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load",
-                "40");
+                "50");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay",
                 "100000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/input_boost", "1");
