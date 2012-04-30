@@ -903,6 +903,7 @@ static int tee_open(const hw_module_t* module, const char* name,
     dev->delete_keypair = tee_delete_keypair;
     dev->sign_data = tee_sign_data;
     dev->verify_data = tee_verify_data;
+    dev->delete_all = NULL;
 
     CK_RV initializeRV = C_Initialize(NULL);
     if (initializeRV != CKR_OK) {
