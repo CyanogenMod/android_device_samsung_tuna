@@ -2,8 +2,12 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- General settings -->
-    <PreferenceCategory android:key="category_cpu"
-        android:title="@string/category_cpu_title">
+    <PreferenceCategory android:key="category_system"
+        android:title="@string/category_system_title">
+
+        <CheckBoxPreference android:key="fast_charge_usb"
+            android:title="@string/usb_fastcharge_title_head"
+            android:summary="@string/usb_fastcharge_summary_head" />
 
     </PreferenceCategory>
 

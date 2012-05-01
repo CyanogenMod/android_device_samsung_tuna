@@ -45,6 +45,7 @@ public class DeviceSettings extends Activity {
     public static final String KEY_GAMMA_TUNING = "gamma_tuning";
     public static final String KEY_CATEGORY_RADIO = "category_radio";
     public static final String KEY_HSPA = "hspa";
+    public static final String KEY_USB_FAST_CHARGE = "fast_charge_usb";
 
     ViewPager mViewPager;
     TabsAdapter mTabsAdapter;

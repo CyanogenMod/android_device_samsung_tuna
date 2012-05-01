@@ -27,6 +27,7 @@ import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
 import android.util.Log;
+import android.view.View;
 
 import com.cyanogenmod.settings.device.R;
 
@@ -34,6 +35,9 @@ public class GeneralFragmentActivity extends PreferenceFragment {
 
     private static final String PREF_ENABLED = "1";
     private static final String TAG = "GNexusParts_General";
+    private static final String USB_FAST_CHARGE_FILE = "/sys/kernel/fast_charge/force_fast_charge";
+
+    private CheckBoxPreference mUSBFastCharge;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -42,6 +46,13 @@ public class GeneralFragmentActivity extends PreferenceFragment {
         addPreferencesFromResource(R.xml.general_preferences);
 
         PreferenceScreen prefSet = getPreferenceScreen();
+        mUSBFastCharge = (CheckBoxPreference) findPreference(DeviceSettings.KEY_USB_FAST_CHARGE);
+
+        if (isSupported(USB_FAST_CHARGE_FILE)) {
+            mUSBFastCharge.setChecked(PREF_ENABLED.equals(Utils.readOneLine(USB_FAST_CHARGE_FILE)));
+        } else {
+            mUSBFastCharge.setEnabled(false);
+        }
 
     }
 
@@ -53,6 +64,12 @@ public class GeneralFragmentActivity extends PreferenceFragment {
 
         Log.w(TAG, "key: " + key);
 
+        if (key.equals(DeviceSettings.KEY_USB_FAST_CHARGE)) {
+            final CheckBoxPreference chkPref = (CheckBoxPreference) preference;
+            boxValue = chkPref.isChecked() ? "1" : "0";
+            Utils.writeValue(USB_FAST_CHARGE_FILE, boxValue);
+        }
+
         return true;
     }
 
@@ -62,5 +79,10 @@ public class GeneralFragmentActivity extends PreferenceFragment {
 
     public static void restore(Context context) {
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+        if (isSupported(USB_FAST_CHARGE_FILE)) {
+            String sDefaultValue = Utils.readOneLine(USB_FAST_CHARGE_FILE);
+            Utils.writeValue(USB_FAST_CHARGE_FILE, sharedPrefs.getBoolean(DeviceSettings.KEY_USB_FAST_CHARGE,
+                             PREF_ENABLED.equals(sDefaultValue)));
+        }
     }
 }

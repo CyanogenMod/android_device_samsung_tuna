@@ -6,7 +6,7 @@
     <string name="general_title">ALLGEMEIN</string>
     <string name="display_title">BILDSCHIRM</string>
 
-    <string name="category_cpu_title">Prozessor</string>
+    <string name="category_system_title">System</string>
     <string name="category_screen_title">WM8994 Einstellungen ( voodoo )</string>
     <string name="color_tuning_title_head">Farbmultiplikator</string>
     <string name="color_tuning_summary_head">Farbmultiplikator einstellen</string>

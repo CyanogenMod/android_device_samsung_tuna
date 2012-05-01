@@ -6,7 +6,6 @@
     <string name="general_title">ОСНОВНЫЕ</string>
     <string name="display_title">ДИСПЛЕЙ</string>
 
-    <string name="category_cpu_title">ЦП</string>
     <string name="category_screen_title">Настройки WM8994 ( voodoo )</string>
     <string name="color_tuning_title_head">Настройка цвета мультипликатора</string>
     <string name="color_tuning_summary_head">Калибровка цвета мультипликатора</string>

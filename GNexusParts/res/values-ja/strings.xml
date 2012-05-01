@@ -6,7 +6,7 @@
     <string name="general_title">一般</string>
     <string name="display_title">ディスプレイ</string>
 
-    <string name="category_cpu_title">CPU</string>
+    <string name="category_system_title">SYSTEM</string>
     <string name="category_screen_title">WM8994設定 ( voodoo )</string>
     <string name="color_tuning_title_head">カラーマルチプライヤチューニング</string>
     <string name="color_tuning_summary_head">画面の色味を調整する</string>
