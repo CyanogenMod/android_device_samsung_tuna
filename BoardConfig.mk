@@ -38,6 +38,7 @@ TARGET_BOOTLOADER_BOARD_NAME := tuna
 TARGET_BOARD_INFO_FILE := device/samsung/tuna/board-info.txt
 
 BOARD_EGL_CFG := device/samsung/tuna/egl.cfg
+BOARD_CREATE_TUNA_HDCP_KEYS_SYMLINK := true
 
 #BOARD_USES_HGL := true
 #BOARD_USES_OVERLAY := true
