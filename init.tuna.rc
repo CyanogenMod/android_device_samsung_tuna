@@ -71,6 +71,9 @@ on fs
     chmod 0777 /dev/tiler
     chmod 0777 /dev/dmm
 
+# change permissions for gamma settings
+    chmod 0666 /sys/devices/platform/omapdss/manager0/gamma
+
 # change permissions for ION driver
     chmod 0777 /dev/ion
 
