@@ -2899,16 +2899,20 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 
     if (flags & AUDIO_OUTPUT_FLAG_DEEP_BUFFER) {
         ALOGV("adev_open_output_stream() deep buffer");
-        if (ladev->outputs[OUTPUT_DEEP_BUF] != NULL)
-            return -ENOSYS;
+        if (ladev->outputs[OUTPUT_DEEP_BUF] != NULL) {
+            ret = -ENOSYS;
+            goto err_open;
+        }
         output_type = OUTPUT_DEEP_BUF;
         out->stream.common.get_buffer_size = out_get_buffer_size_deep_buffer;
         out->stream.get_latency = out_get_latency_deep_buffer;
         out->stream.write = out_write_deep_buffer;
     } else {
         ALOGV("adev_open_output_stream() normal buffer");
-        if (ladev->outputs[OUTPUT_LOW_LATENCY] != NULL)
-            return -ENOSYS;
+        if (ladev->outputs[OUTPUT_LOW_LATENCY] != NULL) {
+            ret = -ENOSYS;
+            goto err_open;
+        }
         output_type = OUTPUT_LOW_LATENCY;
         out->stream.common.get_buffer_size = out_get_buffer_size_low_latency;
         out->stream.get_latency = out_get_latency_low_latency;
