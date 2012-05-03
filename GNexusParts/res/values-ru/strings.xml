@@ -23,6 +23,7 @@
     <string name="color_default_title">По умолч.</string>
     <string name="color_CM_title">Настр. CM</string>
     <string name="color_dark_title">Темно</string>
+    <string name="gamma_dss_title">Настр. DSS гаммы</string>
 
     <string name="preset1_default_title">По умолчанию</string>
     <string name="preset2_default_title">Естественный</string>
