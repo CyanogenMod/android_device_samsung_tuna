@@ -25,7 +25,7 @@
     <string name="color_dark_title">Dunkel</string>
     <string name="gamma_dss_title">DSS Gammawert</string>
 
-    <string name="preset1_default_title">Standard<string>
+    <string name="preset1_default_title">Standard</string>
     <string name="preset2_default_title">Natürlich</string>
     <string name="preset3_default_title">Dunkles Blau</string>
     <string name="preset4_default_title">Warm</string>
