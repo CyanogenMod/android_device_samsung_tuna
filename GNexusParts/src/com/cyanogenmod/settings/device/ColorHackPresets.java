@@ -39,7 +39,8 @@ public class ColorHackPresets extends DialogPreference implements OnClickListene
     private static final String[] FILE_PATH_GAMMA = new String[] {
             "/sys/class/misc/samoled_color/red_v1_offset",
             "/sys/class/misc/samoled_color/green_v1_offset",
-            "/sys/class/misc/samoled_color/blue_v1_offset"
+            "/sys/class/misc/samoled_color/blue_v1_offset",
+            "/sys/devices/platform/omapdss/manager0/gamma"
     };
 
     private static final String[] FILE_PATH_MULTI = new String[] {
@@ -162,6 +163,7 @@ public class ColorHackPresets extends DialogPreference implements OnClickListene
         WriteGamma(0, 0);
         WriteGamma(0, 1);
         WriteGamma(0, 2);
+        WriteGamma(0, 3);
     }
 
     private void Preset2() {
