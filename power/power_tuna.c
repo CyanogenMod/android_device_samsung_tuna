@@ -25,15 +25,6 @@
 #include <hardware/hardware.h>
 #include <hardware/power.h>
 
-/*
- * Tuna uses the legacy interface for requesting early suspend and late resume.
- */
-
-#define LEGACY_SYS_POWER_STATE "/sys/power/state"
-
-static int sPowerStatefd;
-static const char *pwr_states[] = { "mem", "on" };
-
 static void sysfs_write(char *path, char *s)
 {
     char buf[80];
@@ -57,15 +48,6 @@ static void sysfs_write(char *path, char *s)
 
 static void tuna_power_init(struct power_module *module)
 {
-    char buf[80];
-
-    sPowerStatefd = open(LEGACY_SYS_POWER_STATE, O_RDWR);
-
-    if (sPowerStatefd < 0) {
-        strerror_r(errno, buf, sizeof(buf));
-        ALOGE("Error opening %s: %s\n", LEGACY_SYS_POWER_STATE, buf);
-    }
-
     /*
      * cpufreq interactive governor: timer 20ms, min sample 60ms,
      * hispeed 700MHz at load 50%, input boost enabled.
@@ -86,9 +68,6 @@ static void tuna_power_init(struct power_module *module)
 
 static void tuna_power_set_interactive(struct power_module *module, int on)
 {
-    char buf[80];
-    int len;
-
     /*
      * Lower maximum frequency when screen is off.  CPU 0 and 1 share a
      * cpufreq policy.
@@ -96,12 +75,6 @@ static void tuna_power_set_interactive(struct power_module *module, int on)
 
     sysfs_write("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq",
                 on ? "1200000" : "700000");
-
-    len = write(sPowerStatefd, pwr_states[!!on], strlen(pwr_states[!!on]));
-    if (len < 0) {
-        strerror_r(errno, buf, sizeof(buf));
-        ALOGE("Error writing to %s: %s\n", LEGACY_SYS_POWER_STATE, buf);
-    }
 }
 
 static void tuna_power_hint(struct power_module *module, power_hint_t hint,
