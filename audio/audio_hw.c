@@ -125,8 +125,10 @@
 #undef PLAYBACK_MMAP        // was #define
 /* short period (aka low latency) in milliseconds */
 #define SHORT_PERIOD_MS 4   // was 22
-/* long period (aka low power or deep buffer) in milliseconds */
-#define LONG_PERIOD_MS 308
+/* deep buffer short period (screen on) in milliseconds */
+#define DEEP_BUFFER_SHORT_PERIOD_MS 22
+/* deep buffer long period (screen off) in milliseconds */
+#define DEEP_BUFFER_LONG_PERIOD_MS 308
 
 /* Constraint imposed by ABE: for playback, all period sizes must be multiples of 24 frames
  * = 500 us at 48 kHz.  It seems to be either 48 or 96 for capture, or maybe it is because the
@@ -143,12 +145,22 @@
 /* number of frames per short period (low latency) */
 #define SHORT_PERIOD_SIZE (ABE_BASE_FRAME_COUNT * SHORT_PERIOD_MULTIPLIER)
 
-/* number of short periods in a long period */
-#define LONG_PERIOD_MULTIPLIER (LONG_PERIOD_MS / SHORT_PERIOD_MS)
-/* number of frames per long period (low power) */
-#define LONG_PERIOD_SIZE (SHORT_PERIOD_SIZE * LONG_PERIOD_MULTIPLIER)
-/* number of periods for low power playback */
-#define PLAYBACK_LONG_PERIOD_COUNT 2
+/* number of base blocks in a short deep buffer period (screen on) */
+#define DEEP_BUFFER_SHORT_PERIOD_MULTIPLIER (DEEP_BUFFER_SHORT_PERIOD_MS * MULTIPLIER_FACTOR)
+/* number of frames per short deep buffer period (screen on) */
+#define DEEP_BUFFER_SHORT_PERIOD_SIZE (ABE_BASE_FRAME_COUNT * DEEP_BUFFER_SHORT_PERIOD_MULTIPLIER)
+/* number of periods for deep buffer playback (screen on) */
+#define PLAYBACK_DEEP_BUFFER_SHORT_PERIOD_COUNT 4
+
+/* number of short deep buffer periods in a long period */
+#define DEEP_BUFFER_LONG_PERIOD_MULTIPLIER \
+                            (DEEP_BUFFER_LONG_PERIOD_MS / DEEP_BUFFER_SHORT_PERIOD_MS)
+/* number of frames per long deep buffer period (screen off) */
+#define DEEP_BUFFER_LONG_PERIOD_SIZE \
+                            (DEEP_BUFFER_SHORT_PERIOD_SIZE * DEEP_BUFFER_LONG_PERIOD_MULTIPLIER)
+/* number of periods for deep buffer playback (screen off) */
+#define PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT 2
+
 /* Number of pseudo periods for low latency playback.
  * These are called "pseudo" periods in that they are not known as periods by ALSA.
  * Formerly, ALSA was configured in MMAP mode with 2 large periods, and this
@@ -276,11 +288,11 @@ enum tty_modes {
 struct pcm_config pcm_config_mm = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
-    .period_size = LONG_PERIOD_SIZE,
-    .period_count = PLAYBACK_LONG_PERIOD_COUNT,
+    .period_size = DEEP_BUFFER_LONG_PERIOD_SIZE,
+    .period_count = PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT,
     .format = PCM_FORMAT_S16_LE,
-    .start_threshold = LONG_PERIOD_SIZE,
-    .avail_min = LONG_PERIOD_SIZE,
+    .start_threshold = DEEP_BUFFER_SHORT_PERIOD_SIZE * 2,
+    .avail_min = DEEP_BUFFER_LONG_PERIOD_SIZE,
 };
 
 struct pcm_config pcm_config_tones = {
@@ -616,6 +628,7 @@ struct tuna_audio_device {
     bool bluetooth_nrec;
     bool device_is_toro;
     int wb_amr;
+    bool screen_off;
 
     /* RIL */
     struct ril_handle ril;
@@ -639,6 +652,9 @@ struct tuna_stream_out {
     size_t buffer_frames;
     int standby;
     struct echo_reference_itfe *echo_reference;
+    int write_threshold;
+    bool use_long_periods;
+
     struct tuna_audio_device *dev;
 };
 
@@ -1387,6 +1403,9 @@ static int start_output_stream_deep_buffer(struct tuna_stream_out *out)
         select_output_device(adev);
     }
 
+    out->write_threshold = PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT * DEEP_BUFFER_LONG_PERIOD_SIZE;
+    out->use_long_periods = true;
+
     out->config[PCM_NORMAL] = pcm_config_mm;
     out->config[PCM_NORMAL].rate = MM_FULL_POWER_SAMPLING_RATE;
     out->pcm[PCM_NORMAL] = pcm_open(CARD_TUNA_DEFAULT, PORT_MM,
@@ -1397,7 +1416,7 @@ static int start_output_stream_deep_buffer(struct tuna_stream_out *out)
         out->pcm[PCM_NORMAL] = NULL;
         return -ENOMEM;
     }
-    out->buffer_frames = pcm_config_mm.period_size * 2;
+    out->buffer_frames = DEEP_BUFFER_SHORT_PERIOD_SIZE * 2;
     if (out->buffer == NULL)
         out->buffer = malloc(out->buffer_frames * audio_stream_frame_size(&out->stream.common));
 
@@ -1574,7 +1593,8 @@ static size_t out_get_buffer_size_deep_buffer(const struct audio_stream *stream)
     multiple of 16 frames, as audioflinger expects audio buffers to
     be a multiple of 16 frames. Note: we use the default rate here
     from pcm_config_mm.rate. */
-    size_t size = (LONG_PERIOD_SIZE * DEFAULT_OUT_SAMPLING_RATE) / pcm_config_mm.rate;
+    size_t size = (DEEP_BUFFER_SHORT_PERIOD_SIZE * DEFAULT_OUT_SAMPLING_RATE) /
+                        pcm_config_mm.rate;
     size = ((size + 15) / 16) * 16;
     return size * audio_stream_frame_size((struct audio_stream *)stream);
 }
@@ -1738,7 +1758,8 @@ static uint32_t out_get_latency_deep_buffer(const struct audio_stream_out *strea
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
     /*  Note: we use the default rate here from pcm_config_mm.rate */
-    return (LONG_PERIOD_SIZE * PLAYBACK_LONG_PERIOD_COUNT * 1000) / pcm_config_mm.rate;
+    return (DEEP_BUFFER_LONG_PERIOD_SIZE * PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT * 1000) /
+                    pcm_config_mm.rate;
 }
 
 static int out_set_volume(struct audio_stream_out *stream, float left,
@@ -1847,6 +1868,10 @@ static ssize_t out_write_deep_buffer(struct audio_stream_out *stream, const void
     struct tuna_audio_device *adev = out->dev;
     size_t frame_size = audio_stream_frame_size(&out->stream.common);
     size_t in_frames = bytes / frame_size;
+    size_t out_frames;
+    bool use_long_periods;
+    int kernel_frames;
+    void *buf;
 
     /* acquiring hw device mutex systematically is useful if a low priority thread is waiting
      * on the output stream mutex - e.g. executing select_mode() while holding the hw device
@@ -1862,20 +1887,59 @@ static ssize_t out_write_deep_buffer(struct audio_stream_out *stream, const void
         }
         out->standby = 0;
     }
+    use_long_periods = adev->screen_off && !adev->active_input;
     pthread_mutex_unlock(&adev->lock);
+
+    if (use_long_periods != out->use_long_periods) {
+        size_t period_size;
+        size_t period_count;
+
+        if (use_long_periods) {
+            period_size = DEEP_BUFFER_LONG_PERIOD_SIZE;
+            period_count = PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT;
+        } else {
+            period_size = DEEP_BUFFER_SHORT_PERIOD_SIZE;
+            period_count = PLAYBACK_DEEP_BUFFER_SHORT_PERIOD_COUNT;
+        }
+        out->write_threshold = period_size * period_count;
+        pcm_set_avail_min(out->pcm[PCM_NORMAL], period_size);
+        out->use_long_periods = use_long_periods;
+    }
 
     /* only use resampler if required */
     if (out->config[PCM_NORMAL].rate != DEFAULT_OUT_SAMPLING_RATE) {
-        size_t out_frames = out->buffer_frames;
-
+        out_frames = out->buffer_frames;
         out->resampler->resample_from_input(out->resampler,
                                             (int16_t *)buffer,
                                             &in_frames,
                                             (int16_t *)out->buffer,
                                             &out_frames);
-        ret = pcm_mmap_write(out->pcm[PCM_NORMAL], (void *)out->buffer, out_frames * frame_size);
-    } else
-        ret = pcm_mmap_write(out->pcm[PCM_NORMAL], (void *)buffer, bytes);
+        buf = (void *)out->buffer;
+    } else {
+        out_frames = in_frames;
+        buf = (void *)buffer;
+    }
+
+    /* do not allow more than out->write_threshold frames in kernel pcm driver buffer */
+    do {
+        struct timespec time_stamp;
+
+        if (pcm_get_htimestamp(out->pcm[PCM_NORMAL],
+                               (unsigned int *)&kernel_frames, &time_stamp) < 0)
+            break;
+        kernel_frames = pcm_get_buffer_size(out->pcm[PCM_NORMAL]) - kernel_frames;
+
+        if (kernel_frames > out->write_threshold) {
+            unsigned long time = (unsigned long)
+                    (((int64_t)(kernel_frames - out->write_threshold) * 1000000) /
+                            MM_FULL_POWER_SAMPLING_RATE);
+            if (time < MIN_WRITE_SLEEP_US)
+                time = MIN_WRITE_SLEEP_US;
+            usleep(time);
+        }
+    } while (kernel_frames > out->write_threshold);
+
+    ret = pcm_mmap_write(out->pcm[PCM_NORMAL], buf, out_frames * frame_size);
 
 exit:
     pthread_mutex_unlock(&out->lock);
@@ -3073,6 +3137,14 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
             adev->bluetooth_nrec = true;
         else
             adev->bluetooth_nrec = false;
+    }
+
+    ret = str_parms_get_str(parms, "screen_state", value, sizeof(value));
+    if (ret >= 0) {
+        if (strcmp(value, AUDIO_PARAMETER_VALUE_ON) == 0)
+            adev->screen_off = false;
+        else
+            adev->screen_off = true;
     }
 
     str_parms_destroy(parms);
