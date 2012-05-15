@@ -564,8 +564,11 @@ struct route_setting vx_ul_bt[] = {
 struct mixer_ctls
 {
     struct mixer_ctl *dl1_eq;
+    struct mixer_ctl *mm_dl1_volume;
+    struct mixer_ctl *tones_dl1_volume;
     struct mixer_ctl *mm_dl2_volume;
     struct mixer_ctl *vx_dl2_volume;
+    struct mixer_ctl *tones_dl2_volume;
     struct mixer_ctl *mm_dl1;
     struct mixer_ctl *mm_dl2;
     struct mixer_ctl *vx_dl1;
@@ -932,7 +935,16 @@ static void set_output_volumes(struct tuna_audio_device *adev, bool tty_volume)
     int speaker_volume_overrange = MIXER_ABE_GAIN_0DB;
     int speaker_max_db =
         DB_FROM_SPEAKER_VOLUME(mixer_ctl_get_range_max(adev->mixer_ctls.speaker_volume));
-    struct mixer_ctl *mixer_ctl_overrange = adev->mixer_ctls.mm_dl2_volume;
+    int normal_speaker_volume = toro ? NORMAL_SPEAKER_VOLUME_TORO :
+                            NORMAL_SPEAKER_VOLUME_MAGURO;
+    int normal_headphone_volume = toro ? NORMAL_HEADPHONE_VOLUME_TORO :
+                                NORMAL_HEADPHONE_VOLUME_MAGURO;
+    int normal_headset_volume = toro ? NORMAL_HEADSET_VOLUME_TORO :
+                                NORMAL_HEADSET_VOLUME_MAGURO;
+    int normal_earpiece_volume = toro ? NORMAL_EARPIECE_VOLUME_TORO :
+                             NORMAL_EARPIECE_VOLUME_MAGURO;
+    int dl1_volume_correction = 0;
+    int dl2_volume_correction = 0;
 
     if (adev->mode == AUDIO_MODE_IN_CALL) {
         /* Voice call */
@@ -942,7 +954,6 @@ static void set_output_volumes(struct tuna_audio_device *adev, bool tty_volume)
                                 VOICE_CALL_HEADSET_VOLUME_MAGURO;
         earpiece_volume = toro ? VOICE_CALL_EARPIECE_VOLUME_TORO :
                                  VOICE_CALL_EARPIECE_VOLUME_MAGURO;
-        mixer_ctl_overrange = adev->mixer_ctls.vx_dl2_volume;
     } else if (adev->mode == AUDIO_MODE_IN_COMMUNICATION) {
         /* VoIP */
         speaker_volume = toro ? VOIP_SPEAKER_VOLUME_TORO :
@@ -953,21 +964,31 @@ static void set_output_volumes(struct tuna_audio_device *adev, bool tty_volume)
                                  VOIP_EARPIECE_VOLUME_MAGURO;
     } else {
         /* Media */
-        speaker_volume = toro ? NORMAL_SPEAKER_VOLUME_TORO :
-                                NORMAL_SPEAKER_VOLUME_MAGURO;
+        speaker_volume = normal_speaker_volume;
         if (headphone_on)
-            headset_volume = toro ? NORMAL_HEADPHONE_VOLUME_TORO :
-                                    NORMAL_HEADPHONE_VOLUME_MAGURO;
+            headset_volume = normal_headphone_volume;
         else
-            headset_volume = toro ? NORMAL_HEADSET_VOLUME_TORO :
-                                    NORMAL_HEADSET_VOLUME_MAGURO;
-        earpiece_volume = toro ? NORMAL_EARPIECE_VOLUME_TORO :
-                                 NORMAL_EARPIECE_VOLUME_MAGURO;
+            headset_volume = normal_headset_volume;
+        earpiece_volume = normal_earpiece_volume;
     }
+
     if (tty_volume)
         headset_volume = HEADPHONE_VOLUME_TTY;
     else if (adev->mode == AUDIO_MODE_RINGTONE)
         headset_volume += RINGTONE_HEADSET_VOLUME_OFFSET;
+
+    /* apply correction on digital volume to keep the overall volume consistent if the
+     * analog volume is not driven by media use case
+     */
+    if (headphone_on)
+        dl1_volume_correction = normal_headphone_volume - headset_volume;
+    else if (adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET)
+        dl1_volume_correction = normal_headset_volume - headset_volume;
+    else
+        dl1_volume_correction = normal_earpiece_volume - earpiece_volume;
+
+    if (speaker_on)
+        dl2_volume_correction = normal_speaker_volume - speaker_volume;
 
     /* If we have run out of range in the codec (analog) speaker volume,
        we have to apply the remainder of the dB increase to the DL2
@@ -983,10 +1004,34 @@ static void set_output_volumes(struct tuna_audio_device *adev, bool tty_volume)
         mixer_ctl_set_value(adev->mixer_ctls.headset_volume, channel,
             DB_TO_HEADSET_VOLUME(headset_volume));
     }
-    if (speaker_on)
-        mixer_ctl_set_value(mixer_ctl_overrange, 0, speaker_volume_overrange);
-    else
-        mixer_ctl_set_value(mixer_ctl_overrange, 0, MIXER_ABE_GAIN_0DB);
+
+    if (!speaker_on)
+        speaker_volume_overrange = MIXER_ABE_GAIN_0DB;
+
+    if (adev->mode == AUDIO_MODE_IN_CALL) {
+        mixer_ctl_set_value(adev->mixer_ctls.tones_dl1_volume, 0,
+                            MIXER_ABE_GAIN_0DB + dl1_volume_correction);
+        mixer_ctl_set_value(adev->mixer_ctls.vx_dl2_volume, 0,
+                                speaker_volume_overrange);
+        mixer_ctl_set_value(adev->mixer_ctls.tones_dl2_volume, 0,
+                                speaker_volume_overrange + dl2_volume_correction);
+    } else if (adev->mode == AUDIO_MODE_IN_COMMUNICATION) {
+        mixer_ctl_set_value(adev->mixer_ctls.tones_dl1_volume, 0,
+                            MIXER_ABE_GAIN_0DB);
+        mixer_ctl_set_value(adev->mixer_ctls.tones_dl2_volume, 0,
+                                speaker_volume_overrange);
+    } else {
+        mixer_ctl_set_value(adev->mixer_ctls.tones_dl1_volume, 0,
+                            MIXER_ABE_GAIN_0DB + dl1_volume_correction);
+        mixer_ctl_set_value(adev->mixer_ctls.tones_dl2_volume, 0,
+                                speaker_volume_overrange + dl2_volume_correction);
+    }
+
+    mixer_ctl_set_value(adev->mixer_ctls.mm_dl1_volume, 0,
+                        MIXER_ABE_GAIN_0DB + dl1_volume_correction);
+    mixer_ctl_set_value(adev->mixer_ctls.mm_dl2_volume, 0,
+                            speaker_volume_overrange + dl2_volume_correction);
+
     mixer_ctl_set_value(adev->mixer_ctls.earpiece_volume, 0,
         DB_TO_EARPIECE_VOLUME(earpiece_volume));
 }
@@ -3292,10 +3337,16 @@ static int adev_open(const hw_module_t* module, const char* name,
 
     adev->mixer_ctls.dl1_eq = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL1_EQUALIZER);
+    adev->mixer_ctls.mm_dl1_volume = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL1_MEDIA_PLAYBACK_VOLUME);
+    adev->mixer_ctls.tones_dl1_volume = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL1_TONES_PLAYBACK_VOLUME);
     adev->mixer_ctls.mm_dl2_volume = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL2_MEDIA_PLAYBACK_VOLUME);
     adev->mixer_ctls.vx_dl2_volume = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL2_VOICE_PLAYBACK_VOLUME);
+    adev->mixer_ctls.tones_dl2_volume = mixer_get_ctl_by_name(adev->mixer,
+                                           MIXER_DL2_TONES_PLAYBACK_VOLUME);
     adev->mixer_ctls.mm_dl1 = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_DL1_MIXER_MULTIMEDIA);
     adev->mixer_ctls.vx_dl1 = mixer_get_ctl_by_name(adev->mixer,
@@ -3333,16 +3384,29 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->mixer_ctls.earpiece_volume = mixer_get_ctl_by_name(adev->mixer,
                                            MIXER_EARPHONE_PLAYBACK_VOLUME);
 
-    if (!adev->mixer_ctls.dl1_eq || !adev->mixer_ctls.vx_dl2_volume ||
-        !adev->mixer_ctls.mm_dl2_volume || !adev->mixer_ctls.mm_dl1 ||
-        !adev->mixer_ctls.vx_dl1 || !adev->mixer_ctls.tones_dl1 ||
-        !adev->mixer_ctls.mm_dl2 || !adev->mixer_ctls.vx_dl2 ||
-        !adev->mixer_ctls.tones_dl2 ||!adev->mixer_ctls.dl2_mono ||
-        !adev->mixer_ctls.dl1_headset || !adev->mixer_ctls.dl1_bt ||
-        !adev->mixer_ctls.earpiece_enable || !adev->mixer_ctls.left_capture ||
-        !adev->mixer_ctls.right_capture || !adev->mixer_ctls.amic_ul_volume ||
-        !adev->mixer_ctls.voice_ul_volume || !adev->mixer_ctls.sidetone_capture ||
-        !adev->mixer_ctls.headset_volume || !adev->mixer_ctls.speaker_volume ||
+    if (!adev->mixer_ctls.dl1_eq ||
+        !adev->mixer_ctls.mm_dl1_volume ||
+        !adev->mixer_ctls.tones_dl1_volume ||
+        !adev->mixer_ctls.mm_dl2_volume ||
+        !adev->mixer_ctls.vx_dl2_volume ||
+        !adev->mixer_ctls.tones_dl2_volume ||
+        !adev->mixer_ctls.mm_dl1 ||
+        !adev->mixer_ctls.vx_dl1 ||
+        !adev->mixer_ctls.tones_dl1 ||
+        !adev->mixer_ctls.mm_dl2 ||
+        !adev->mixer_ctls.vx_dl2 ||
+        !adev->mixer_ctls.tones_dl2 ||
+        !adev->mixer_ctls.dl2_mono ||
+        !adev->mixer_ctls.dl1_headset ||
+        !adev->mixer_ctls.dl1_bt ||
+        !adev->mixer_ctls.earpiece_enable ||
+        !adev->mixer_ctls.left_capture ||
+        !adev->mixer_ctls.right_capture ||
+        !adev->mixer_ctls.amic_ul_volume ||
+        !adev->mixer_ctls.voice_ul_volume ||
+        !adev->mixer_ctls.sidetone_capture ||
+        !adev->mixer_ctls.headset_volume ||
+        !adev->mixer_ctls.speaker_volume ||
         !adev->mixer_ctls.earpiece_volume) {
         mixer_close(adev->mixer);
         free(adev);
