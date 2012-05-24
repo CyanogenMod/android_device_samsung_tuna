@@ -36,7 +36,7 @@
 #include <cryptoki.h>
 #include <pkcs11.h>
 
-#include <UniquePtr.h>
+#include <utils/UniquePtr.h>
 
 
 /** The size of a key ID in bytes */
