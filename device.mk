@@ -90,6 +90,10 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PROPERTY_OVERRIDES := \
 	wifi.interface=wlan0
 
+# Enable AAC 5.1 output
+PRODUCT_PROPERTY_OVERRIDES += \
+	media.aac_51_output_enabled=true
+
 # Set default USB interface
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
 	persist.sys.usb.config=mtp
