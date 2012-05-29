@@ -13,3 +13,51 @@
 # limitations under the License.
 
 type SPECIAL_FUNCTION
+
+key NUMPAD_0 {
+    label, base: '0'
+}
+
+key NUMPAD_1 {
+    label, base: '1'
+}
+
+key NUMPAD_2 {
+    label, base: '2'
+}
+
+key NUMPAD_3 {
+    label, base: '3'
+}
+
+key NUMPAD_4 {
+    label, base: '4'
+}
+
+key NUMPAD_5 {
+    label, base: '5'
+}
+
+key NUMPAD_6 {
+    label, base: '6'
+}
+
+key NUMPAD_7 {
+    label, base: '7'
+}
+
+key NUMPAD_8 {
+    label, base: '8'
+}
+
+key NUMPAD_9 {
+    label, base: '9'
+}
+
+key NUMPAD_DOT {
+    label, base: '.'
+}
+
+key NUMPAD_ENTER {
+    label, base: '\n'
+}
