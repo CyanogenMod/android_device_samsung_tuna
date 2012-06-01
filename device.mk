@@ -141,12 +141,10 @@ PRODUCT_COPY_FILES += \
 	frameworks/native/data/etc/android.hardware.nfc.xml:system/etc/permissions/android.hardware.nfc.xml \
 	frameworks/native/data/etc/android.software.sip.voip.xml:system/etc/permissions/android.software.sip.voip.xml \
 	frameworks/native/data/etc/android.hardware.usb.accessory.xml:system/etc/permissions/android.hardware.usb.accessory.xml \
-	frameworks/native/data/etc/android.hardware.usb.host.xml:system/etc/permissions/android.hardware.usb.host.xml \
-	packages/wallpapers/LivePicker/android.software.live_wallpaper.xml:system/etc/permissions/android.software.live_wallpaper.xml
+	frameworks/native/data/etc/android.hardware.usb.host.xml:system/etc/permissions/android.hardware.usb.host.xml
 
-# HACK: copy panda init for now to boot on both boards
-PRODUCT_COPY_FILES += \
-	device/ti/panda/init.omap4pandaboard.rc:root/init.omap4pandaboard.rc
+PRODUCT_COPY_FILES += $(call add-to-product-copy-files-if-exists,\
+packages/wallpapers/LivePicker/android.software.live_wallpaper.xml:system/etc/permissions/android.software.live_wallpaper.xml)
 
 # Melfas touchscreen firmware
 PRODUCT_COPY_FILES += \
@@ -158,8 +156,8 @@ PRODUCT_COPY_FILES += \
     device/samsung/tuna/dock.png:system/vendor/res/images/dock/dock.png
 
 # Commands to migrate prefs from com.android.nfc3 to com.android.nfc
-PRODUCT_COPY_FILES += \
-	packages/apps/Nfc/migrate_nfc.txt:system/etc/updatecmds/migrate_nfc.txt
+PRODUCT_COPY_FILES += $(call add-to-product-copy-files-if-exists,\
+packages/apps/Nfc/migrate_nfc.txt:system/etc/updatecmds/migrate_nfc.txt)
 
 # file that declares the MIFARE NFC constant
 PRODUCT_COPY_FILES += \
