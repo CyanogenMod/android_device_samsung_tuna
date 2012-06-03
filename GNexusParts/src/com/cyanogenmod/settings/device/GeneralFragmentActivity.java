@@ -35,6 +35,8 @@ public class GeneralFragmentActivity extends PreferenceFragment {
     private static final String PREF_ENABLED = "1";
     private static final String TAG = "GNexusParts_General";
 
+    private VibratorTuningPreference mVibratorTuning;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -43,6 +45,8 @@ public class GeneralFragmentActivity extends PreferenceFragment {
 
         PreferenceScreen prefSet = getPreferenceScreen();
 
+        mVibratorTuning = (VibratorTuningPreference) findPreference(DeviceSettings.KEY_VIBRATOR_TUNING);
+        mVibratorTuning.setEnabled(VibratorTuningPreference.isSupported());
     }
 
     @Override
