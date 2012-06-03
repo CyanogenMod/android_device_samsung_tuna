@@ -11,6 +11,7 @@ public class Startup extends BroadcastReceiver {
         ColorTuningPreference.restore(context);
         GammaTuningPreference.restore(context);
         GeneralFragmentActivity.restore(context);
+        VibratorTuningPreference.restore(context);
         if (Hspa.isSupported()) {
             Hspa.restore(context);
         }
