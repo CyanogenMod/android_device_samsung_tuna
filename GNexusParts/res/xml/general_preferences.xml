@@ -2,8 +2,14 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- General settings -->
-    <PreferenceCategory android:key="category_cpu"
-        android:title="@string/category_cpu_title">
+    <PreferenceCategory android:key="category_hardware"
+        android:title="@string/category_hardware_title">
+    <com.cyanogenmod.settings.device.VibratorTuningPreference
+        android:key="vibrator_tuning"
+        android:title="@string/vibrator_tuning_title_head"
+        android:summary="@string/vibrator_tuning_summary_head"
+        />
+
 
     </PreferenceCategory>
 

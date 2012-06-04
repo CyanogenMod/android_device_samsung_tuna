@@ -25,6 +25,13 @@
     <string name="color_dark_title">Dark Sett.</string>
     <string name="gamma_dss_title">DSS Gamma Set.</string>
 
+    <string name="category_hardware_title">CPU</string>
+    <string name="vibrator_tuning_title_head">Vibrator feedback tuning</string>
+    <string name="vibrator_tuning_summary_head">Controls the default power of vibrator feedback</string>
+
+    <string name="vibrator_title">Vibration %</string>
+    <string name="vibrator_default_title">Default</string>
+
     <string name="preset1_default_title">Default.</string>
     <string name="preset2_default_title">Natural</string>
     <string name="preset3_default_title">Dark Blue</string>
