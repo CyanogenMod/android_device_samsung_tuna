@@ -122,7 +122,7 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
             String sDefaultValue = Utils.readOneLine(filePath);
             int iValue = sharedPrefs.getInt(filePath, Integer.valueOf(sDefaultValue));
             if (bFirstTime)
-                Utils.writeValue(filePath, "127");
+                Utils.writeValue(filePath, "100");
             else
                 Utils.writeValue(filePath, String.valueOf((long) iValue));
         }
@@ -246,7 +246,7 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
             int averageValue;
 
             averageValue = (resultVibrator * 100) / 127;
-            return resultVibrator;
+            return averageValue;
         }
 
     }
@@ -260,7 +260,7 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
     }
 
     private void setDefaultSettings() {
-        mSeekBars[0].setNewValue(127);
+        mSeekBars[0].setNewValue(100);
     }
 
 }
