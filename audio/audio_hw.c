@@ -680,6 +680,10 @@ struct tuna_stream_out {
     audio_channel_mask_t channel_mask;
     audio_channel_mask_t sup_channel_masks[3];
 
+    /* FIXME: workaround for HDMI multi channel channel swap on first playback after opening
+     * the output stream: force reopening the pcm driver after writing a few periods. */
+    int restart_periods_cnt;
+
     struct tuna_audio_device *dev;
 };
 
@@ -2123,6 +2127,11 @@ exit:
         usleep(bytes * 1000000 / audio_stream_frame_size(&stream->common) /
                out_get_sample_rate_hdmi(&stream->common));
     }
+    /* FIXME: workaround for HDMI multi channel channel swap on first playback after opening
+     * the output stream: force reopening the pcm driver after writing a few periods. */
+    if ((out->restart_periods_cnt > 0) &&
+            (--out->restart_periods_cnt == 0))
+        out_standby(&stream->common);
 
     return bytes;
 }
@@ -3232,6 +3241,8 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
         out->config[PCM_HDMI] = pcm_config_hdmi_multi;
         out->config[PCM_HDMI].rate = config->sample_rate;
         out->config[PCM_HDMI].channels = popcount(config->channel_mask);
+        /* FIXME: workaround for channel swap on first playback after opening the output */
+        out->restart_periods_cnt = out->config[PCM_HDMI].period_count * 2;
     } else if (flags & AUDIO_OUTPUT_FLAG_DEEP_BUFFER) {
         ALOGV("adev_open_output_stream() deep buffer");
         if (ladev->outputs[OUTPUT_DEEP_BUF] != NULL) {
