@@ -193,4 +193,4 @@ $(call inherit-product-if-exists, hardware/broadcom/wlan/bcmdhd/firmware/bcm4330
 
 # vold
 PRODUCT_COPY_FILES += \
-	device/samsung/tuna/vold.fstab:/system/etc/vold.fstab
+	device/samsung/tuna/vold.fstab:system/etc/vold.fstab
