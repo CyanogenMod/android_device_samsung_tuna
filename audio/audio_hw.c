@@ -1142,7 +1142,7 @@ static void select_mode(struct tuna_audio_device *adev)
                 adev->devices &= ~AUDIO_DEVICE_OUT_SPEAKER;
             select_output_device(adev);
             start_call(adev);
-            adev_set_voice_volume(&adev->hw_device, adev->voice_volume);
+            ril_set_call_volume(&adev->ril, SOUND_TYPE_VOICE, adev->voice_volume);
             adev->in_call = 1;
         }
     } else {
@@ -3408,11 +3408,13 @@ static int adev_set_voice_volume(struct audio_hw_device *dev, float volume)
 {
     struct tuna_audio_device *adev = (struct tuna_audio_device *)dev;
 
+    pthread_mutex_lock(&adev->lock);
     adev->voice_volume = volume;
 
     if (adev->mode == AUDIO_MODE_IN_CALL)
         ril_set_call_volume(&adev->ril, SOUND_TYPE_VOICE, volume);
 
+    pthread_mutex_unlock(&adev->lock);
     return 0;
 }
 
