@@ -23,9 +23,9 @@
   <string-array name="screen_timeout_entries">
     <item msgid="5314770629356662739">"15 sekunder"</item>
     <item msgid="8672738773876256432">"30 sekunder"</item>
-    <item msgid="465923292941002466">"Ett minutt"</item>
-    <item msgid="7955177189296850016">"To minutter"</item>
-    <item msgid="1244255986255344525">"Fem minutter"</item>
-    <item msgid="294890536998091748">"Ti minutter"</item>
+    <item msgid="465923292941002466">"1 minutt"</item>
+    <item msgid="7955177189296850016">"2 minutter"</item>
+    <item msgid="1244255986255344525">"5 minutter"</item>
+    <item msgid="294890536998091748">"10 minutter"</item>
   </string-array>
 </resources>
