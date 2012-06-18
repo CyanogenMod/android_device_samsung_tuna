@@ -1797,6 +1797,8 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
                 }
                 /* force standby if moving to/from HDMI/SPDIF or if the output
                  * device changes when in HDMI/SPDIF mode */
+                /* FIXME also force standby when in call as some audio path switches do not work
+                 * while in call and an output stream is active (e.g BT SCO => earpiece) */
 
                 /* FIXME workaround for audio being dropped when switching path without forcing standby
                  * (several hundred ms of audio can be lost: e.g beginning of a ringtone. We must understand
@@ -1815,7 +1817,8 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
                         (adev->devices & (AUDIO_DEVICE_OUT_AUX_DIGITAL |
                                          AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
                         ((val & AUDIO_DEVICE_OUT_SPEAKER) ^
-                        (adev->devices & AUDIO_DEVICE_OUT_SPEAKER)))
+                        (adev->devices & AUDIO_DEVICE_OUT_SPEAKER)) ||
+                        (adev->mode == AUDIO_MODE_IN_CALL))
                     do_output_standby(out);
             }
             if (out != adev->outputs[OUTPUT_HDMI]) {
