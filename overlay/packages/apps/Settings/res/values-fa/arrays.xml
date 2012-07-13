@@ -21,11 +21,11 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
   <string-array name="screen_timeout_entries">
-    <item msgid="5314770629356662739">"15 ثانیه"</item>
-    <item msgid="8672738773876256432">"30 ثانیه"</item>
-    <item msgid="465923292941002466">"1 دقیقه"</item>
-    <item msgid="7955177189296850016">"2 دقیقه"</item>
-    <item msgid="1244255986255344525">"5 دقیقه"</item>
-    <item msgid="294890536998091748">"10 دقیقه"</item>
+    <item msgid="5314770629356662739">"۱۵ ثانیه"</item>
+    <item msgid="8672738773876256432">"۳۰ ثانیه"</item>
+    <item msgid="465923292941002466">"۱ دقیقه"</item>
+    <item msgid="7955177189296850016">"۲ دقیقه"</item>
+    <item msgid="1244255986255344525">"۵ دقیقه"</item>
+    <item msgid="294890536998091748">"۱۰ دقیقه"</item>
   </string-array>
 </resources>
