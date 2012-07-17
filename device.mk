@@ -79,6 +79,9 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
 	system/bluetooth/data/main.le.conf:system/etc/bluetooth/main.conf
 
+PRODUCT_COPY_FILES += \
+        device/samsung/tuna/bthid.ko:system/lib/modules/bthid.ko
+
 # Wifi
 ifneq ($(TARGET_PREBUILT_WIFI_MODULE),)
 PRODUCT_COPY_FILES += \
