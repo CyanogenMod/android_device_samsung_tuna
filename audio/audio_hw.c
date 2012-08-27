@@ -180,6 +180,11 @@
  */
 #ifdef PLAYBACK_MMAP
 #define PLAYBACK_SHORT_PERIOD_COUNT 4
+/* If sample rate converter is required, then use triple-buffering to
+ * help mask the variance in cycle times.  Otherwise use double-buffering.
+ */
+#elif DEFAULT_OUT_SAMPLING_RATE != MM_FULL_POWER_SAMPLING_RATE
+#define PLAYBACK_SHORT_PERIOD_COUNT 3
 #else
 #define PLAYBACK_SHORT_PERIOD_COUNT 2
 #endif
@@ -297,6 +302,7 @@ enum tty_modes {
     TTY_MODE_FULL
 };
 
+/* deep buffer */
 struct pcm_config pcm_config_mm = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
@@ -307,6 +313,7 @@ struct pcm_config pcm_config_mm = {
     .avail_min = DEEP_BUFFER_LONG_PERIOD_SIZE,
 };
 
+/* low latency */
 struct pcm_config pcm_config_tones = {
     .channels = 2,
     .rate = MM_FULL_POWER_SAMPLING_RATE,
