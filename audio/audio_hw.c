@@ -2202,7 +2202,7 @@ static int start_input_stream(struct tuna_stream_in *in)
     if (in->need_echo_reference && in->echo_reference == NULL)
         in->echo_reference = get_echo_reference(adev,
                                         AUDIO_FORMAT_PCM_16_BIT,
-                                        in->config.channels,
+                                        popcount(in->main_channels),
                                         in->requested_rate);
 
     /* this assumes routing is done previously */
