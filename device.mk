@@ -91,6 +91,10 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
 	persist.sys.usb.config=mtp
 
+# Torch
+PRODUCT_PACKAGES += \
+        Torch
+
 # NFC
 PRODUCT_PACKAGES += \
         libnfc \
