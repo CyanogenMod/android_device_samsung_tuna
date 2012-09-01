@@ -143,13 +143,9 @@ static void tuna_power_set_interactive(struct power_module *module, int on)
         if (len != -1 && strncmp(buf, screen_off_max_freq,
                 strlen(screen_off_max_freq)) != 0)
             memcpy(scaling_max_freq, buf, sizeof(buf));
-
-        sysfs_write("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq",
-                    on ? scaling_max_freq : screen_off_max_freq);
-    }
-    else
-        sysfs_write("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq",
-                    on ? scaling_max_freq : screen_off_max_freq);
+        sysfs_write(SCALINGMAXFREQ_PATH, screen_off_max_freq);
+    } else
+        sysfs_write(SCALINGMAXFREQ_PATH, scaling_max_freq);
 }
 
 static void tuna_power_hint(struct power_module *module, power_hint_t hint,
