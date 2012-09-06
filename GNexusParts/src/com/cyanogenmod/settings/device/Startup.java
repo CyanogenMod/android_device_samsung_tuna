@@ -12,6 +12,7 @@ public class Startup extends BroadcastReceiver {
         GammaTuningPreference.restore(context);
         GeneralFragmentActivity.restore(context);
         VibratorTuningPreference.restore(context);
+        GpuOverclock.restore(context);
         if (Hspa.isSupported()) {
             Hspa.restore(context);
         }
