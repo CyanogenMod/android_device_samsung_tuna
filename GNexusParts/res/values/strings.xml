@@ -48,4 +48,8 @@
     <string name="hspa_title_head">HSPA</string>
     <string name="hspa_summary_head">Enable HSDPA/HSUPA</string>
 
+    <string name="category_speed_title">GPU</string>
+    <string name="category_gpu_title">GPU</string>
+    <string name="gpu_overclock_title">Clock Speed</string>
+
 </resources>

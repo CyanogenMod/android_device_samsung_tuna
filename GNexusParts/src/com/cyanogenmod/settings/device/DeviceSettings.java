@@ -46,6 +46,7 @@ public class DeviceSettings extends Activity {
     public static final String KEY_VIBRATOR_TUNING = "vibrator_tuning";
     public static final String KEY_CATEGORY_RADIO = "category_radio";
     public static final String KEY_HSPA = "hspa";
+    public static final String KEY_GPU_OVERCLOCK = "gpu_overclock";
 
     ViewPager mViewPager;
     TabsAdapter mTabsAdapter;
@@ -68,6 +69,8 @@ public class DeviceSettings extends Activity {
                 DisplayFragmentActivity.class, null);
         mTabsAdapter.addTab(bar.newTab().setText(R.string.general_title),
                 GeneralFragmentActivity.class, null);
+        mTabsAdapter.addTab(bar.newTab().setText(R.string.category_speed_title),
+                OverClockFragmentActivity.class, null);
 
         if (savedInstanceState != null) {
             bar.setSelectedNavigationItem(savedInstanceState.getInt("tab", 0));

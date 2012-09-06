@@ -26,6 +26,7 @@
         <activity android:name=".GeneralFragmentActivity" />
         <activity android:name=".DisplayFragmentActivity" />
         <activity android:name=".SoundFragmentActivity" />
+        <activity android:name=".OverClockFragmentActivity" />
     </application>
 
 </manifest>
