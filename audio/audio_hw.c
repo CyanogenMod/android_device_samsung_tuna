@@ -1877,7 +1877,7 @@ static char * out_get_parameters(const struct audio_stream *stream, const char *
             i++;
         }
         str_parms_add_str(reply, AUDIO_PARAMETER_STREAM_SUP_CHANNELS, value);
-        str = strdup(str_parms_to_str(reply));
+        str = str_parms_to_str(reply);
     } else {
         str = strdup(keys);
     }
