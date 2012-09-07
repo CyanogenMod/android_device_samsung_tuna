@@ -645,7 +645,8 @@ struct tuna_audio_device {
     struct mixer *mixer;
     struct mixer_ctls mixer_ctls;
     audio_mode_t mode;
-    int devices;
+    int out_device;
+    int in_device;
     struct pcm *pcm_modem_dl;
     struct pcm *pcm_modem_ul;
     int in_call;
@@ -875,7 +876,7 @@ static void end_call(struct tuna_audio_device *adev)
 static void set_eq_filter(struct tuna_audio_device *adev)
 {
     /* DL1_EQ can't be used for bt */
-    int dl1_eq_applicable = adev->devices & (AUDIO_DEVICE_OUT_WIRED_HEADSET |
+    int dl1_eq_applicable = adev->out_device & (AUDIO_DEVICE_OUT_WIRED_HEADSET |
                     AUDIO_DEVICE_OUT_WIRED_HEADPHONE | AUDIO_DEVICE_OUT_EARPIECE);
 
     /* 4Khz LPF is used only in NB-AMR voicecall */
@@ -908,7 +909,7 @@ static void set_incall_device(struct tuna_audio_device *adev)
 {
     int device_type;
 
-    switch(adev->devices & AUDIO_DEVICE_OUT_ALL) {
+    switch(adev->out_device) {
         case AUDIO_DEVICE_OUT_EARPIECE:
             device_type = SOUND_AUDIO_PATH_HANDSET;
             break;
@@ -997,8 +998,8 @@ static void set_output_volumes(struct tuna_audio_device *adev, bool tty_volume)
     int headset_volume;
     int earpiece_volume;
     bool toro = adev->device_is_toro;
-    int headphone_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADPHONE;
-    int speaker_on = adev->devices & AUDIO_DEVICE_OUT_SPEAKER;
+    int headphone_on = adev->out_device & AUDIO_DEVICE_OUT_WIRED_HEADPHONE;
+    int speaker_on = adev->out_device & AUDIO_DEVICE_OUT_SPEAKER;
     int speaker_volume_overrange = MIXER_ABE_GAIN_0DB;
     int speaker_max_db =
         DB_FROM_SPEAKER_VOLUME(mixer_ctl_get_range_max(adev->mixer_ctls.speaker_volume));
@@ -1049,7 +1050,7 @@ static void set_output_volumes(struct tuna_audio_device *adev, bool tty_volume)
      */
     if (headphone_on)
         dl1_volume_correction = normal_headphone_volume - headset_volume;
-    else if (adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET)
+    else if (adev->out_device & AUDIO_DEVICE_OUT_WIRED_HEADSET)
         dl1_volume_correction = normal_headset_volume - headset_volume;
     else
         dl1_volume_correction = normal_earpiece_volume - earpiece_volume;
@@ -1138,15 +1139,15 @@ static void select_mode(struct tuna_audio_device *adev)
             after the ringtone is played, but doesn't cause a route
             change if a headset or bt device is already connected. If
             speaker is not the only thing active, just remove it from
-            the route. We'll assume it'll never be used initally during
+            the route. We'll assume it'll never be used initially during
             a call. This works because we're sure that the audio policy
             manager will update the output device after the audio mode
             change, even if the device selection did not change. */
-            if ((adev->devices & AUDIO_DEVICE_OUT_ALL) == AUDIO_DEVICE_OUT_SPEAKER)
-                adev->devices = AUDIO_DEVICE_OUT_EARPIECE |
-                                AUDIO_DEVICE_IN_BUILTIN_MIC;
-            else
-                adev->devices &= ~AUDIO_DEVICE_OUT_SPEAKER;
+            if (adev->out_device == AUDIO_DEVICE_OUT_SPEAKER) {
+                adev->out_device = AUDIO_DEVICE_OUT_EARPIECE;
+                adev->in_device = AUDIO_DEVICE_IN_BUILTIN_MIC & ~AUDIO_DEVICE_BIT_IN;
+            } else
+                adev->out_device &= ~AUDIO_DEVICE_OUT_SPEAKER;
             select_output_device(adev);
             start_call(adev);
             ril_set_call_volume(&adev->ril, SOUND_TYPE_VOICE, adev->voice_volume);
@@ -1186,11 +1187,11 @@ static void select_output_device(struct tuna_audio_device *adev)
                                 channel, 0);
     }
 
-    headset_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADSET;
-    headphone_on = adev->devices & AUDIO_DEVICE_OUT_WIRED_HEADPHONE;
-    speaker_on = adev->devices & AUDIO_DEVICE_OUT_SPEAKER;
-    earpiece_on = adev->devices & AUDIO_DEVICE_OUT_EARPIECE;
-    bt_on = adev->devices & AUDIO_DEVICE_OUT_ALL_SCO;
+    headset_on = adev->out_device & AUDIO_DEVICE_OUT_WIRED_HEADSET;
+    headphone_on = adev->out_device & AUDIO_DEVICE_OUT_WIRED_HEADPHONE;
+    speaker_on = adev->out_device & AUDIO_DEVICE_OUT_SPEAKER;
+    earpiece_on = adev->out_device & AUDIO_DEVICE_OUT_EARPIECE;
+    bt_on = adev->out_device & AUDIO_DEVICE_OUT_ALL_SCO;
 
     /* force rx path according to TTY mode when in call */
     if (adev->mode == AUDIO_MODE_IN_CALL && !bt_on) {
@@ -1215,7 +1216,7 @@ static void select_output_device(struct tuna_audio_device *adev)
             default:
                 /* force speaker on when in call and HDMI or S/PDIF is selected
                  * as voice DL audio cannot be routed there by ABE */
-                if (adev->devices &
+                if (adev->out_device &
                         (AUDIO_DEVICE_OUT_AUX_DIGITAL |
                          AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET))
                     speaker_on = 1;
@@ -1315,18 +1316,18 @@ static void select_input_device(struct tuna_audio_device *adev)
     int headset_on = 0;
     int main_mic_on = 0;
     int sub_mic_on = 0;
-    int bt_on = adev->devices & AUDIO_DEVICE_IN_ALL_SCO;
+    int bt_on = adev->in_device & AUDIO_DEVICE_IN_ALL_SCO;
 
     if (!bt_on) {
         if ((adev->mode != AUDIO_MODE_IN_CALL) && (adev->active_input != 0)) {
             /* sub mic is used for camcorder or VoIP on speaker phone */
             sub_mic_on = (adev->active_input->source == AUDIO_SOURCE_CAMCORDER) ||
-                         ((adev->devices & AUDIO_DEVICE_OUT_SPEAKER) &&
+                         ((adev->out_device & AUDIO_DEVICE_OUT_SPEAKER) &&
                           (adev->active_input->source == AUDIO_SOURCE_VOICE_COMMUNICATION));
         }
         if (!sub_mic_on) {
-            headset_on = adev->devices & AUDIO_DEVICE_IN_WIRED_HEADSET;
-            main_mic_on = adev->devices & AUDIO_DEVICE_IN_BUILTIN_MIC;
+            headset_on = adev->in_device & AUDIO_DEVICE_IN_WIRED_HEADSET;
+            main_mic_on = adev->in_device & AUDIO_DEVICE_IN_BUILTIN_MIC;
         }
     }
 
@@ -1395,8 +1396,7 @@ static int start_output_stream_low_latency(struct tuna_stream_out *out)
      * tinyalsa.
      */
 
-    if (adev->devices & (AUDIO_DEVICE_OUT_ALL &
-                         ~(AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET | AUDIO_DEVICE_OUT_AUX_DIGITAL))) {
+    if (adev->out_device & ~(AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET | AUDIO_DEVICE_OUT_AUX_DIGITAL)) {
         /* Something not a dock in use */
         out->config[PCM_NORMAL] = pcm_config_tones;
         out->config[PCM_NORMAL].rate = MM_FULL_POWER_SAMPLING_RATE;
@@ -1404,7 +1404,7 @@ static int start_output_stream_low_latency(struct tuna_stream_out *out)
                                             flags, &out->config[PCM_NORMAL]);
     }
 
-    if (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET) {
+    if (adev->out_device & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET) {
         /* SPDIF output in use */
         out->config[PCM_SPDIF] = pcm_config_tones;
         out->config[PCM_SPDIF].rate = MM_FULL_POWER_SAMPLING_RATE;
@@ -1413,7 +1413,7 @@ static int start_output_stream_low_latency(struct tuna_stream_out *out)
     }
 
     /* priority is given to multichannel HDMI output */
-    if ((adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL) &&
+    if ((adev->out_device & AUDIO_DEVICE_OUT_AUX_DIGITAL) &&
             (adev->outputs[OUTPUT_HDMI] == NULL || adev->outputs[OUTPUT_HDMI]->standby)) {
         /* HDMI output in use */
         out->config[PCM_HDMI] = pcm_config_tones;
@@ -1792,7 +1792,7 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
         val = atoi(value);
         pthread_mutex_lock(&adev->lock);
         pthread_mutex_lock(&out->lock);
-        if (((adev->devices & AUDIO_DEVICE_OUT_ALL) != val) && (val != 0)) {
+        if ((adev->out_device != val) && (val != 0)) {
             /* this is needed only when changing device on low latency output
              * as other output streams are not used for voice use cases nor
              * handle duplication to HDMI or SPDIF */
@@ -1811,26 +1811,25 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
                  * (several hundred ms of audio can be lost: e.g beginning of a ringtone. We must understand
                  * the root cause in audio HAL, driver or ABE.
                 if (((val & AUDIO_DEVICE_OUT_AUX_DIGITAL) ^
-                        (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL)) ||
+                        (adev->out_device & AUDIO_DEVICE_OUT_AUX_DIGITAL)) ||
                         ((val & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET) ^
-                        (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
-                        (adev->devices & (AUDIO_DEVICE_OUT_AUX_DIGITAL |
+                        (adev->out_device & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
+                        (adev->out_device & (AUDIO_DEVICE_OUT_AUX_DIGITAL |
                                          AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)))
                 */
                 if (((val & AUDIO_DEVICE_OUT_AUX_DIGITAL) ^
-                        (adev->devices & AUDIO_DEVICE_OUT_AUX_DIGITAL)) ||
+                        (adev->out_device & AUDIO_DEVICE_OUT_AUX_DIGITAL)) ||
                         ((val & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET) ^
-                        (adev->devices & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
-                        (adev->devices & (AUDIO_DEVICE_OUT_AUX_DIGITAL |
+                        (adev->out_device & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
+                        (adev->out_device & (AUDIO_DEVICE_OUT_AUX_DIGITAL |
                                          AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET)) ||
                         ((val & AUDIO_DEVICE_OUT_SPEAKER) ^
-                        (adev->devices & AUDIO_DEVICE_OUT_SPEAKER)) ||
+                        (adev->out_device & AUDIO_DEVICE_OUT_SPEAKER)) ||
                         (adev->mode == AUDIO_MODE_IN_CALL))
                     do_output_standby(out);
             }
             if (out != adev->outputs[OUTPUT_HDMI]) {
-                adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
-                adev->devices |= val;
+                adev->out_device = val;
                 select_output_device(adev);
             }
         }
@@ -2173,8 +2172,7 @@ static int start_input_stream(struct tuna_stream_in *in)
     adev->active_input = in;
 
     if (adev->mode != AUDIO_MODE_IN_CALL) {
-        adev->devices &= ~AUDIO_DEVICE_IN_ALL;
-        adev->devices |= in->device;
+        adev->in_device = in->device;
         select_input_device(adev);
     }
 
@@ -2275,7 +2273,7 @@ static int do_input_standby(struct tuna_stream_in *in)
 
         adev->active_input = 0;
         if (adev->mode != AUDIO_MODE_IN_CALL) {
-            adev->devices &= ~AUDIO_DEVICE_IN_ALL;
+            adev->in_device = AUDIO_DEVICE_NONE;
             select_input_device(adev);
         }
 
@@ -2336,7 +2334,7 @@ static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
     if (ret >= 0) {
-        val = atoi(value);
+        val = atoi(value) & ~AUDIO_DEVICE_BIT_IN;
         if ((in->device != val) && (val != 0)) {
             in->device = val;
             do_standby = true;
@@ -3305,8 +3303,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 
     /* FIXME: when we support multiple output devices, we will want to
      * do the following:
-     * adev->devices &= ~AUDIO_DEVICE_OUT_ALL;
-     * adev->devices |= out->device;
+     * adev->out_device = out->device;
      * select_output_device(adev);
      * This is because out_set_parameters() with a route is not
      * guaranteed to be called after an output stream is opened. */
@@ -3537,7 +3534,7 @@ static int adev_open_input_stream(struct audio_hw_device *dev,
 
     in->dev = ladev;
     in->standby = 1;
-    in->device = devices;
+    in->device = devices & ~AUDIO_DEVICE_BIT_IN;
 
     *stream_in = &in->stream;
     return 0;
@@ -3594,29 +3591,6 @@ static int adev_close(hw_device_t *device)
     return 0;
 }
 
-static uint32_t adev_get_supported_devices(const struct audio_hw_device *dev)
-{
-    return (/* OUT */
-            AUDIO_DEVICE_OUT_EARPIECE |
-            AUDIO_DEVICE_OUT_SPEAKER |
-            AUDIO_DEVICE_OUT_WIRED_HEADSET |
-            AUDIO_DEVICE_OUT_WIRED_HEADPHONE |
-            AUDIO_DEVICE_OUT_AUX_DIGITAL |
-            AUDIO_DEVICE_OUT_ANLG_DOCK_HEADSET |
-            AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET |
-            AUDIO_DEVICE_OUT_ALL_SCO |
-            AUDIO_DEVICE_OUT_DEFAULT |
-            /* IN */
-            AUDIO_DEVICE_IN_COMMUNICATION |
-            AUDIO_DEVICE_IN_AMBIENT |
-            AUDIO_DEVICE_IN_BUILTIN_MIC |
-            AUDIO_DEVICE_IN_WIRED_HEADSET |
-            AUDIO_DEVICE_IN_AUX_DIGITAL |
-            AUDIO_DEVICE_IN_BACK_MIC |
-            AUDIO_DEVICE_IN_ALL_SCO |
-            AUDIO_DEVICE_IN_DEFAULT);
-}
-
 static int adev_open(const hw_module_t* module, const char* name,
                      hw_device_t** device)
 {
@@ -3631,11 +3605,10 @@ static int adev_open(const hw_module_t* module, const char* name,
         return -ENOMEM;
 
     adev->hw_device.common.tag = HARDWARE_DEVICE_TAG;
-    adev->hw_device.common.version = AUDIO_DEVICE_API_VERSION_1_0;
+    adev->hw_device.common.version = AUDIO_DEVICE_API_VERSION_2_0;
     adev->hw_device.common.module = (struct hw_module_t *) module;
     adev->hw_device.common.close = adev_close;
 
-    adev->hw_device.get_supported_devices = adev_get_supported_devices;
     adev->hw_device.init_check = adev_init_check;
     adev->hw_device.set_voice_volume = adev_set_voice_volume;
     adev->hw_device.set_master_volume = adev_set_master_volume;
@@ -3741,7 +3714,8 @@ static int adev_open(const hw_module_t* module, const char* name,
     pthread_mutex_lock(&adev->lock);
     set_route_by_array(adev->mixer, defaults, 1);
     adev->mode = AUDIO_MODE_NORMAL;
-    adev->devices = AUDIO_DEVICE_OUT_SPEAKER | AUDIO_DEVICE_IN_BUILTIN_MIC;
+    adev->out_device = AUDIO_DEVICE_OUT_SPEAKER;
+    adev->in_device = AUDIO_DEVICE_IN_BUILTIN_MIC & ~AUDIO_DEVICE_BIT_IN;
     select_output_device(adev);
 
     adev->pcm_modem_dl = NULL;
