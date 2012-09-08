@@ -13,4 +13,4 @@
 ######################
 
 # USB storage device
-dev_mount usbdisk /mnt/usbdisk auto /devices/platform/omap/musb-omap2430
+dev_mount usbdisk /storage/usbdisk auto /devices/platform/omap/musb-omap2430
