@@ -47,4 +47,7 @@
     <string name="category_radio_title">Радио</string>
     <string name="hspa_summary_head">Включить HSDPA/HSUPA</string>
 
+    <string name="category_speed_title">Графический процессор</string>
+    <string name="category_gpu_title">Графический процессор</string>
+    <string name="gpu_overclock_title">Тактовая частота</string>
 </resources>
