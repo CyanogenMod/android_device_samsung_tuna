@@ -192,7 +192,7 @@ service wpa_supplicant /system/bin/wpa_supplicant \
 	disabled
 	oneshot
 
-service dhcpcd_wlan0 /system/bin/dhcpcd -aABKL
+service dhcpcd_wlan0 /system/bin/dhcpcd -aABDKL
 	class main
 	disabled
 	oneshot
@@ -207,7 +207,7 @@ service dhcpcd_bnep0 /system/bin/dhcpcd -ABKL
 	disabled
 	oneshot
 
-service dhcpcd_eth0 /system/bin/dhcpcd -ABKL
+service dhcpcd_eth0 /system/bin/dhcpcd -ABDKL
 	class main
 	disabled
 	oneshot
