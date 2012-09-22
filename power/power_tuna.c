@@ -35,6 +35,9 @@
 static char screen_off_max_freq[MAX_BUF_SZ] = "700000";
 static char scaling_max_freq[MAX_BUF_SZ] = "1200000";
 
+/* for tracking previous screen state */
+static int previous_state = 0;
+
 struct tuna_power_module {
     struct power_module base;
     pthread_mutex_t lock;
@@ -123,29 +126,44 @@ static int boostpulse_open(struct tuna_power_module *tuna)
 
 static void tuna_power_set_interactive(struct power_module *module, int on)
 {
-    int len;
-
-    char buf[MAX_BUF_SZ];
-
     /*
-     * Lower maximum frequency when screen is off.  CPU 0 and 1 share a
-     * cpufreq policy.
+     * Lower maximum frequency when screen changes from on to off.
+     * Return it to previous value when screen changes from off to on.
+     * CPU 0 and 1 share a cpufreq policy.
      */
-    if (!on) {
-        /* read the current scaling max freq and save it before updating */
-        len = sysfs_read(SCALINGMAXFREQ_PATH, buf, sizeof(buf));
 
-        /* make sure it's not the screen off freq, if the "on"
-         * call is skipped (can happen if you press the power
-         * button repeatedly) we might have read it. We should
-         * skip it if that's the case
+    //screen state has changed since last call
+    if (on != previous_state)
+    {           
+        char buf_screen_off_max[MAX_BUF_SZ], buf_scaling_max[MAX_BUF_SZ];
+        int screen_off_max, scaling_max;
+
+        previous_state = on;
+
+        //read value of screen-off max from sysfs, and convert to int for comparison
+        if (sysfs_read(SCREENOFFMAXFREQ_PATH, buf_screen_off_max, sizeof(buf_screen_off_max)) != -1)
+            screen_off_max = atoi(buf_screen_off_max);
+
+        //read value of max from sysfs, and convert to int for comparison
+        if (sysfs_read(SCALINGMAXFREQ_PATH, buf_scaling_max, sizeof(buf_scaling_max)) != -1)
+            scaling_max = atoi(buf_scaling_max);
+
+        /* If scaling_max_freq > screen_off_max_freq, then scaling_max_freq is really the maximum frequency, so save it for the next time the screen comes on.
+         * If screen_off_max_freq == 0, then we're just going to write our saved scalin_max_freq back to sysfs no matter what
+         * If scaling_max_freq == screen_off_max_freq, then scaling_max_freq has the screen_off_max in it, so DON'T SAVE IT TO OUR MAX VARIABLE!
          */
-        if (len != -1 && strncmp(buf, screen_off_max_freq,
-                strlen(screen_off_max_freq)) != 0)
-            memcpy(scaling_max_freq, buf, sizeof(buf));
-        sysfs_write(SCALINGMAXFREQ_PATH, screen_off_max_freq);
-    } else
-        sysfs_write(SCALINGMAXFREQ_PATH, scaling_max_freq);
+        if (scaling_max > screen_off_max)
+            memcpy(scaling_max_freq,
+               (scaling_max > screen_off_max) ? buf_scaling_max : buf_screen_off_max,
+               strlen((scaling_max > screen_off_max) ? buf_scaling_max : buf_screen_off_max));
+
+        memcpy(screen_off_max_freq,
+               (scaling_max <= screen_off_max && screen_off_max > 0) ? buf_scaling_max : buf_screen_off_max,
+               strlen((scaling_max <= screen_off_max && screen_off_max > 0) ? buf_scaling_max : buf_screen_off_max));
+
+        //write the appropriate value for scaling_max back to sysfs
+        sysfs_write(SCALINGMAXFREQ_PATH, on?scaling_max_freq:screen_off_max_freq);
+    }
 }
 
 static void tuna_power_hint(struct power_module *module, power_hint_t hint,
