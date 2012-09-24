@@ -1083,7 +1083,8 @@ static void set_output_volumes(struct tuna_audio_device *adev, bool tty_volume)
                                 speaker_volume_overrange);
         mixer_ctl_set_value(adev->mixer_ctls.tones_dl2_volume, 0,
                                 speaker_volume_overrange + dl2_volume_correction);
-    } else if (adev->mode == AUDIO_MODE_IN_COMMUNICATION) {
+    } else if ((adev->mode == AUDIO_MODE_IN_COMMUNICATION) ||
+		    (adev->mode == AUDIO_MODE_RINGTONE)) {
         mixer_ctl_set_value(adev->mixer_ctls.tones_dl1_volume, 0,
                             MIXER_ABE_GAIN_0DB);
         mixer_ctl_set_value(adev->mixer_ctls.tones_dl2_volume, 0,
