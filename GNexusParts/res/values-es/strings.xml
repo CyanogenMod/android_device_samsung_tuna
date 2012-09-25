@@ -42,7 +42,7 @@
 
     <string name="category_touchkey_title">Teclas táctiles</string>
     <string name="touchkey_notification_title_head">Notificaciones luminosas</string>
-    <string name="touchkey_notification_summary_head">El teclado táctil se activará cuando haya una notificación.</string>
+    <string name="touchkey_notification_summary_head">El teclado táctil se activará cuando haya una notificación</string>
 
     <string name="category_radio_title">Radio</string>
     <string name="hspa_title_head">HSPA</string>
@@ -50,6 +50,6 @@
 
     <string name="category_speed_title">GPU</string>
     <string name="category_gpu_title">GPU</string>
-    <string name="gpu_overclock_title">Velocidad del reloj</string>
+    <string name="gpu_overclock_title">Velocidad del procesador gráfico</string>
 
 </resources>
