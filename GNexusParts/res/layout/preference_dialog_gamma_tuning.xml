@@ -117,25 +117,32 @@
             android:id="@+id/linearLayout1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
             android:layout_below="@+id/black_scale_picture" >
 
             <Button
-                android:id="@+id/btnGammaDefault"
+                android:id="@+id/btnGamma1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/gamma_default_title" />
+                android:text="@string/gamma1_title"
+                android:textSize="12dp"
+                android:width="100dp"/>
 
             <Button
-                android:id="@+id/btnGammaCM"
+                android:id="@+id/btnGamma2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/gamma_CM_title" />
+                android:text="@string/gamma2_title"
+                android:textSize="12dp"
+                android:width="100dp"/>
 
             <Button
-                android:id="@+id/btnGammaBright"
+                android:id="@+id/btnGamma3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/gamma_bright_title" />
+                android:text="@string/gamma3_title"
+                android:textSize="12dp"
+                android:width="100dp"/>
 
         </LinearLayout>
 

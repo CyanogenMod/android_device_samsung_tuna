@@ -58,7 +58,7 @@ public class ColorTuningPreference extends DialogPreference implements OnClickLi
     private ColorSeekBar mSeekBars[] = new ColorSeekBar[3];
 
     // Align MAX_VALUE with Voodoo Control settings
-    private static final int MAX_VALUE = Integer.MAX_VALUE - 2;
+    private static final int MAX_VALUE = 2000000000;
 
     // Track instances to know when to restore original color
     // (when the orientation changes, a new dialog is created before the old one
@@ -86,12 +86,12 @@ public class ColorTuningPreference extends DialogPreference implements OnClickLi
     }
 
     private void SetupButtonClickListeners(View view) {
-            Button mDefaultButton = (Button)view.findViewById(R.id.btnColorDefault);
-            Button mCMButton = (Button)view.findViewById(R.id.btnColorCM);
-            Button mDarkButton = (Button)view.findViewById(R.id.btnColorDark);
-            mDefaultButton.setOnClickListener(this);
-            mCMButton.setOnClickListener(this);
-            mDarkButton.setOnClickListener(this);
+            Button mButton1 = (Button)view.findViewById(R.id.btnColor1);
+            Button mButton2 = (Button)view.findViewById(R.id.btnColor2);
+            Button mButton3 = (Button)view.findViewById(R.id.btnColor3);
+            mButton1.setOnClickListener(this);
+            mButton2.setOnClickListener(this);
+            mButton3.setOnClickListener(this);
     }
 
     @Override
@@ -117,11 +117,11 @@ public class ColorTuningPreference extends DialogPreference implements OnClickLi
      * @param context The context to read the SharedPreferences from
      */
     public static void restore(Context context) {
-        int iValue, iValue2;
         if (!isSupported()) {
             return;
         }
 
+        int iValue, iValue2;
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
 
         for (String filePath : FILE_PATH) {
@@ -220,7 +220,7 @@ public class ColorTuningPreference extends DialogPreference implements OnClickLi
         }
 
         private void updateValue(int progress) {
-            mValueDisplay.setText(String.format("%.10f", (double) progress / MAX_VALUE));
+            mValueDisplay.setText(String.format("%d", (int) progress / 5000000));
         }
 
         public void SetNewValue(int iValue) {
@@ -232,33 +232,33 @@ public class ColorTuningPreference extends DialogPreference implements OnClickLi
 
     public void onClick(View v) {
         switch(v.getId()){
-            case R.id.btnColorDefault:
-                    SetDefaultSettings();
+            case R.id.btnColor1:
+                    SetSettings1();
                     break;
-            case R.id.btnColorCM:
-                    SetCMSettings();
+            case R.id.btnColor2:
+                    SetSettings2();
                     break;
-            case R.id.btnColorDark:
-                    SetDarkSettings();
+            case R.id.btnColor3:
+                    SetSettings3();
                     break;
         }
     }
 
-    private void SetCMSettings() {
-        mSeekBars[0].SetNewValue(1766478464);
-        mSeekBars[1].SetNewValue(1766478464);
-        mSeekBars[2].SetNewValue(1766478464);
+    private void SetSettings1() {
+        mSeekBars[0].SetNewValue(1000000000);
+        mSeekBars[1].SetNewValue(1000000000);
+        mSeekBars[2].SetNewValue(1000000000);
     }
 
-    private void SetDarkSettings() {
-        mSeekBars[0].SetNewValue(877466432);
-        mSeekBars[1].SetNewValue(877466432);
-        mSeekBars[2].SetNewValue(877466432);
+    private void SetSettings2() {
+        mSeekBars[0].SetNewValue(1750000000);
+        mSeekBars[1].SetNewValue(1750000000);
+        mSeekBars[2].SetNewValue(1750000000);
     }
 
-    private void SetDefaultSettings() {
-        mSeekBars[0].SetNewValue(MAX_VALUE);
-        mSeekBars[1].SetNewValue(MAX_VALUE);
-        mSeekBars[2].SetNewValue(MAX_VALUE);
+    private void SetSettings3() {
+        mSeekBars[0].SetNewValue(900000000);
+        mSeekBars[1].SetNewValue(960000000);
+        mSeekBars[2].SetNewValue(1000000000);
     }
 }
