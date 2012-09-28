@@ -154,17 +154,23 @@ static void tuna_power_hint(struct power_module *module, power_hint_t hint,
     struct tuna_power_module *tuna = (struct tuna_power_module *) module;
     char buf[80];
     int len;
+    int duration = 1;
 
     switch (hint) {
     case POWER_HINT_INTERACTION:
-        if (boostpulse_open(tuna) >= 0) {
-	    len = write(tuna->boostpulse_fd, "1", 1);
+    case POWER_HINT_CPU_BOOST:
+        if (data != NULL)
+            duration = (int) data;
 
-	    if (len < 0) {
-	        strerror_r(errno, buf, sizeof(buf));
-		ALOGE("Error writing to %s: %s\n", BOOSTPULSE_PATH, buf);
-	    }
-	}
+        if (boostpulse_open(tuna) >= 0) {
+            snprintf(buf, sizeof(buf), "%d", duration);
+            len = write(tuna->boostpulse_fd, buf, strlen(buf));
+
+            if (len < 0) {
+                strerror_r(errno, buf, sizeof(buf));
+                ALOGE("Error writing to %s: %s\n", BOOSTPULSE_PATH, buf);
+            }
+        }
         break;
 
     case POWER_HINT_VSYNC:
