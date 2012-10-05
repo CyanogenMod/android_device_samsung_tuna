@@ -234,10 +234,6 @@
 
     <bool name="config_ui_enableFadingMarquee">false</bool>
 
-    <string-array name="config_overlay_locationProviderPackageNames" translatable="false">
-        <item>com.google.android.location</item>
-    </string-array>
-
     <!-- Is the notification LED intrusive? Used to decide if there should be a disable option -->
     <bool name="config_intrusiveNotificationLed">true</bool>
 
