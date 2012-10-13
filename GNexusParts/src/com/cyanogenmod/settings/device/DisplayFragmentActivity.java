@@ -33,6 +33,7 @@ public class DisplayFragmentActivity extends PreferenceFragment {
 
     private ColorTuningPreference mColorTuning;
     private GammaTuningPreference mGammaTuning;
+    private ColorHackPresets mColorHackPresets;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -45,6 +46,9 @@ public class DisplayFragmentActivity extends PreferenceFragment {
 
         mGammaTuning = (GammaTuningPreference) findPreference(DeviceSettings.KEY_GAMMA_TUNING);
         mGammaTuning.setEnabled(GammaTuningPreference.isSupported());
+
+        mColorHackPresets = (ColorHackPresets) findPreference(DeviceSettings.KEY_COLORGAMMA_PRESETS);
+        mColorHackPresets.setEnabled(ColorHackPresets.isSupported());
     }
 
 }

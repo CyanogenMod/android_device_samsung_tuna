@@ -12,7 +12,7 @@
         android:title="@string/gamma_tuning_title_head"
         android:summary="@string/gamma_tuning_summary_head" />
     <com.cyanogenmod.settings.device.ColorHackPresets
-        android:key="color_presets"
+        android:key="colorgamma_presets"
         android:title="@string/color_hack_presets_title_head"
         android:summary="@string/color_hack_presets_summary_head" />
 
