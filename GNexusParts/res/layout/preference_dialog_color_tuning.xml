@@ -93,25 +93,48 @@
             android:id="@+id/linearLayout1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
             android:layout_below="@+id/black_scale_picture_color" >
 
             <Button
-                android:id="@+id/btnColorDefault"
+                android:id="@+id/btnColor1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/color_default_title" />
+                android:text="@string/color1_title"
+                android:textSize="12dp"
+                android:width="100dp"/>
 
             <Button
-                android:id="@+id/btnColorCM"
+                android:id="@+id/btnColor2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/color_CM_title" />
+                android:text="@string/color2_title"
+                android:textSize="12dp"
+                android:width="100dp"/>
 
             <Button
-                android:id="@+id/btnColorDark"
+                android:id="@+id/btnColor3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/color_dark_title" />
+                android:text="@string/color3_title"
+                android:textSize="12dp"
+                android:width="100dp"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="320dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_below="@+id/linearLayout1">
+
+            <TextView
+                android:id="@+id/textView1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingLeft="10dip"
+                android:text="@string/color_warning"
+                android:textSize="12dp"/>
 
         </LinearLayout>
 

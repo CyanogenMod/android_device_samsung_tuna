@@ -17,20 +17,20 @@
     <string name="color_red_title">Rot</string>
     <string name="color_green_title">Grün</string>
     <string name="color_blue_title">Blau</string>
-    <string name="gamma_default_title">Standard</string>
-    <string name="gamma_CM_title">CM</string>
-    <string name="gamma_bright_title">Hell</string>
-    <string name="color_default_title">Standard</string>
-    <string name="color_CM_title">CM</string>
-    <string name="color_dark_title">Dunkel</string>
+    <string name="gamma1_title">Standard</string>
+    <string name="gamma2_title">CM</string>
+    <string name="gamma3_title">Natural</string>
+    <string name="color1_title">Standard</string>
+    <string name="color2_title">CM</string>
+    <string name="color3_title">Natural</string>
     <string name="gamma_dss_title">DSS Gammawert</string>
 
     <string name="preset1_default_title">Standard</string>
-    <string name="preset2_default_title">Natürlich</string>
-    <string name="preset3_default_title">Dunkles Blau</string>
+    <string name="preset2_default_title">Maximal</string>
+    <string name="preset3_default_title">Real</string>
     <string name="preset4_default_title">Warm</string>
     <string name="preset5_default_title">Kalt</string>
-    <string name="preset6_default_title">X-Processing</string>
+    <string name="preset6_default_title">Natürlich</string>
     <string name="credits_presets">Dank an: ale.landra91 cpaixao provolinoo</string>
 
     <string name="category_radio_title">Mobilfunk</string>

@@ -91,12 +91,12 @@ public class GammaTuningPreference extends DialogPreference implements OnClickLi
     }
 
     private void SetupButtonClickListeners(View view) {
-            Button mDefaultButton = (Button)view.findViewById(R.id.btnGammaDefault);
-            Button mCMButton = (Button)view.findViewById(R.id.btnGammaCM);
-            Button mBrightButton = (Button)view.findViewById(R.id.btnGammaBright);
-            mDefaultButton.setOnClickListener(this);
-            mCMButton.setOnClickListener(this);
-            mBrightButton.setOnClickListener(this);
+            Button mButton1 = (Button)view.findViewById(R.id.btnGamma1);
+            Button mButton2 = (Button)view.findViewById(R.id.btnGamma2);
+            Button mButton3 = (Button)view.findViewById(R.id.btnGamma3);
+            mButton1.setOnClickListener(this);
+            mButton2.setOnClickListener(this);
+            mButton3.setOnClickListener(this);
     }
 
     @Override
@@ -126,12 +126,13 @@ public class GammaTuningPreference extends DialogPreference implements OnClickLi
             return;
         }
 
+        int iValue;
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
 
         Boolean bFirstTime = sharedPrefs.getBoolean("FirstTimeGamma", true);
         for (String filePath : FILE_PATH) {
             String sDefaultValue = Utils.readOneLine(filePath);
-            int iValue = sharedPrefs.getInt(filePath, Integer.valueOf(sDefaultValue));
+            iValue = sharedPrefs.getInt(filePath, Integer.valueOf(sDefaultValue));
             if (bFirstTime)
                 Utils.writeValue(filePath, "0");
             else
@@ -250,37 +251,36 @@ public class GammaTuningPreference extends DialogPreference implements OnClickLi
 
     public void onClick(View v) {
         switch(v.getId()){
-            case R.id.btnGammaDefault:
-                    SetDefaultSettings();
+            case R.id.btnGamma1:
+                    SetSettings1();
                     break;
-            case R.id.btnGammaCM:
-                    SetCMSettings();
+            case R.id.btnGamma2:
+                    SetSettings2();
                     break;
-            case R.id.btnGammaBright:
-                    SetSBrightSettings();
+            case R.id.btnGamma3:
+                    SetSettings3();
                     break;
         }
     }
 
-    private void SetCMSettings() {
-        mSeekBars[0].SetNewValue(2);
-        mSeekBars[1].SetNewValue(15);
-        mSeekBars[2].SetNewValue(5);
-        mSeekBars[3].SetNewValue(8);
-    }
-
-    private void SetSBrightSettings() {
-        mSeekBars[0].SetNewValue(6);
-        mSeekBars[1].SetNewValue(25);
-        mSeekBars[2].SetNewValue(7);
-        mSeekBars[3].SetNewValue(4);
-    }
-
-    private void SetDefaultSettings() {
+    private void SetSettings1() {
         mSeekBars[0].SetNewValue(0);
         mSeekBars[1].SetNewValue(0);
         mSeekBars[2].SetNewValue(0);
         mSeekBars[3].SetNewValue(0);
     }
 
+    private void SetSettings2() {
+        mSeekBars[0].SetNewValue(2);
+        mSeekBars[1].SetNewValue(15);
+        mSeekBars[2].SetNewValue(5);
+        mSeekBars[3].SetNewValue(8);
+    }
+
+    private void SetSettings3() {
+        mSeekBars[0].SetNewValue(-4);
+        mSeekBars[1].SetNewValue(0);
+        mSeekBars[2].SetNewValue(5);
+        mSeekBars[3].SetNewValue(0);
+    }
 }
