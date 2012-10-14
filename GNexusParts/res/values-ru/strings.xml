@@ -19,10 +19,11 @@
     <string name="color_blue_title">Синий</string>
     <string name="gamma1_title">По умолч.</string>
     <string name="gamma2_title">Настр. CM</string>
-    <string name="gamma3_title">Природный</string>
+    <string name="gamma3_title">Натуральный</string>
     <string name="color1_title">По умолч.</string>
     <string name="color2_title">Настр. CM</string>
-    <string name="color3_title">Природный</string>
+    <string name="color3_title">Натуральный</string>
+    <string name="color_warning">Установка значений выше 200 не рекомендуется</string>
     <string name="gamma_dss_title">Настр. DSS гаммы</string>
 
     <string name="category_hardware_title">ЦП</string>
@@ -37,8 +38,8 @@
     <string name="preset3_default_title">Pеальный</string>
     <string name="preset4_default_title">Тёплый</string>
     <string name="preset5_default_title">Хол. тёмный</string>
-    <string name="preset6_default_title">Природный</string>
-    <string name="credits_presets">Участники: ale.landra91 cpaixao provolinoo</string>
+    <string name="preset6_default_title">Натуральный</string>
+    <string name="credits_presets">Участники: ale.landra91, cpaixao, provolinoo</string>
 
     <string name="category_touchkey_title">Сенсорные копки</string>
     <string name="touchkey_notification_title_head">Подсветка уведомлений</string>
