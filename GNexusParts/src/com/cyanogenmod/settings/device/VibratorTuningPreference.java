@@ -28,6 +28,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Button;
 import android.util.Log;
+import android.os.Vibrator;
 
 /**
  * Special preference type that allows configuration of both the ring volume and
@@ -86,6 +87,9 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
     private void SetupButtonClickListeners(View view) {
             Button mDefaultButton = (Button)view.findViewById(R.id.btnvibratorDefault);
             mDefaultButton.setOnClickListener(this);
+
+            Button mTestButton = (Button)view.findViewById(R.id.btnvibratorTest);
+            mTestButton.setOnClickListener(this);
     }
 
     @Override
@@ -256,6 +260,9 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
             case R.id.btnvibratorDefault:
                     setDefaultSettings();
                     break;
+            case R.id.btnvibratorTest:
+                    testVibration();
+                    break;
         }
     }
 
@@ -263,4 +270,8 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
         mSeekBars[0].setNewValue(100);
     }
 
+    private void testVibration() {
+		Vibrator vib = (Vibrator) this.getContext().getSystemService(Context.VIBRATOR_SERVICE);
+		vib.vibrate(1000);
+    }
 }

@@ -32,6 +32,7 @@
 
     <string name="vibrator_title">Vibration %</string>
     <string name="vibrator_default_title">Default</string>
+    <string name="vibrator_test_title">Test</string>
 
     <string name="preset1_default_title">Default</string>
     <string name="preset2_default_title">Maximum</string>
