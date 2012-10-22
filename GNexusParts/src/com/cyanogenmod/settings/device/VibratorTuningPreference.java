@@ -271,7 +271,7 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
     }
 
     private void testVibration() {
-		Vibrator vib = (Vibrator) this.getContext().getSystemService(Context.VIBRATOR_SERVICE);
-		vib.vibrate(1000);
+        Vibrator vib = (Vibrator) this.getContext().getSystemService(Context.VIBRATOR_SERVICE);
+        vib.vibrate(1000);
     }
 }

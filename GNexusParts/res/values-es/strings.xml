@@ -32,6 +32,7 @@
 
     <string name="vibrator_title">Vibración %</string>
     <string name="vibrator_default_title">Predet.</string>
+    <string name="vibrator_test_title">Probar</string>
 
     <string name="preset1_default_title">Predet.</string>
     <string name="preset2_default_title">Máximo</string>
