@@ -39,7 +39,7 @@ public class Hspa implements OnPreferenceChangeListener {
         }
 
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
-        sendIntent(context, sharedPrefs.getString(DeviceSettings.KEY_HSPA, "23"));
+        sendIntent(context, sharedPrefs.getString(DevicePreferenceActivity.KEY_HSPA, "23"));
     }
 
     @Override

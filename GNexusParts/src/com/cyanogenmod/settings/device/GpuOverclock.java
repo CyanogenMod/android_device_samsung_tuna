@@ -37,7 +37,7 @@ public class GpuOverclock implements OnPreferenceChangeListener {
         }
 
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
-        Utils.writeValue(FILE, sharedPrefs.getString(DeviceSettings.KEY_GPU_OVERCLOCK, "0"));
+        Utils.writeValue(FILE, sharedPrefs.getString(DevicePreferenceActivity.KEY_GPU_OVERCLOCK, "0"));
     }
 
     public boolean onPreferenceChange(Preference preference, Object newValue) {

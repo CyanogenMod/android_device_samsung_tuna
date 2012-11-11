@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Configurações Galaxy Nexus</string>
-    <string name="general_title">Geral</string>
-    <string name="display_title">Tela</string>
-    <string name="category_cpu_title">CPU</string>
-    <string name="category_screen_title">Configurações VM8994 ( voodoo )</string>
     <string name="color_tuning_title_head">Ajustar Multiplicadores de Cor</string>
     <string name="color_tuning_summary_head">Calibrar multiplicadores de cor de tela</string>
     <string name="gamma_tuning_title_head">Ajustar Cor Gama</string>
