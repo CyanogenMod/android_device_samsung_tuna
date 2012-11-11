@@ -2,12 +2,6 @@
 <resources>
     <string name="app_name">Galaxy Nexus 設定</string>
 
-    <!-- Page Headers -->
-    <string name="general_title">一般</string>
-    <string name="display_title">ディスプレイ</string>
-
-    <string name="category_cpu_title">CPU</string>
-    <string name="category_screen_title">WM8994設定 ( voodoo )</string>
     <string name="color_tuning_title_head">カラーマルチプライヤチューニング</string>
     <string name="color_tuning_summary_head">画面の色味を調整する</string>
     <string name="gamma_tuning_title_head">カラーガンマ調整</string>

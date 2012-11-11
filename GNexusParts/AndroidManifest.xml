@@ -22,11 +22,6 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-
-        <activity android:name=".GeneralFragmentActivity" />
-        <activity android:name=".DisplayFragmentActivity" />
-        <activity android:name=".SoundFragmentActivity" />
-        <activity android:name=".OverClockFragmentActivity" />
     </application>
 
 </manifest>
