@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Ajustes Galaxy Nexus</string>
 
+    <string name="category_display_title">Pantalla</string>
     <string name="color_tuning_title_head">Multiplicadores del color</string>
     <string name="color_tuning_summary_head">Calibrar los multiplicadores del color</string>
     <string name="gamma_tuning_title_head">Gamma</string>
@@ -20,7 +21,7 @@
     <string name="color_warning">No son recomendables valores mayores de 200</string>
     <string name="gamma_dss_title">Gamma DSS</string>
 
-    <string name="category_hardware_title">CPU</string>
+    <string name="category_hardware_title">Sistema</string>
     <string name="vibrator_tuning_title_head">Respuesta háptica</string>
     <string name="vibrator_tuning_summary_head">Establece la fuerza predeterminada para la respuesta háptica (vibración)</string>
 
