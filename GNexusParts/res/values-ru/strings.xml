@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Настройки Galaxy Nexus</string>
 
+    <string name="category_display_title">Дисплей</string>
     <string name="color_tuning_title_head">Настройка цвета мультипликатора</string>
     <string name="color_tuning_summary_head">Калибровка цвета мультипликатора</string>
     <string name="gamma_tuning_title_head">Настройка цветовой гаммы</string>
@@ -20,7 +21,7 @@
     <string name="color_warning">Установка значений выше 200 не рекомендуется</string>
     <string name="gamma_dss_title">Настр. DSS гаммы</string>
 
-    <string name="category_hardware_title">ЦП</string>
+    <string name="category_hardware_title">Железо</string>
     <string name="vibrator_tuning_title_head">Настройка виброотклика</string>
     <string name="vibrator_tuning_summary_head">Настройка умолчания силы виброотклика</string>
 
