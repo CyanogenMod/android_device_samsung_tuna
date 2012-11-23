@@ -21,9 +21,14 @@ USE_CAMERA_STUB := true
 # Use the non-open-source parts, if they're present
 -include vendor/samsung/tuna/BoardConfigVendor.mk
 
+# Default values, if not overridden else where.
+TARGET_BOARD_INFO_FILE ?= device/samsung/tuna/board-info.txt
+BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR ?= device/samsung/tuna/bluetooth
+
 TARGET_CPU_ABI := armeabi-v7a
 TARGET_CPU_ABI2 := armeabi
 TARGET_CPU_SMP := true
+TARGET_ARCH := arm
 TARGET_ARCH_VARIANT := armv7-a-neon
 ARCH_ARM_HAVE_TLS_REGISTER := true
 
@@ -41,7 +46,6 @@ TARGET_PREBUILT_KERNEL := device/samsung/tuna/kernel
 TARGET_NO_RADIOIMAGE := true
 TARGET_BOARD_PLATFORM := omap4
 TARGET_BOOTLOADER_BOARD_NAME := tuna
-TARGET_BOARD_INFO_FILE ?= device/samsung/tuna/board-info.txt
 
 BOARD_EGL_CFG := device/samsung/tuna/egl.cfg
 BOARD_CREATE_TUNA_HDCP_KEYS_SYMLINK := true
