@@ -102,7 +102,7 @@ def WriteRadio(info, target_radio_img, source_radio_img=None):
     if tf.sha1 == sf.sha1:
       print "radio image unchanged; skipping"
     else:
-      diff = common.Difference(tf, sf)
+      diff = common.Difference(tf, sf, diff_program="bsdiff")
       common.ComputeDifferences([diff])
       _, _, d = diff.GetPatch()
       if d is None or len(d) > tf.size * common.OPTIONS.patch_threshold:
