@@ -30,8 +30,8 @@ import android.widget.Button;
 import android.util.Log;
 
 /**
- * Special preference type that allows configuration of both the ring volume and
- * notification volume.
+ * Special preference type that allows configuration of Gamma settings on Nexus
+ * Devices
  */
 public class GammaTuningPreference extends DialogPreference implements OnClickListener {
 
@@ -117,7 +117,7 @@ public class GammaTuningPreference extends DialogPreference implements OnClickLi
     }
 
     /**
-     * Restore screen color tuning from SharedPreferences. (Write to kernel.)
+     * Restore screen gamma tuning from SharedPreferences. (Write to kernel.)
      * 
      * @param context The context to read the SharedPreferences from
      */
@@ -133,10 +133,14 @@ public class GammaTuningPreference extends DialogPreference implements OnClickLi
         for (String filePath : FILE_PATH) {
             String sDefaultValue = Utils.readOneLine(filePath);
             iValue = sharedPrefs.getInt(filePath, Integer.valueOf(sDefaultValue));
-            if (bFirstTime)
+            if (bFirstTime){
                 Utils.writeValue(filePath, "0");
-            else
+                Log.d(TAG, "restore default value: 0 File: " + filePath);
+            }
+            else{
                 Utils.writeValue(filePath, String.valueOf((long) iValue));
+                Log.d(TAG, "restore: iValue: " + iValue + " File: " + filePath);
+            }
         }
         if (bFirstTime)
         {
@@ -184,8 +188,6 @@ public class GammaTuningPreference extends DialogPreference implements OnClickLi
             mFilePath = filePath;
             iOffset = offsetValue;
             iMax = maxValue;
-
-            SharedPreferences sharedPreferences = getSharedPreferences();
 
             // Read original value
             if (Utils.fileExists(mFilePath)) {

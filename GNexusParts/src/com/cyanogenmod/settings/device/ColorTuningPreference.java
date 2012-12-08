@@ -30,8 +30,8 @@ import android.util.Log;
 import android.widget.Button;
 
 /**
- * Special preference type that allows configuration of both the ring volume and
- * notification volume.
+ * Special preference type that allows configuration of Color settings on Nexus
+ * Devices
  */
 public class ColorTuningPreference extends DialogPreference implements OnClickListener {
 
@@ -67,7 +67,7 @@ public class ColorTuningPreference extends DialogPreference implements OnClickLi
 
     public ColorTuningPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
-
+        
         setDialogLayoutResource(R.layout.preference_dialog_color_tuning);
     }
 
@@ -112,7 +112,7 @@ public class ColorTuningPreference extends DialogPreference implements OnClickLi
     }
 
     /**
-     * Restore screen color tuning from SharedPreferences. (Write to kernel.)
+     * Restore color tuning from SharedPreferences. (Write to kernel.)
      * 
      * @param context The context to read the SharedPreferences from
      */
@@ -120,26 +120,28 @@ public class ColorTuningPreference extends DialogPreference implements OnClickLi
         if (!isSupported()) {
             return;
         }
-
-        int iValue, iValue2;
+        
+        int iValue;
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
 
+        Boolean bFirstTime = sharedPrefs.getBoolean("FirstTimeColor", true);
         for (String filePath : FILE_PATH) {
             String sDefaultValue = Utils.readOneLine(filePath);
-            Log.d(TAG,"INIT: " + sDefaultValue);
-            try {
-                iValue2 = Integer.parseInt(sDefaultValue);
-            } catch (NumberFormatException e) {
-                iValue2 = MAX_VALUE;
+            iValue = sharedPrefs.getInt(filePath, Integer.valueOf(sDefaultValue));
+            if (bFirstTime){
+                Utils.writeColor(filePath, MAX_VALUE);
+                Log.d(TAG, "restore default value: " +MAX_VALUE+ " File: " + filePath);
             }
-            try {
-                iValue = sharedPrefs.getInt(filePath, iValue2);
+            else{
+                Utils.writeColor(filePath, iValue);
                 Log.d(TAG, "restore: iValue: " + iValue + " File: " + filePath);
-            } catch (NumberFormatException e) {
-                iValue = iValue2;
-                Log.e(TAG, "restore ERROR: iValue: " + iValue + " File: " + filePath);
             }
-            Utils.writeColor(filePath, (int) iValue);
+        }
+        if (bFirstTime)
+        {
+            SharedPreferences.Editor editor = sharedPrefs.edit();
+            editor.putBoolean("FirstTimeColor", false);
+            editor.commit();
         }
     }
 
