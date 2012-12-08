@@ -24,13 +24,14 @@ import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.TextView;
 import android.widget.Button;
 import android.util.Log;
 
+
+
 /**
- * Special preference type that allows configuration of both the ring volume and
- * notification volume.
+ * Special preference type that allows to set a pre-configuration of Color and Gamma
+ * Value on Nexus Devices.
  */
 public class ColorHackPresets extends DialogPreference implements OnClickListener {
 
@@ -49,13 +50,9 @@ public class ColorHackPresets extends DialogPreference implements OnClickListene
             "/sys/class/misc/samoled_color/blue_multiplier"
     };
 
-    // Track instances to know when to restore original color
-    // (when the orientation changes, a new dialog is created before the old one
-    // is destroyed)
-    private static int sInstances = 0;
-
     // Align MAX_VALUE with Voodoo Control settings
     private static final int MAX_VALUE = 2000000000;
+    
 
     public ColorHackPresets(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -66,9 +63,6 @@ public class ColorHackPresets extends DialogPreference implements OnClickListene
     @Override
     protected void onBindDialogView(View view) {
         super.onBindDialogView(view);
-
-        sInstances++;
-
         SetupButtonClickListeners(view);
     }
 
@@ -90,26 +84,13 @@ public class ColorHackPresets extends DialogPreference implements OnClickListene
     protected void onDialogClosed(boolean positiveResult) {
         super.onDialogClosed(positiveResult);
 
-        sInstances--;
-
     }
 
+    
     /**
-     * Restore screen color tuning from SharedPreferences. (Write to kernel.)
+     * Check whether the running kernel supports color/gamma tuning or not.
      * 
-     * @param context The context to read the SharedPreferences from
-     */
-    public static void restore(Context context) {
-        if (!isSupported()) {
-            return;
-        }
-
-    }
-
-    /**
-     * Check whether the running kernel supports color tuning or not.
-     * 
-     * @return Whether color tuning is supported or not
+     * @return Whether color/gamma tuning is supported or not
      */
     public static boolean isSupported() {
         boolean supported = true;
@@ -123,7 +104,6 @@ public class ColorHackPresets extends DialogPreference implements OnClickListene
                 supported = false;
             }
         }
-
         return supported;
     }
 
@@ -146,20 +126,39 @@ public class ColorHackPresets extends DialogPreference implements OnClickListene
                     break;
             case R.id.btnPreset6:
                     Preset6();
-                    break;
+                    break;                 
         }
     }
 
+
     private void WriteMultiplier(Double fValue , int iPos) {
         int iValue = (int) ((double) MAX_VALUE * fValue);
+        int iValue2;
         Utils.writeColor(FILE_PATH_MULTI[iPos], iValue);
-        Log.i(TAG,"KalimAz: Multiplier: " + iPos+ " Value " + iValue );
+        
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        iValue2 = sharedPrefs.getInt(FILE_PATH_MULTI[iPos], iValue);
+        //storing to SharedPreferences because of reloaded @ startup
+        Editor editor = getEditor();
+        editor.putInt(FILE_PATH_MULTI[iPos], iValue);
+        editor.commit();
+        Log.d(TAG, "Changing ColorMultiplier " +iPos+ " from:" +iValue2+ " to: " +iValue);
     }
 
+    
     private void WriteGamma(int iValue , int iPos) {
+        int iValue2;
         Utils.writeValue(FILE_PATH_GAMMA[iPos], String.valueOf((long) iValue));
-        Log.i(TAG,"KalimAz: Gamma: " + iPos+ " Value " + iValue );
+        
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        iValue2 = sharedPrefs.getInt(FILE_PATH_GAMMA[iPos], iValue);
+        //storing to SharedPreferences because of reloaded @ startup
+        Editor editor = getEditor();
+        editor.putInt(FILE_PATH_GAMMA[iPos], iValue);
+        editor.commit();
+        Log.d(TAG, "Changing GammaValue " +iPos+ " from:" +iValue2+ " to: " +iValue);
     }
+    
 
     private void Preset1() {
         WriteMultiplier(0.5, 0);
