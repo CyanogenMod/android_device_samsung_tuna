@@ -16,31 +16,10 @@
 
 package com.cyanogenmod.settings.device;
 
-import android.app.ActionBar;
-import android.app.ActionBar.Tab;
-import android.app.ActionBar.TabListener;
-import android.app.Activity;
-import android.app.Fragment;
-import android.app.FragmentManager;
-import android.app.FragmentTransaction;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.preference.ListPreference;
-import android.preference.PreferenceActivity;
 import android.preference.PreferenceFragment;
-import android.preference.PreferenceScreen;
-import android.support.v13.app.FragmentPagerAdapter;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.view.ViewPager;
-import android.view.MenuItem;
-
 import com.cyanogenmod.settings.device.R;
-
-import java.util.ArrayList;
 
 public class DevicePreferenceActivity extends PreferenceFragment {
 
@@ -77,8 +56,6 @@ public class DevicePreferenceActivity extends PreferenceFragment {
 
         mVibratorTuning = (VibratorTuningPreference) findPreference(KEY_VIBRATOR_TUNING);
         mVibratorTuning.setEnabled(VibratorTuningPreference.isSupported());
-
-        PreferenceScreen prefSet = getPreferenceScreen();
 
         mGpuOverclock = (ListPreference) findPreference(KEY_GPU_OVERCLOCK);
         mGpuOverclock.setEnabled(GpuOverclock.isSupported());

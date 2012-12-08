@@ -117,15 +117,16 @@
             android:layout_width="320dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+	    android:gravity="center"
             android:layout_below="@+id/linearLayout2" >
 
             <TextView
                 android:id="@+id/textView1"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingLeft="10dip"
-                android:text="@string/credits_presets"
-                android:textSize="12dp"/>
+                android:gravity="center"
+		android:text="@string/credits_presets"
+                android:textSize="15dp"/>
 
         </LinearLayout>
 

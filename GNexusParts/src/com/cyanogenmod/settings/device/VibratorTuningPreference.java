@@ -31,12 +31,12 @@ import android.util.Log;
 import android.os.Vibrator;
 
 /**
- * Special preference type that allows configuration of both the ring volume and
- * notification volume.
+ * Special preference type that allows configuration of vibrator intensity settings on Nexus
+ * Devices
  */
 public class VibratorTuningPreference extends DialogPreference implements OnClickListener {
 
-    private static final String TAG = "vibrator...";
+    private static final String TAG = "VIBRATOR...";
 
     private static final int[] SEEKBAR_ID = new int[] {
             R.id.vibrator_seekbar
@@ -110,7 +110,7 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
     }
 
     /**
-     * Restore screen color tuning from SharedPreferences. (Write to kernel.)
+     * Restore vibrator tuning from SharedPreferences. (Write to kernel.)
      *
      * @param context The context to read the SharedPreferences from
      */
@@ -125,13 +125,16 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
         for (String filePath : FILE_PATH) {
             String sDefaultValue = Utils.readOneLine(filePath);
             int iValue = sharedPrefs.getInt(filePath, Integer.valueOf(sDefaultValue));
-            if (bFirstTime)
+            if (bFirstTime){
                 Utils.writeValue(filePath, "100");
-            else
+                Log.d(TAG, "restore default value: 100 File: " + filePath);
+            }
+            else{
                 Utils.writeValue(filePath, String.valueOf((long) iValue));
+                Log.d(TAG, "restore: iValue: " + iValue + " File: " + filePath);
+            }
         }
-        if (bFirstTime)
-        {
+        if (bFirstTime) {
             SharedPreferences.Editor editor = sharedPrefs.edit();
             editor.putBoolean("FirstTimevibrator", false);
             editor.commit();
@@ -139,7 +142,7 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
     }
 
     /**
-     * Check whether the running kernel supports color tuning or not.
+     * Check whether the running kernel supports vibrator tuning or not.
      *
      * @return Whether color tuning is supported or not
      */
@@ -176,8 +179,6 @@ public class VibratorTuningPreference extends DialogPreference implements OnClic
             mFilePath = filePath;
             iOffset = offsetValue;
             iMax = maxValue;
-
-            SharedPreferences sharedPreferences = getSharedPreferences();
 
             // Read original value
             if (Utils.fileExists(mFilePath)) {

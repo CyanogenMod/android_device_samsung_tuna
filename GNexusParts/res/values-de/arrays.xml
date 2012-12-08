@@ -1,0 +1,7 @@
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string-array name="gpu_overclock_entries">
+        <item>307,2 MHz (Standard)</item>
+        <item>384,0 MHz</item>
+        <item>512,0 MHz</item>
+    </string-array>
+</resources>
