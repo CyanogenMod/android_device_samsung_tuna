@@ -103,6 +103,7 @@ struct counts {
     uint32_t NV12;
     uint32_t dockable;
     uint32_t protected;
+    uint32_t framebuffer;
 #ifdef OMAP_ENHANCEMENT_S3D
     uint32_t s3d;
 #endif

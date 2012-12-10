@@ -784,6 +784,9 @@ static bool is_valid_layer(omap_hwc_device_t *hwc_dev, hwc_layer_1_t *layer, IMG
     if ((layer->flags & HWC_SKIP_LAYER) || !handle)
         return false;
 
+    if (layer->compositionType == HWC_FRAMEBUFFER_TARGET)
+        return false;
+
     if (!is_valid_format(handle->iFormat))
         return false;
 
@@ -969,7 +972,12 @@ static void gather_layer_statistics(omap_hwc_device_t *hwc_dev, hwc_display_cont
         uint32_t s3d_layout_type = get_s3d_layout_type(layer);
 #endif
 
-        layer->compositionType = HWC_FRAMEBUFFER;
+        if (layer->compositionType == HWC_FRAMEBUFFER_TARGET) {
+            num->framebuffer++;
+            num->composited_layers--;
+        } else {
+            layer->compositionType = HWC_FRAMEBUFFER;
+        }
 
         if (is_valid_layer(hwc_dev, layer, handle)) {
 #ifdef OMAP_ENHANCEMENT_S3D
@@ -1965,6 +1973,15 @@ static int hwc_set(struct hwc_composer_device_1 *dev,
                 ALOGE("eglSwapBuffers error");
                 err = HWC_EGL_ERROR;
                 goto err_out;
+            }
+            if (list) {
+                if (hwc_dev->counts.framebuffer) {
+                    /* Layer with HWC_FRAMEBUFFER_TARGET should be last in the list. The buffer handle
+                     * is updated by SurfaceFlinger after prepare() call, so FB slot has to be updated
+                     * in set().
+                     */
+                    hwc_dev->buffers[0] = list->hwLayers[list->numHwLayers - 1].handle;
+                }
             }
         }
 
