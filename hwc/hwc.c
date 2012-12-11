@@ -1388,6 +1388,9 @@ static void check_sync_fds(size_t numDisplays, hwc_display_contents_1_t** displa
     unsigned int i, j;
     for (i = 0; i < numDisplays; i++) {
         hwc_display_contents_1_t* list = displays[i];
+        if (!list)
+            continue;
+
         if (list->retireFenceFd >= 0) {
             ALOGW("retireFenceFd[%u] was %d", i, list->retireFenceFd);
             list->retireFenceFd = -1;
