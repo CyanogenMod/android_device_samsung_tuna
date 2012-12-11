@@ -1973,18 +1973,25 @@ static int hwc_set(struct hwc_composer_device_1 *dev,
         // screen off. no shall not call eglSwapBuffers() in that case.
 
         if (hwc_dev->use_sgx) {
-            if (!eglSwapBuffers((EGLDisplay)dpy, (EGLSurface)sur)) {
-                ALOGE("eglSwapBuffers error");
-                err = HWC_EGL_ERROR;
-                goto err_out;
-            }
-            if (list) {
-                if (hwc_dev->counts.framebuffer) {
-                    /* Layer with HWC_FRAMEBUFFER_TARGET should be last in the list. The buffer handle
-                     * is updated by SurfaceFlinger after prepare() call, so FB slot has to be updated
-                     * in set().
-                     */
-                    hwc_dev->buffers[0] = list->hwLayers[list->numHwLayers - 1].handle;
+            if (hwc_dev->base.common.version <= HWC_DEVICE_API_VERSION_1_0) {
+                if (!eglSwapBuffers((EGLDisplay)dpy, (EGLSurface)sur)) {
+                    ALOGE("eglSwapBuffers error");
+                    err = HWC_EGL_ERROR;
+                    goto err_out;
+                }
+            } else {
+                if (list) {
+                    if (hwc_dev->counts.framebuffer) {
+                        /* Layer with HWC_FRAMEBUFFER_TARGET should be last in the list. The buffer handle
+                         * is updated by SurfaceFlinger after prepare() call, so FB slot has to be updated
+                         * in set().
+                         */
+                        hwc_dev->buffers[0] = list->hwLayers[list->numHwLayers - 1].handle;
+                    } else {
+                        ALOGE("No buffer is provided for GL composition");
+                        err = -EFAULT;
+                        goto err_out;
+                    }
                 }
             }
         }
