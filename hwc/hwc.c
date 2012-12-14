@@ -44,6 +44,7 @@
 #include <ion_ti/ion.h>
 
 #include "hwc_dev.h"
+#include "display.h"
 #include "dock_image.h"
 #include "sw_vsync.h"
 
@@ -844,7 +845,7 @@ static int set_best_hdmi_mode(omap_hwc_device_t *hwc_dev, uint32_t xres, uint32_
     int dis_ix = hwc_dev->on_tv ? 0 : 1;
     struct _qdis {
         struct dsscomp_display_info dis;
-        struct dsscomp_videomode modedb[32];
+        struct dsscomp_videomode modedb[MAX_DISPLAY_CONFIGS];
     } d = { .dis = { .ix = dis_ix } };
     omap_hwc_ext_t *ext = &hwc_dev->ext;
 
@@ -2096,6 +2097,7 @@ static int hwc_device_close(hw_device_t* device)
 
         /* pthread will get killed when parent process exits */
         pthread_mutex_destroy(&hwc_dev->lock);
+        free_displays(hwc_dev);
         free(hwc_dev);
     }
 
@@ -2473,6 +2475,17 @@ static int hwc_blank(struct hwc_composer_device_1 *dev, int dpy, int blank)
     return 0;
 }
 
+static int hwc_getDisplayConfigs(struct hwc_composer_device_1* dev, int disp, uint32_t* configs, size_t* numConfigs)
+{
+    return get_display_configs((omap_hwc_device_t *)dev, disp, configs, numConfigs);
+}
+
+static int hwc_getDisplayAttributes(struct hwc_composer_device_1* dev, int disp,
+                                    uint32_t config, const uint32_t* attributes, int32_t* values)
+{
+    return get_display_attributes((omap_hwc_device_t *)dev, disp, config, attributes, values);
+}
+
 static int hwc_device_open(const hw_module_t* module, const char* name, hw_device_t** device)
 {
     omap_hwc_module_t *hwc_mod = (omap_hwc_module_t *)module;
@@ -2517,6 +2530,8 @@ static int hwc_device_open(const hw_module_t* module, const char* name, hw_devic
     hwc_dev->base.blank = hwc_blank;
     hwc_dev->base.dump = hwc_dump;
     hwc_dev->base.registerProcs = hwc_registerProcs;
+    hwc_dev->base.getDisplayConfigs = hwc_getDisplayConfigs;
+    hwc_dev->base.getDisplayAttributes = hwc_getDisplayAttributes;
     hwc_dev->base.query = hwc_query;
 
     hwc_dev->fb_dev = hwc_mod->fb_dev;
@@ -2554,12 +2569,9 @@ static int hwc_device_open(const hw_module_t* module, const char* name, hw_devic
         goto done;
     }
 
-    ret = ioctl(hwc_dev->dsscomp_fd, DSSCIOC_QUERY_DISPLAY, &hwc_dev->fb_dis);
-    if (ret) {
-        ALOGE("failed to get display info (%d): %m", errno);
-        err = -errno;
+    err = init_primary_display(hwc_dev);
+    if (err)
         goto done;
-    }
 
     hwc_dev->ion_fd = ion_open();
     if (hwc_dev->ion_fd < 0) {
@@ -2695,6 +2707,7 @@ done:
             close(hwc_dev->fb_fd);
         pthread_mutex_destroy(&hwc_dev->lock);
         free(hwc_dev->buffers);
+        free_displays(hwc_dev);
         free(hwc_dev);
     }
 

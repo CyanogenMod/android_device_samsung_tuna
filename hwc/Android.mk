@@ -22,7 +22,7 @@ LOCAL_ARM_MODE := arm
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/../vendor/lib/hw
 LOCAL_SHARED_LIBRARIES := liblog libEGL libcutils libutils libhardware libhardware_legacy libz \
                           libion_ti
-LOCAL_SRC_FILES := hwc.c rgz_2d.c dock_image.c sw_vsync.c
+LOCAL_SRC_FILES := hwc.c rgz_2d.c dock_image.c sw_vsync.c display.c
 LOCAL_STATIC_LIBRARIES := libpng
 
 LOCAL_MODULE_TAGS := optional
