@@ -1341,7 +1341,8 @@ static void select_input_device(struct tuna_audio_device *adev)
         /* Select front end */
 
 
-        if ((adev->active_input != 0) && (adev->active_input->aux_channels)) {
+        if ((adev->active_input != 0) && (adev->active_input->aux_channels ||
+                adev->active_input->main_channels == AUDIO_CHANNEL_IN_FRONT_BACK)) {
             ALOGV("select input device(): multi-mic configuration main mic %s sub mic %s",
                   main_mic_on ? "ON" : "OFF", sub_mic_on ? "ON" : "OFF");
             if (main_mic_on) {
