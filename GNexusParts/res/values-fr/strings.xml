@@ -3,8 +3,8 @@
     <string name="app_name">Paramètres du Galaxy Nexus</string>
 
     <string name="category_display_title">Affichage</string>
-    <string name="color_tuning_title_head">Réglage des multiplcateurs de couleur de l\'écran</string>
-    <string name="color_tuning_summary_head">Régle les multiplcateurs de couleur de l\'écran</string>
+    <string name="color_tuning_title_head">Réglage des multiplicateurs de couleur de l\'écran</string>
+    <string name="color_tuning_summary_head">Régle les multiplicateurs de couleur de l\'écran</string>
     <string name="gamma_tuning_title_head">Réglage de la Correction Gamma</string>
     <string name="gamma_tuning_summary_head">Règle la correction Gamma</string>
     <string name="color_hack_presets_title_head">Préréglage des couleurs</string>
