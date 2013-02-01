@@ -64,7 +64,7 @@ static void tuna_power_init(struct power_module *module)
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/hispeed_freq",
                 "700000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/target_loads",
-                "90 920000:95 1200000:99");
+                "70 920000:80 1200000:99");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load",
                 "99");
     sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay",
