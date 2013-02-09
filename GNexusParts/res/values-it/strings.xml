@@ -32,7 +32,7 @@
     <string name="preset5_default_title">Freddo</string>
     <string name="preset6_default_title">Naturale</string>
     <string name="credits_presets">Crediti: ale.landra91, cpaixao, provolinoo</string>
-    <string name="category_touchkey_title">Touch Keys</string>
+    <string name="category_touchkey_title">Tasti a sfioramento</string>
     <string name="touchkey_notification_title_head">Retroilluminazione notifiche</string>
     <string name="touchkey_notification_summary_head">La retroilluminazione dei tasti a sfioramento si accende quando è presente una notifica</string>
     <string name="category_radio_title">Radio</string>
