@@ -102,8 +102,6 @@ PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
 
 # NFC
 PRODUCT_PACKAGES += \
-        libnfc \
-        libnfc_jni \
         Nfc \
         Tag
 
