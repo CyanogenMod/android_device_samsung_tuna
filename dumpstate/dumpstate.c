@@ -39,4 +39,5 @@ void dumpstate_board()
     dump_file("fsa9480 control", "/sys/bus/i2c/drivers/fsa9480/4-0025/control");
     dump_file("tiler 2x1 map", "/d/tiler/map/2x1");
     dump_file("wlan", "/sys/module/bcmdhd/parameters/info_string");
+    dump_file("bluetooth", "/d/bt");
 };
