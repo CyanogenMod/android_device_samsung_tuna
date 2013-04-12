@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Galaxy Nexus Settings</string>
+    <string name="app_name">Advanced settings</string>
 
     <string name="category_display_title">Display</string>
     <string name="color_tuning_title_head">Color Multipliers Tuning</string>
