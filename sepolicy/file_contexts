@@ -4,6 +4,7 @@
 /dev/block/mmcblk0p9            u:object_r:radio_device:s0
 /dev/block/platform/omap/omap_hsmmc.0/by-name/radio     u:object_r:radio_device:s0
 /dev/cdma_.*                    u:object_r:radio_device:s0
+/dev/dsscomp                    u:object_r:graphics_device:s0
 /dev/lte_.*                     u:object_r:radio_device:s0
 /dev/tiler                      u:object_r:video_device:s0
 /dev/ttyFIQ0                    u:object_r:console_device:s0
@@ -17,7 +18,6 @@
 /factory(/.*)?                  u:object_r:efs_file:s0
 /factory/bluetooth(/.*)?        u:object_r:bluetooth_efs_file:s0
 /factory/nv_data.bin.*          u:object_r:radio_data_file:s0
-
 #nfc
 /dev/ttyO3     u:object_r:nfc_device:s0
 
