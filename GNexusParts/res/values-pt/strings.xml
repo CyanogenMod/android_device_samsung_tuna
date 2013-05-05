@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Configurações Galaxy Nexus</string>
-    <string name="color_tuning_title_head">Ajustar Multiplicadores de Cor</string>
+    <string name="app_name">Configurações avançadas</string>
+    <string name="color_tuning_title_head">Ajustar multiplicadores de cor</string>
     <string name="color_tuning_summary_head">Calibrar multiplicadores de cor de tela</string>
-    <string name="gamma_tuning_title_head">Ajustar Cor Gama</string>
+    <string name="gamma_tuning_title_head">Ajustar cor gama</string>
     <string name="gamma_tuning_summary_head">Calibrar correção de cor gama</string>
     <string name="color_hack_presets_title_head">Predefinir hack de cor</string>
     <string name="color_hack_presets_summary_head">Predefinições para gama e multiplicadores testado por alguns usuários</string>
@@ -28,7 +28,16 @@
     <string name="category_touchkey_title">Teclas sensíveis ao toque</string>
     <string name="touchkey_notification_title_head">Notificações de luz de fundo</string>
     <string name="touchkey_notification_summary_head">A luz de fundo das teclas irão acender quando haver uma notificação.</string>
-    <string name="category_radio_title">Radio</string>
+    <string name="category_radio_title">Rádio</string>
     <string name="hspa_title_head">HSPA</string>
     <string name="hspa_summary_head">Ativar HSDPA/HSUPA</string>
+    <string name="category_display_title">Tela</string>
+    <string name="category_hardware_title">Hardware</string>
+    <string name="vibrator_tuning_title_head">Ajustar resposta por vibração</string>
+    <string name="vibrator_tuning_summary_head">Controla a força padrão da resposta por vibração</string>
+    <string name="vibrator_title">% de vibração</string>
+    <string name="vibrator_default_title">Padrão</string>
+    <string name="vibrator_test_title">Testar</string>
+    <string name="category_gpu_title">GPU</string>
+    <string name="gpu_overclock_title">Velocidade do clock</string>
 </resources>
