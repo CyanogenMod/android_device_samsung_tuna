@@ -35,6 +35,6 @@ LOCAL_SRC_FILES := \
 	PressureSensor.cpp \
 	SamsungSensorBase.cpp
 
-LOCAL_SHARED_LIBRARIES := libinvensense_hal libcutils libutils libdl
+LOCAL_SHARED_LIBRARIES := libinvensense_hal liblog libcutils libutils libdl
 
 include $(BUILD_SHARED_LIBRARY)

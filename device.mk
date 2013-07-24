@@ -43,6 +43,12 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
 	power.tuna
 
+# Support for Browser's saved page feature. This allows
+# for pages saved on previous versions of the OS to be
+# viewed on the current OS.
+PRODUCT_PACKAGES += \
+	libskia_legacy
+
 # Audio
 PRODUCT_PACKAGES += \
 	audio.primary.tuna \
@@ -93,8 +99,6 @@ PRODUCT_PACKAGES += \
 
 # NFC
 PRODUCT_PACKAGES += \
-        libnfc \
-        libnfc_jni \
         Nfc \
         Tag
 
@@ -190,12 +194,6 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
 	e2fsck \
 	setup_fs
-
-# for bugmailer
-PRODUCT_PACKAGES += send_bug
-PRODUCT_COPY_FILES += \
-	system/extras/bugmailer/bugmailer.sh:system/bin/bugmailer.sh \
-	system/extras/bugmailer/send_bug:system/bin/send_bug
 
 $(call inherit-product, frameworks/native/build/phone-xhdpi-1024-dalvik-heap.mk)
 

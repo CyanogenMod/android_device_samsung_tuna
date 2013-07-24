@@ -692,6 +692,7 @@ struct tuna_stream_out {
     /* FIXME: workaround for HDMI multi channel channel swap on first playback after opening
      * the output stream: force reopening the pcm driver after writing a few periods. */
     int restart_periods_cnt;
+    bool muted;
 
     struct tuna_audio_device *dev;
 };
@@ -1342,7 +1343,8 @@ static void select_input_device(struct tuna_audio_device *adev)
         /* Select front end */
 
 
-        if ((adev->active_input != 0) && (adev->active_input->aux_channels)) {
+        if ((adev->active_input != 0) && (adev->active_input->aux_channels ||
+                adev->active_input->main_channels == AUDIO_CHANNEL_IN_FRONT_BACK)) {
             ALOGV("select input device(): multi-mic configuration main mic %s sub mic %s",
                   main_mic_on ? "ON" : "OFF", sub_mic_on ? "ON" : "OFF");
             if (main_mic_on) {
@@ -1918,6 +1920,16 @@ static int out_set_volume(struct audio_stream_out *stream, float left,
     return -ENOSYS;
 }
 
+static int out_set_volume_hdmi(struct audio_stream_out *stream, float left,
+                          float right)
+{
+    struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
+
+    /* only take left channel into account: the API is for stereo anyway */
+    out->muted = (left == 0.0f);
+    return 0;
+}
+
 static ssize_t out_write_low_latency(struct audio_stream_out *stream, const void* buffer,
                          size_t bytes)
 {
@@ -2126,6 +2138,9 @@ static ssize_t out_write_hdmi(struct audio_stream_out *stream, const void* buffe
         out->standby = 0;
     }
     pthread_mutex_unlock(&adev->lock);
+
+    if (out->muted)
+        memset((void *)buffer, 0, bytes);
 
     ret = pcm_write(out->pcm[PCM_HDMI],
                    buffer,
@@ -3248,6 +3263,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
         out->stream.common.get_sample_rate = out_get_sample_rate_hdmi;
         out->stream.get_latency = out_get_latency_hdmi;
         out->stream.write = out_write_hdmi;
+        out->stream.set_volume = out_set_volume_hdmi;
         out->config[PCM_HDMI] = pcm_config_hdmi_multi;
         out->config[PCM_HDMI].rate = config->sample_rate;
         out->config[PCM_HDMI].channels = popcount(config->channel_mask);
@@ -3265,6 +3281,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
         out->stream.common.get_sample_rate = out_get_sample_rate;
         out->stream.get_latency = out_get_latency_deep_buffer;
         out->stream.write = out_write_deep_buffer;
+        out->stream.set_volume = out_set_volume;
     } else {
         ALOGV("adev_open_output_stream() normal buffer");
         if (ladev->outputs[OUTPUT_LOW_LATENCY] != NULL) {
@@ -3276,6 +3293,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
         out->stream.common.get_sample_rate = out_get_sample_rate;
         out->stream.get_latency = out_get_latency_low_latency;
         out->stream.write = out_write_low_latency;
+        out->stream.set_volume = out_set_volume;
     }
 
     ret = create_resampler(DEFAULT_OUT_SAMPLING_RATE,
@@ -3297,11 +3315,11 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     out->stream.common.get_parameters = out_get_parameters;
     out->stream.common.add_audio_effect = out_add_audio_effect;
     out->stream.common.remove_audio_effect = out_remove_audio_effect;
-    out->stream.set_volume = out_set_volume;
     out->stream.get_render_position = out_get_render_position;
 
     out->dev = ladev;
     out->standby = 1;
+    /* out->muted = false; by calloc() */
 
     /* FIXME: when we support multiple output devices, we will want to
      * do the following:
