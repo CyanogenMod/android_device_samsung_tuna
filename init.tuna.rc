@@ -60,6 +60,21 @@ on boot
 on fs
 	mkdir /factory 0775 radio radio
 	mount_all /fstab.tuna
+	restorecon /dev/block/platform/omap/omap_hsmmc.0/by-name/radio
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /factory rw remount
+	restorecon /factory
+	restorecon /factory/imei/mps_code.dat
+	restorecon /factory/.nv_state
+	restorecon /factory/.nv_data.bak
+	restorecon /factory/nv_data.bin
+	restorecon /factory/nv_data.bin.md5
+	restorecon /factory/hdcp.keys
+	restorecon /factory/imei
+	restorecon /factory/wifi
+	restorecon /factory/wv.keys
+	restorecon /factory/bluetooth
+	restorecon /factory/bluetooth/bt_addr
+	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /factory ro remount
 	setprop ro.crypto.fuse_sdcard true
 
 # change permissions for mtd device
@@ -117,6 +132,8 @@ on fs
     chmod 0660 /sys/class/sec/gps/GPS_PWR_EN/value
     chown root system /sys/class/sec/gps/GPS_nRST/value
     chmod 0660 /sys/class/sec/gps/GPS_nRST/value
+    chown system system /proc/mcspi1_cs3_ctrl
+    chmod 0600 /proc/mcspi1_cs3_ctrl
 
 # ril control auto-suspend
 	chmod 0660 /sys/bus/usb/devices/usb1/power/control
@@ -170,8 +187,11 @@ service sdcard /system/bin/sdcard /data/media /mnt/shell/emulated 1023 1023
     class late_start
 
 service p2p_supplicant /system/bin/wpa_supplicant \
-	-iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf -N \
-	-ip2p0 -Dnl80211 -c/data/misc/wifi/p2p_supplicant.conf -e/data/misc/wifi/entropy.bin -puse_p2p_group_interface=1
+	-iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
+	-I/system/etc/wifi/wpa_supplicant_overlay.conf -N \
+	-ip2p0 -Dnl80211 -c/data/misc/wifi/p2p_supplicant.conf \
+	-I/system/etc/wifi/wpa_supplicant_overlay.conf \
+	-e/data/misc/wifi/entropy.bin -puse_p2p_group_interface=1
 	#   we will start as root and wpa_supplicant will switch to user wifi
 	#   after setting up the capabilities required for WEXT
 	#   user wifi
@@ -182,7 +202,9 @@ service p2p_supplicant /system/bin/wpa_supplicant \
 	oneshot
 
 service wpa_supplicant /system/bin/wpa_supplicant \
-	-iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf -e/data/misc/wifi/entropy.bin
+	-iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
+	-I/system/etc/wifi/wpa_supplicant_overlay.conf \
+	-e/data/misc/wifi/entropy.bin
 	#   we will start as root and wpa_supplicant will switch to user wifi
 	#   after setting up the capabilities required for WEXT
 	#   user wifi
@@ -202,7 +224,7 @@ service dhcpcd_p2p /system/bin/dhcpcd -aABKL
 	disabled
 	oneshot
 
-service dhcpcd_bnep0 /system/bin/dhcpcd -ABKL
+service dhcpcd_bt-pan /system/bin/dhcpcd -ABKL
 	class main
 	disabled
 	oneshot
@@ -222,14 +244,20 @@ service iprenew_p2p /system/bin/dhcpcd -n
 	disabled
 	oneshot
 
-service iprenew_bnep0 /system/bin/dhcpcd -n
+service iprenew_bt-pan /system/bin/dhcpcd -n
+	class main
+	disabled
+	oneshot
+
+service iprenew_eth0 /system/bin/dhcpcd -n
 	class main
 	disabled
 	oneshot
 
 # bugreport is triggered by holding down volume down, volume up and power
 # it's easy to trigger when wanting to take screenshots. let's disable it
-#service bugreport /system/bin/bugmailer.sh -v
+#service bugreport /system/bin/dumpstate -d -p -B \
+#        -o /data/data/com.android.shell/files/bugreports/bugreport
 #	class main
 #	disabled
 #	oneshot
