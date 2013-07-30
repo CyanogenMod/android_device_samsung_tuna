@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pokročilé nastavení</string>
+
+    <string name="category_display_title">Obrazovka</string>
+    <string name="color_tuning_title_head">Ladění barev</string>
+    <string name="color_tuning_summary_head">Kalibrovat barvy obrazovky</string>
+    <string name="gamma_tuning_title_head">Ladění barevného gamutu</string>
+    <string name="gamma_tuning_summary_head">Kalibrace korekce barevného gamutu</string>
+    <string name="color_hack_presets_title_head">Barevná předvolba</string>
+    <string name="color_hack_presets_summary_head">Předvolby pro úpravy barevného gamutu a násobitelů</string>
+    <string name="color_red_title">Červená</string>
+    <string name="color_green_title">Zelená</string>
+    <string name="color_blue_title">Modra</string>
+    <string name="gamma1_title">Výchozí</string>
+    <string name="gamma2_title">CM</string>
+    <string name="gamma3_title">Přirozené</string>
+    <string name="color1_title">Výchozí</string>
+    <string name="color2_title">CM</string>
+    <string name="color3_title">Přirozené</string>
+    <string name="color_warning">Hodnoty větší než 200 nejsou doporučeny</string>
+    <string name="gamma_dss_title">Nastavení DSS gamutu</string>
+
+    <string name="vibrator_tuning_title_head">Ladění vibrování</string>
+    <string name="vibrator_tuning_summary_head">Změna výchozí intenzity vibrací</string>
+
+    <string name="vibrator_title">Vibrace %</string>
+    <string name="vibrator_default_title">Výchozí</string>
+
+    <string name="preset1_default_title">Výchozí</string>
+    <string name="preset2_default_title">Maximální</string>
+    <string name="preset3_default_title">Opravdové</string>
+    <string name="preset4_default_title">Teplé</string>
+    <string name="preset5_default_title">Temné studené</string>
+    <string name="preset6_default_title">Přirozené</string>
+    <string name="credits_presets">Tvůrci: ale.landra91, cpaixao, provolinoo</string>
+
+    <string name="category_touchkey_title">Dotyková tlačítka</string>
+    <string name="touchkey_notification_title_head">Upozornění podsvícením</string>
+    <string name="touchkey_notification_summary_head">Podsvícení dotykových tlačítek slouží jako upozornění</string>
+
+    <string name="category_radio_title">Rádio</string>
+    <string name="hspa_summary_head">Povolit HSDPA/HSUPA</string>
+
+    <string name="gpu_overclock_title">Kmitočet</string>
+</resources>
