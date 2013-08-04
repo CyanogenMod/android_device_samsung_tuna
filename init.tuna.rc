@@ -35,6 +35,7 @@ on post-fs-data
 	# camera calibration
 	mkdir /data/misc/camera 0770 media media
 	mkdir /data/misc/camera/R5_MVEN003_LD2_ND0_IR0_SH0_FL1_SVEN003_DCCID1044 0770 media media
+	restorecon /data/misc/camera
 
 	mkdir /data/radio 0775 radio radio
 	mkdir /data/radio/log 0775 radio radio
