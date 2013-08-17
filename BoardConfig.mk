@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+# Hardware
+BOARD_HARDWARE_CLASS := device/samsung/tuna/cmhw
+
 # This variable is set first, so it can be overridden
 # by BoardConfigVendor.mk
 USE_CAMERA_STUB := true
