@@ -65,6 +65,7 @@ RECOVERY_FSTAB_VERSION=2
 
 TARGET_RECOVERY_PIXEL_FORMAT := "BGRA_8888"
 TARGET_RECOVERY_UI_LIB := librecovery_ui_tuna
+BOARD_RECOVERY_SWIPE := true
 
 # device-specific extensions to the updater binary
 TARGET_RECOVERY_UPDATER_LIBS += librecovery_updater_tuna
