@@ -46,7 +46,8 @@ public class DisplayColorCalibration {
     public static String getCurColors()  {
         StringBuilder values = new StringBuilder();
         for (String filePath : FILE_PATH) {
-            values.append(FileUtils.readOneLine(filePath)).append(" ");
+            values.append(Long.toString(Long.valueOf(
+                    FileUtils.readOneLine(filePath)) / 2)).append(" ");
         }
         return values.toString();
     }
@@ -56,7 +57,8 @@ public class DisplayColorCalibration {
         boolean result = true;
         for (int i = 0; i < valuesSplit.length; i++) {
             String targetFile = FILE_PATH[i];
-            result &= FileUtils.writeLine(targetFile, valuesSplit[i]);
+            result &= FileUtils.writeLine(targetFile, Long.toString(
+                    Long.valueOf(valuesSplit[i]) * 2));
         }
         return result;
     }
