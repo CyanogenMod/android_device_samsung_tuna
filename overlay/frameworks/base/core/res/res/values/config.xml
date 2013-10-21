@@ -247,6 +247,9 @@
     <!-- Does the battery LED support multiple colors? Used to decide if the user can change the colors -->
     <bool name="config_multiColorBatteryLed">true</bool>
 
+    <!-- Device supports LED flashlight -->
+    <bool name="config_enableTorch">true</bool>
+
     <!-- Component name of the default wallpaper. This will be ImageWallpaper if not
          specified -->
     <string name="default_wallpaper_component" translatable="false">com.android.phasebeam/.PhaseBeamWallpaper</string>

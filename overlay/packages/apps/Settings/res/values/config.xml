@@ -14,10 +14,7 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-
-<resources xmlns:xliff="urnasis:names:tc:xliff:document:1.2 ">
-    <!-- LED Flashlight -->
-    <bool name="has_led_flash">true</bool>
+<resources>
     <!-- Volume Rocker Wake -->
     <bool name="config_show_volumeRockerWake">true</bool>
     <!-- Show Expanded Desktop preference -->
