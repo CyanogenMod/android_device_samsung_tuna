@@ -100,10 +100,10 @@ BOARD_HAL_STATIC_LIBRARIES := libdumpstate.tuna
 BOARD_USES_SECURE_SERVICES := true
 
 # SELinux
-BOARD_SEPOLICY_DIRS := \
+BOARD_SEPOLICY_DIRS += \
         $(DEVICE_FOLDER)/sepolicy
 
-BOARD_SEPOLICY_UNION := \
+BOARD_SEPOLICY_UNION += \
         genfs_contexts \
         file_contexts
 
