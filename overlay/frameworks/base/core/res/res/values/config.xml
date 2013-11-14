@@ -271,4 +271,7 @@
          config to 7. -->
     <integer name="config_deviceHardwareKeys">0</integer>
 
+    <!-- Enable translucent lockscreen-->
+    <bool name="config_enableLockScreenTranslucentDecor">true</bool>
+
 </resources>
