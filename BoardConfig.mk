@@ -57,6 +57,9 @@ BOARD_CREATE_TUNA_HDCP_KEYS_SYMLINK := true
 #BOARD_USES_OVERLAY := true
 USE_OPENGL_RENDERER := true
 
+# Force the screenshot path to CPU consumer
+COMMON_GLOBAL_CFLAGS += -DFORCE_SCREENSHOT_CPU_PATH
+
 # set if the target supports FBIO_WAITFORVSYNC
 TARGET_HAS_WAITFORVSYNC := true
 
