@@ -20,14 +20,18 @@ import org.cyanogenmod.hardware.util.FileUtils;
 import java.io.File;
 
 public class DisplayGammaCalibration {
-    private static final String[] GAMMA_FILE_PATH = new String[] {
+    private static final String[] GAMMA_FILE = new String[] {
             "/sys/class/misc/samoled_color/red_v1_offset",
             "/sys/class/misc/samoled_color/green_v1_offset",
             "/sys/class/misc/samoled_color/blue_v1_offset"
     };
+    private static final String GAMMA_FILE_V2 = "/sys/class/misc/colorcontrol/v1_offset";
 
     public static boolean isSupported() {
-        for (String filePath : GAMMA_FILE_PATH) {
+        if (new File(GAMMA_FILE_V2).exists()) {
+            return true;
+        }
+        for (String filePath : GAMMA_FILE) {
             if (!new File(filePath).exists()) {
                 return false;
             }
@@ -48,20 +52,28 @@ public class DisplayGammaCalibration {
     }
 
     public static String getCurGamma(int control) {
-        StringBuilder values = new StringBuilder();
-        for (String filePath : GAMMA_FILE_PATH) {
-            values.append(FileUtils.readOneLine(filePath)).append(" ");
+        if (new File(GAMMA_FILE_V2).exists()) {
+            return FileUtils.readOneLine(GAMMA_FILE_V2);
+        } else {
+            StringBuilder values = new StringBuilder();
+            for (String filePath : GAMMA_FILE) {
+                values.append(FileUtils.readOneLine(filePath)).append(" ");
+            }
+            return values.toString();
         }
-        return values.toString();
     }
 
     public static boolean setGamma(int control, String gamma) {
-        String[] valuesSplit = gamma.split(" ");
-        boolean result = true;
-        for (int i = 0; i < valuesSplit.length; i++) {
-            String targetFile = GAMMA_FILE_PATH[i];
-            result &= FileUtils.writeLine(targetFile, valuesSplit[i]);
+        if (new File(GAMMA_FILE_V2).exists()) {
+            return FileUtils.writeLine(GAMMA_FILE_V2, gamma);
+        } else {
+            String[] valuesSplit = gamma.split(" ");
+            boolean result = true;
+            for (int i = 0; i < valuesSplit.length; i++) {
+                String targetFile = GAMMA_FILE[i];
+                result &= FileUtils.writeLine(targetFile, valuesSplit[i]);
+            }
+            return result;
         }
-        return result;
     }
 }
