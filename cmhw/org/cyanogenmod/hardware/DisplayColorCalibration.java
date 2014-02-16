@@ -36,11 +36,15 @@ public class DisplayColorCalibration {
     }
 
     public static int getMaxValue()  {
-        return 2000000000;
+        return 2000000000;  // Real value: 4000000000
     }
 
     public static int getMinValue()  {
         return 0;
+    }
+
+    public static int getDefValue()  {
+        return 1000000000;  // Real value: 2000000000
     }
 
     public static String getCurColors()  {
