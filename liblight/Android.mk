@@ -26,6 +26,8 @@ LOCAL_SHARED_LIBRARIES := liblog
 
 LOCAL_MODULE := lights.tuna
 
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/../kernel-headers
+
 LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_SHARED_LIBRARY)
