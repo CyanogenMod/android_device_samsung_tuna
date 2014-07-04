@@ -39,6 +39,7 @@
 #include "LightSensor.h"
 #include "ProximitySensor.h"
 #include "PressureSensor.h"
+#include "TemperatureSensor.h"
 
 
 /*****************************************************************************/
@@ -57,6 +58,7 @@
 #define SENSORS_LIGHT            (1<<ID_L)
 #define SENSORS_PROXIMITY        (1<<ID_P)
 #define SENSORS_PRESSURE         (1<<ID_PR)
+#define SENSORS_TEMPERATURE      (1<<ID_T)
 
 #define SENSORS_ROTATION_VECTOR_HANDLE  (ID_RV)
 #define SENSORS_LINEAR_ACCEL_HANDLE     (ID_LA)
@@ -68,6 +70,7 @@
 #define SENSORS_LIGHT_HANDLE            (ID_L)
 #define SENSORS_PROXIMITY_HANDLE        (ID_P)
 #define SENSORS_PRESSURE_HANDLE         (ID_PR)
+#define SENSORS_TEMPERATURE_HANDLE      (ID_T)
 #define AKM_FTRACE 0
 #define AKM_DEBUG 0
 #define AKM_DATA 0
@@ -75,7 +78,7 @@
 /*****************************************************************************/
 
 /* The SENSORS Module */
-#define LOCAL_SENSORS (3)
+#define LOCAL_SENSORS (4)
 static struct sensor_t sSensorList[LOCAL_SENSORS + MPLSensor::numSensors] = {
       { "GP2A Light sensor",
           "Sharp",
@@ -97,6 +100,14 @@ static struct sensor_t sSensorList[LOCAL_SENSORS + MPLSensor::numSensors] = {
           "Bosch",
           1, SENSORS_PRESSURE_HANDLE,
           SENSOR_TYPE_PRESSURE, 1100.0f, 0.01f, 0.67f, 20000,
+#ifdef SENSORS_DEVICE_API_VERSION_1_1
+          0, 0,
+#endif
+          { } },
+      { "BMP180 Temperature sensor",
+          "Bosch",
+          1, SENSORS_TEMPERATURE_HANDLE,
+          SENSOR_TYPE_AMBIENT_TEMPERATURE, 850.0f, 0.1f, 0.67f, 20000,
 #ifdef SENSORS_DEVICE_API_VERSION_1_1
           0, 0,
 #endif
@@ -151,6 +162,7 @@ private:
         light,
         proximity,
         pressure,
+        temperature,
         numSensorDrivers,       // wake pipe goes here
         mpl_power,              //special handle for MPL pm interaction
         numFds,
@@ -178,6 +190,8 @@ private:
                 return proximity;
             case ID_PR:
                 return pressure;
+            case ID_T:
+                return temperature;
         }
         return -EINVAL;
     }
@@ -224,6 +238,11 @@ sensors_poll_context_t::sensors_poll_context_t()
     mPollFds[pressure].fd = mSensors[pressure]->getFd();
     mPollFds[pressure].events = POLLIN;
     mPollFds[pressure].revents = 0;
+
+    mSensors[temperature] = new TemperatureSensor();
+    mPollFds[temperature].fd = mSensors[temperature]->getFd();
+    mPollFds[temperature].events = POLLIN;
+    mPollFds[temperature].revents = 0;
 
     int wakeFds[2];
     int result = pipe(wakeFds);
