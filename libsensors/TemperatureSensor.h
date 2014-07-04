@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (C) 2011 Samsung
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,34 +14,29 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_SAMSUNG_SENSORS_H
-#define ANDROID_SAMSUNG_SENSORS_H
+#ifndef ANDROID_TEMPERATURE_SENSOR_H
+#define ANDROID_TEMPERATURE_SENSOR_H
 
 #include <stdint.h>
 #include <errno.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
 
-#include <linux/input.h>
-
-#include <hardware/hardware.h>
-#include <hardware/sensors.h>
-
-__BEGIN_DECLS
+#include "sensors.h"
+#include "SamsungSensorBase.h"
+#include "InputEventReader.h"
 
 /*****************************************************************************/
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+struct input_event;
 
-#define ID_SAMSUNG_BASE (0x1000)
-#define ID_L  (ID_SAMSUNG_BASE)
-#define ID_P  (ID_L + 1)
-#define ID_PR (ID_P + 1)
-#define ID_T  (ID_PR + 1)
+class TemperatureSensor:public SamsungSensorBase {
+    virtual bool handleEvent(input_event const * event);
+
+public:
+    TemperatureSensor();
+};
 
 /*****************************************************************************/
 
-
-__END_DECLS
-
-#endif  /* ANDROID_SAMSUNG_SENSORS_H */
+#endif /* ANDROID_TEMPERATURE_SENSOR_H */
