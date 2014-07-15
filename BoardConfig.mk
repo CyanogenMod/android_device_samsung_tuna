@@ -14,8 +14,10 @@
 # limitations under the License.
 #
 
-# Hardware
-BOARD_HARDWARE_CLASS := device/samsung/tuna/cmhw
+DEVICE_FOLDER := device/samsung/tuna
+
+# Hardware tunables
+BOARD_HARDWARE_CLASS := $(DEVICE_FOLDER)/cmhw
 
 # This variable is set first, so it can be overridden
 # by BoardConfigVendor.mk
@@ -24,38 +26,39 @@ USE_CAMERA_STUB := true
 # Use the non-open-source parts, if they're present
 -include vendor/samsung/tuna/BoardConfigVendor.mk
 
-# Default values, if not overridden else where.
-TARGET_BOARD_INFO_FILE ?= device/samsung/tuna/board-info.txt
-BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR ?= device/samsung/tuna/bluetooth
+TARGET_NO_BOOTLOADER := true
+TARGET_NO_RADIOIMAGE := true
 
+TARGET_BOARD_PLATFORM := omap4
+TARGET_BOARD_INFO_FILE ?= $(DEVICE_FOLDER)/board-info.txt
+TARGET_BOOTLOADER_BOARD_NAME := tuna
+
+# Processor
 TARGET_CPU_ABI := armeabi-v7a
 TARGET_CPU_ABI2 := armeabi
 TARGET_CPU_SMP := true
+TARGET_CPU_VARIANT := cortex-a9
 TARGET_ARCH := arm
 TARGET_ARCH_VARIANT := armv7-a-neon
-TARGET_CPU_VARIANT := cortex-a9
 
-TARGET_NO_BOOTLOADER := true
-
+# Kernel
 BOARD_KERNEL_BASE := 0x80000000
 # BOARD_KERNEL_CMDLINE :=
 
-# Define kernel config for inline building
+# Inline kernel building
 TARGET_KERNEL_CONFIG := cyanogenmod_tuna_defconfig
 TARGET_KERNEL_SOURCE := kernel/samsung/tuna
 
-TARGET_PREBUILT_KERNEL := device/samsung/tuna/kernel
+# Fall back to prebuilt kernel if the sources aren't present
+# or inline kernel building is not supported
+TARGET_PREBUILT_KERNEL := $(DEVICE_FOLDER)/kernel
 
-TARGET_NO_RADIOIMAGE := true
-TARGET_BOARD_PLATFORM := omap4
-TARGET_BOOTLOADER_BOARD_NAME := tuna
-
-BOARD_EGL_CFG := device/samsung/tuna/egl.cfg
-BOARD_CREATE_TUNA_HDCP_KEYS_SYMLINK := true
-
-#BOARD_USES_HGL := true
-#BOARD_USES_OVERLAY := true
+# EGL
+BOARD_EGL_CFG := $(DEVICE_FOLDER)/prebuilt/lib/egl/egl.cfg
 USE_OPENGL_RENDERER := true
+
+# Include HDCP keys
+BOARD_CREATE_TUNA_HDCP_KEYS_SYMLINK := true
 
 # Force the screenshot path to CPU consumer
 COMMON_GLOBAL_CFLAGS += -DFORCE_SCREENSHOT_CPU_PATH
@@ -63,18 +66,11 @@ COMMON_GLOBAL_CFLAGS += -DFORCE_SCREENSHOT_CPU_PATH
 # set if the target supports FBIO_WAITFORVSYNC
 TARGET_HAS_WAITFORVSYNC := true
 
-# use the new recovery.fstab format
-RECOVERY_FSTAB_VERSION=2
-
-TARGET_RECOVERY_PIXEL_FORMAT := "BGRA_8888"
-TARGET_RECOVERY_UI_LIB := librecovery_ui_tuna
-BOARD_RECOVERY_SWIPE := true
-
 # device-specific extensions to the updater binary
 TARGET_RECOVERY_UPDATER_LIBS += librecovery_updater_tuna
-TARGET_RELEASETOOLS_EXTENSIONS := device/samsung/tuna
+TARGET_RELEASETOOLS_EXTENSIONS := $(DEVICE_FOLDER)
 
-TARGET_RECOVERY_FSTAB = device/samsung/tuna/fstab.tuna
+# Filesystem
 TARGET_USERIMAGES_USE_EXT4 := true
 BOARD_SYSTEMIMAGE_PARTITION_SIZE := 685768704
 BOARD_USERDATAIMAGE_PARTITION_SIZE := 14539537408
@@ -86,20 +82,24 @@ TARGET_RUNNING_WITHOUT_SYNC_FRAMEWORK := true
 #TARGET_PROVIDES_INIT_RC := true
 #TARGET_USERIMAGES_SPARSE_EXT_DISABLED := true
 
-# Wifi related defines
-BOARD_WPA_SUPPLICANT_DRIVER := NL80211
-WPA_SUPPLICANT_VERSION      := VER_0_8_X
+# Wifi
+BOARD_WLAN_DEVICE                := bcmdhd
+BOARD_WLAN_DEVICE_REV            := bcm4330_b2
+WPA_SUPPLICANT_VERSION           := VER_0_8_X
+BOARD_WPA_SUPPLICANT_DRIVER      := NL80211
 BOARD_WPA_SUPPLICANT_PRIVATE_LIB := lib_driver_cmd_bcmdhd
-BOARD_HOSTAPD_DRIVER        := NL80211
-BOARD_HOSTAPD_PRIVATE_LIB   := lib_driver_cmd_bcmdhd
-BOARD_WLAN_DEVICE           := bcmdhd
-WIFI_DRIVER_FW_PATH_PARAM   := "/sys/module/bcmdhd/parameters/firmware_path"
-#WIFI_DRIVER_MODULE_PATH     := "/system/lib/modules/bcmdhd.ko"
-WIFI_DRIVER_FW_PATH_STA     := "/vendor/firmware/fw_bcmdhd.bin"
-WIFI_DRIVER_FW_PATH_AP      := "/vendor/firmware/fw_bcmdhd_apsta.bin"
+BOARD_HOSTAPD_DRIVER             := NL80211
+BOARD_HOSTAPD_PRIVATE_LIB        := lib_driver_cmd_bcmdhd
+WIFI_DRIVER_FW_PATH_PARAM        := "/sys/module/bcmdhd/parameters/firmware_path"
+#WIFI_DRIVER_MODULE_PATH         := "/system/lib/modules/bcmdhd.ko"
+WIFI_DRIVER_FW_PATH_STA          := "/vendor/firmware/fw_bcmdhd.bin"
+WIFI_DRIVER_FW_PATH_AP           := "/vendor/firmware/fw_bcmdhd_apsta.bin"
+WIFI_BAND                        := 802_11_ABG
 
+# Bluetooth
 BOARD_HAVE_BLUETOOTH := true
 BOARD_HAVE_BLUETOOTH_BCM := true
+BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR ?= $(DEVICE_FOLDER)/bluetooth
 
 # Boot animation
 TARGET_BOOTANIMATION_PRELOAD := true
@@ -108,14 +108,22 @@ TARGET_BOOTANIMATION_USE_RGB565 := true
 
 BOARD_HAL_STATIC_LIBRARIES := libdumpstate.tuna
 
+# Security
 BOARD_USES_SECURE_SERVICES := true
 
-BOARD_HAS_NO_SELECT_BUTTON := true
-BOARD_USE_CUSTOM_RECOVERY_FONT := \"roboto_15x24.h\"
-
+# SELinux
 BOARD_SEPOLICY_DIRS += \
-        device/samsung/tuna/sepolicy
+        $(DEVICE_FOLDER)/sepolicy
 
 BOARD_SEPOLICY_UNION += \
         genfs_contexts \
         file_contexts
+
+# Recovery
+RECOVERY_FSTAB_VERSION := 2
+TARGET_RECOVERY_FSTAB = $(DEVICE_FOLDER)/rootdir/fstab.tuna
+TARGET_RECOVERY_PIXEL_FORMAT := "BGRA_8888"
+TARGET_RECOVERY_UI_LIB := librecovery_ui_tuna
+BOARD_RECOVERY_SWIPE := true
+BOARD_HAS_NO_SELECT_BUTTON := true
+BOARD_USE_CUSTOM_RECOVERY_FONT := \"roboto_15x24.h\"
