@@ -37,5 +37,6 @@ LOCAL_SRC_FILES := \
 	TemperatureSensor.cpp
 
 LOCAL_SHARED_LIBRARIES := libinvensense_hal liblog libcutils libutils libdl
+LOCAL_CLANG := true
 
 include $(BUILD_SHARED_LIBRARY)
