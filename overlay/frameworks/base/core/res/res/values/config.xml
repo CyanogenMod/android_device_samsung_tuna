@@ -246,4 +246,7 @@
         <item>10</item>
     </integer-array>
 
+    <!-- Enable WiFi display support -->
+    <bool name="config_enableWifiDisplay">true</bool>
+
 </resources>
