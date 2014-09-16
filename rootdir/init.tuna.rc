@@ -275,3 +275,19 @@ service iprenew_eth0 /system/bin/dhcpcd -n
 
 service battery_charger /charger
 	class charger
+
+# CyanogenMod Performance Profiles
+# Powersave
+on property:sys.perf.profile=0
+	write /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq 700000
+	write /sys/devices/system/cpu/cpu0/cpufreq/gpu_oc 0
+
+# Balanced
+on property:sys.perf.profile=1
+	write /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq 700000
+	write /sys/devices/system/cpu/cpu0/cpufreq/gpu_oc 1
+
+# Performance
+on property:sys.perf.profile=2
+	write /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq 920000
+	write /sys/devices/system/cpu/cpu0/cpufreq/gpu_oc 2
