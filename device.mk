@@ -200,6 +200,10 @@ PRODUCT_PACKAGES += \
 	e2fsck \
 	setup_fs
 
+# Enable KSM by default
+PRODUCT_PROPERTY_OVERRIDES += \
+	ro.ksm.default=1
+
 $(call inherit-product, frameworks/native/build/phone-xhdpi-1024-dalvik-heap.mk)
 
 $(call inherit-product-if-exists, vendor/nxp/pn544/nxp-pn544-fw-vendor.mk)
