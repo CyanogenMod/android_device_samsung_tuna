@@ -96,6 +96,9 @@ on fs
 # change permissions for gamma settings
     chmod 0666 /sys/devices/platform/omapdss/manager0/gamma
 
+# change permissions for adaptive backlight settings
+	chmod 0666 /sys/class/backlight/s6e8aa0/acl_set
+
 # change permissions for ION driver
     chmod 0777 /dev/ion
 
