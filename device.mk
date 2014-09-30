@@ -196,6 +196,10 @@ PRODUCT_CHARACTERISTICS := nosdcard
 PRODUCT_TAGS += \
 	dalvik.gc.type-precise
 
+# dexopt /system apps to /cache
+PRODUCT_PROPERTY_OVERRIDES += \
+	dalvik.vm.dexopt-data-only=0
+
 PRODUCT_PACKAGES += \
 	com.android.future.usb.accessory
 
