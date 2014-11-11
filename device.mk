@@ -216,6 +216,10 @@ PRODUCT_PACKAGES += \
     libion_ti \
     pvrsrvinit
 
+# Needed for gralloc
+PRODUCT_PACKAGES += \
+    libcorkscrew
+
 $(call inherit-product, frameworks/native/build/phone-xhdpi-1024-dalvik-heap.mk)
 
 $(call inherit-product, hardware/ti/omap4xxx/omap4.mk)
