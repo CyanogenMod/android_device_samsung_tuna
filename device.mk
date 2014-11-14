@@ -118,7 +118,7 @@ PRODUCT_COPY_FILES += \
 
 # Input device calibration files
 PRODUCT_COPY_FILES += \
-	device/samsung/tuna/Melfas_MMSxxx_Touchscreen.idc:system/usr/idc/Melfas_MMSxxx_Touchscreen.idc
+	device/samsung/tuna/touchscreen/Melfas_MMSxxx_Touchscreen.idc:system/usr/idc/Melfas_MMSxxx_Touchscreen.idc
 
 # These are the hardware-specific features
 PRODUCT_COPY_FILES += \
@@ -142,8 +142,8 @@ PRODUCT_COPY_FILES += \
 
 # Melfas touchscreen firmware
 PRODUCT_COPY_FILES += \
-    device/samsung/tuna/mms144_ts_rev31.fw:system/vendor/firmware/mms144_ts_rev31.fw \
-    device/samsung/tuna/mms144_ts_rev32.fw:system/vendor/firmware/mms144_ts_rev32.fw
+    device/samsung/tuna/touchscreen/mms144_ts_rev31.fw:system/vendor/firmware/mms144_ts_rev31.fw \
+    device/samsung/tuna/touchscreen/mms144_ts_rev32.fw:system/vendor/firmware/mms144_ts_rev32.fw
 
 # Commands to migrate prefs from com.android.nfc3 to com.android.nfc
 PRODUCT_COPY_FILES += $(call add-to-product-copy-files-if-exists,\
