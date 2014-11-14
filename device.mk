@@ -203,7 +203,8 @@ PRODUCT_PACKAGES += \
 
 # TI OMAP4
 PRODUCT_PACKAGES += \
-    libion_ti
+    libion_ti \
+    pvrsrvinit
 
 $(call inherit-product, frameworks/native/build/phone-xhdpi-1024-dalvik-heap.mk)
 
