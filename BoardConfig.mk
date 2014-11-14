@@ -53,6 +53,9 @@ BOARD_USE_TI_DUCATI_H264_PROFILE := true
 # Include HDCP keys
 BOARD_CREATE_TUNA_HDCP_KEYS_SYMLINK := true
 
+# Force the screenshot path to CPU consumer
+COMMON_GLOBAL_CFLAGS += -DFORCE_SCREENSHOT_CPU_PATH
+
 # set if the target supports FBIO_WAITFORVSYNC
 TARGET_HAS_WAITFORVSYNC := true
 
