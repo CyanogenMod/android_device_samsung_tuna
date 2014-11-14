@@ -237,10 +237,6 @@
     <!-- Is the notification LED intrusive? Used to decide if there should be a disable option -->
     <bool name="config_intrusiveNotificationLed">true</bool>
 
-    <!-- Component name of the default wallpaper. This will be ImageWallpaper if not
-         specified -->
-    <string name="default_wallpaper_component" translatable="false">com.android.phasebeam/.PhaseBeamWallpaper</string>
-
     <!-- Vibrator pattern for feedback about touching a virtual key -->
     <integer-array name="config_virtualKeyVibePattern">
         <item>10</item>
