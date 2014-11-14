@@ -109,12 +109,12 @@ PRODUCT_PACKAGES += \
 
 # Key maps
 PRODUCT_COPY_FILES += \
-	device/samsung/tuna/tuna-gpio-keypad.kl:system/usr/keylayout/tuna-gpio-keypad.kl \
-	device/samsung/tuna/tuna-gpio-keypad.kcm:system/usr/keychars/tuna-gpio-keypad.kcm \
-	device/samsung/tuna/sec_jack.kl:system/usr/keylayout/sec_jack.kl \
-	device/samsung/tuna/sec_jack.kcm:system/usr/keychars/sec_jack.kcm \
-	device/samsung/tuna/sii9234_rcp.kl:system/usr/keylayout/sii9234_rcp.kl \
-	device/samsung/tuna/sii9234_rcp.kcm:system/usr/keychars/sii9234_rcp.kcm
+	device/samsung/tuna/keymap/tuna-gpio-keypad.kl:system/usr/keylayout/tuna-gpio-keypad.kl \
+	device/samsung/tuna/keymap/tuna-gpio-keypad.kcm:system/usr/keychars/tuna-gpio-keypad.kcm \
+	device/samsung/tuna/keymap/sec_jack.kl:system/usr/keylayout/sec_jack.kl \
+	device/samsung/tuna/keymap/sec_jack.kcm:system/usr/keychars/sec_jack.kcm \
+	device/samsung/tuna/keymap/sii9234_rcp.kl:system/usr/keylayout/sii9234_rcp.kl \
+	device/samsung/tuna/keymap/sii9234_rcp.kcm:system/usr/keychars/sii9234_rcp.kcm
 
 # Input device calibration files
 PRODUCT_COPY_FILES += \
