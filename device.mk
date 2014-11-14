@@ -145,10 +145,6 @@ PRODUCT_COPY_FILES += \
     device/samsung/tuna/mms144_ts_rev31.fw:system/vendor/firmware/mms144_ts_rev31.fw \
     device/samsung/tuna/mms144_ts_rev32.fw:system/vendor/firmware/mms144_ts_rev32.fw
 
-# Portrait dock image
-PRODUCT_COPY_FILES += \
-    device/samsung/tuna/dock.png:system/vendor/res/images/dock/dock.png
-
 # Commands to migrate prefs from com.android.nfc3 to com.android.nfc
 PRODUCT_COPY_FILES += $(call add-to-product-copy-files-if-exists,\
 packages/apps/Nfc/migrate_nfc.txt:system/etc/updatecmds/migrate_nfc.txt)
