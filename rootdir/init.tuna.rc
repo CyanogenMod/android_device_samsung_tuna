@@ -267,14 +267,12 @@ service iprenew_eth0 /system/bin/dhcpcd -n
 	disabled
 	oneshot
 
-# bugreport is triggered by holding down volume down, volume up and power
-# it's easy to trigger when wanting to take screenshots. let's disable it
-#service bugreport /system/bin/dumpstate -d -p -B \
-#        -o /data/data/com.android.shell/files/bugreports/bugreport
-#	class main
-#	disabled
-#	oneshot
-#	keycodes 114 115 116
+service bugreport /system/bin/dumpstate -d -p -B \
+        -o /data/data/com.android.shell/files/bugreports/bugreport
+	class main
+	disabled
+	oneshot
+	keycodes 114 115 116
 
 service battery_charger /charger
 	class charger
