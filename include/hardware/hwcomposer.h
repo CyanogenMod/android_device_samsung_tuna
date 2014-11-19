@@ -35,18 +35,6 @@ __BEGIN_DECLS
 #define HWC_DEVICE_API_VERSION      HWC_DEVICE_API_VERSION_0_1
 #define HWC_API_VERSION             HWC_DEVICE_API_VERSION
 
-/* Users of this header can define HWC_REMOVE_DEPRECATED_VERSIONS to test that
- * they still work with just the current version declared, before the
- * deprecated versions are actually removed.
- *
- * To find code that still depends on the old versions, set the #define to 1
- * here. Code that explicitly sets it to zero (rather than simply not defining
- * it) will still see the old versions.
- */
-#if !defined(HWC_REMOVE_DEPRECATED_VERSIONS)
-#define HWC_REMOVE_DEPRECATED_VERSIONS 0
-#endif
-
 /*****************************************************************************/
 
 /**
@@ -133,6 +121,33 @@ typedef struct hwc_layer_1 {
      *   that the layer will be handled by the HWC (ie: it must not be
      *   composited with OpenGL ES).
      *
+     *
+     * HWC_SIDEBAND
+     *   Set by the caller before calling (*prepare)(), this value indicates
+     *   the contents of this layer come from a sideband video stream.
+     *
+     *   The h/w composer is responsible for receiving new image buffers from
+     *   the stream at the appropriate time (e.g. synchronized to a separate
+     *   audio stream), compositing them with the current contents of other
+     *   layers, and displaying the resulting image. This happens
+     *   independently of the normal prepare/set cycle. The prepare/set calls
+     *   only happen when other layers change, or when properties of the
+     *   sideband layer such as position or size change.
+     *
+     *   If the h/w composer can't handle the layer as a sideband stream for
+     *   some reason (e.g. unsupported scaling/blending/rotation, or too many
+     *   sideband layers) it can set compositionType to HWC_FRAMEBUFFER in
+     *   (*prepare)(). However, doing so will result in the layer being shown
+     *   as a solid color since the platform is not currently able to composite
+     *   sideband layers with the GPU. This may be improved in future
+     *   versions of the platform.
+     *
+     *
+     * HWC_CURSOR_OVERLAY
+     *   Set by the HWC implementation during (*prepare)(), this value
+     *   indicates the layer's composition will now be handled by the HWC.
+     *   Additionally, the client can now asynchronously update the on-screen
+     *   position of this layer using the setCursorPositionAsync() api.
      */
     int32_t compositionType;
 
@@ -153,13 +168,21 @@ typedef struct hwc_layer_1 {
         hwc_color_t backgroundColor;
 
         struct {
-            /* handle of buffer to compose. This handle is guaranteed to have been
-             * allocated from gralloc using the GRALLOC_USAGE_HW_COMPOSER usage flag. If
-             * the layer's handle is unchanged across two consecutive prepare calls and
-             * the HWC_GEOMETRY_CHANGED flag is not set for the second call then the
-             * HWComposer implementation may assume that the contents of the buffer have
-             * not changed. */
-            buffer_handle_t handle;
+            union {
+                /* When compositionType is HWC_FRAMEBUFFER, HWC_OVERLAY,
+                 * HWC_FRAMEBUFFER_TARGET, this is the handle of the buffer to
+                 * compose. This handle is guaranteed to have been allocated
+                 * from gralloc using the GRALLOC_USAGE_HW_COMPOSER usage flag.
+                 * If the layer's handle is unchanged across two consecutive
+                 * prepare calls and the HWC_GEOMETRY_CHANGED flag is not set
+                 * for the second call then the HWComposer implementation may
+                 * assume that the contents of the buffer have not changed. */
+                buffer_handle_t handle;
+
+                /* When compositionType is HWC_SIDEBAND, this is the handle
+                 * of the sideband video stream to compose. */
+                const native_handle_t* sidebandStream;
+            };
 
             /* transformation to apply to the buffer during composition */
             uint32_t transform;
@@ -203,6 +226,10 @@ typedef struct hwc_layer_1 {
              * reads from them are complete before the framebuffer is ready for
              * display.
              *
+             * HWC_SIDEBAND layers will never have an acquire fence, since
+             * synchronization is handled through implementation-defined
+             * sideband mechanisms.
+             *
              * The HWC takes ownership of the acquireFenceFd and is responsible
              * for closing it when no longer needed.
              */
@@ -225,6 +252,10 @@ typedef struct hwc_layer_1 {
              * Since HWC doesn't read from HWC_FRAMEBUFFER layers, it shouldn't
              * produce a release fence for them. The releaseFenceFd will be -1
              * for these layers when set() is called.
+             *
+             * Since HWC_SIDEBAND buffers don't pass through the HWC client,
+             * the HWC shouldn't produce a release fence for them. The
+             * releaseFenceFd will be -1 for these layers when set() is called.
              *
              * The HWC client taks ownership of the releaseFenceFd and is
              * responsible for closing it when no longer needed.
@@ -273,12 +304,23 @@ typedef struct hwc_layer_1 {
         };
     };
 
-    /* Allow for expansion w/o breaking binary compatibility.
-     * Pad layer to 96 bytes, assuming 32-bit pointers.
+#ifdef __LP64__
+    /*
+     * For 64-bit mode, this struct is 120 bytes (and 8-byte aligned), and needs
+     * to be padded as such to maintain binary compatibility.
      */
-    int32_t reserved[24 - 19];
+    uint8_t reserved[120 - 96];
+#else
+    /*
+     * For 32-bit mode, this struct is 96 bytes, and needs to be padded as such
+     * to maintain binary compatibility.
+     */
+    uint8_t reserved[96 - 76];
+#endif
 
 } hwc_layer_1_t;
+
+#if 1 /*def OMAP_ENHANCEMENT*/
 
 /*
  * HWC extension operations, see HWC_EXTENDED_API
@@ -333,6 +375,7 @@ typedef struct hwc_layer_list_extended {
     hwc_layer_extended_t hwLayers[0];
 } hwc_layer_list_extended_t;
 
+#endif
 
 /* This represents a display, typically an EGLDisplay object */
 typedef void* hwc_display_t;
@@ -350,12 +393,14 @@ enum {
      * and acquire fences.
      */
     HWC_GEOMETRY_CHANGED = 0x00000001,
+#if 1 /*def OMAP_ENHANCEMENT*/
     /*
      * HWC_EXTENDED_API is set by SurfaceFlinger to indicate that the h/w
      * composer HAL api has been extended and that the HAL implementation
      * can use functions in the extended ABI.
      */
     HWC_EXTENDED_API = 0x80000000,
+#endif
 };
 
 /*
@@ -387,8 +432,8 @@ typedef struct hwc_display_contents_1 {
             hwc_surface_t sur;
         };
 
-        /* WARNING: These fields are for experimental virtual display support,
-         * and are not currently used. */
+        /* These fields are used for virtual displays when the h/w composer
+         * version is at least HWC_DEVICE_VERSION_1_3. */
         struct {
             /* outbuf is the buffer that receives the composed image for
              * virtual displays. Writes to the outbuf must wait until
@@ -396,14 +441,28 @@ typedef struct hwc_display_contents_1 {
              * writes to outbuf are complete should be returned in
              * retireFenceFd.
              *
-             * This field will not be updated until after prepare(). If
-             * prepare() sets all non-FB layers to OVERLAY or sets all non-FB
-             * layers to FRAMEBUFFER, then the FRAMEBUFFER_TARGET buffer and
-             * the output buffer may be the same. In mixed OVERLAY/FRAMEBUFFER
-             * configurations they will have different buffers so the
-             * h/w composer does not have to read and write the same buffer.
+             * This field is set before prepare(), so properties of the buffer
+             * can be used to decide which layers can be handled by h/w
+             * composer.
              *
-             * For physical displays, outbuf will be NULL.
+             * If prepare() sets all layers to FRAMEBUFFER, then GLES
+             * composition will happen directly to the output buffer. In this
+             * case, both outbuf and the FRAMEBUFFER_TARGET layer's buffer will
+             * be the same, and set() has no work to do besides managing fences.
+             *
+             * If the TARGET_FORCE_HWC_FOR_VIRTUAL_DISPLAYS board config
+             * variable is defined (not the default), then this behavior is
+             * changed: if all layers are marked for FRAMEBUFFER, GLES
+             * composition will take place to a scratch framebuffer, and
+             * h/w composer must copy it to the output buffer. This allows the
+             * h/w composer to do format conversion if there are cases where
+             * that is more desirable than doing it in the GLES driver or at the
+             * virtual display consumer.
+             *
+             * If some or all layers are marked OVERLAY, then the framebuffer
+             * and output buffer will be different. As with physical displays,
+             * the framebuffer handle will not change between frames if all
+             * layers are marked for OVERLAY.
              */
             buffer_handle_t outbuf;
 
@@ -487,6 +546,7 @@ typedef struct hwc_procs {
      */
     void (*hotplug)(const struct hwc_procs* procs, int disp, int connected);
 
+#if 1 /*def OMAP_ENHANCEMENT*/
     /*
      * (*extension_cb)() is called by the h/w composer HAL. Its purpose is
      * to extend the api from h/w composer to SurfaceFlinger.
@@ -508,16 +568,29 @@ typedef struct hwc_procs {
                         void** data,
                         int size);
 
+#endif
 } hwc_procs_t;
 
 
 /*****************************************************************************/
 
 typedef struct hwc_module {
+    /**
+     * Common methods of the hardware composer module.  This *must* be the first member of
+     * hwc_module as users of this structure will cast a hw_module_t to
+     * hwc_module pointer in contexts where it's known the hw_module_t references a
+     * hwc_module.
+     */
     struct hw_module_t common;
 } hwc_module_t;
 
 typedef struct hwc_composer_device_1 {
+    /**
+     * Common methods of the hardware composer device.  This *must* be the first member of
+     * hwc_composer_device_1 as users of this structure will cast a hw_device_t to
+     * hwc_composer_device_1 pointer in contexts where it's known the hw_device_t references a
+     * hwc_composer_device_1.
+     */
     struct hw_device_t common;
 
     /*
@@ -527,11 +600,12 @@ typedef struct hwc_composer_device_1 {
      * (*prepare)() can be called more than once, the last call prevails.
      *
      * The HWC responds by setting the compositionType field in each layer to
-     * either HWC_FRAMEBUFFER or HWC_OVERLAY. In the former case, the
-     * composition for the layer is handled by SurfaceFlinger with OpenGL ES,
-     * in the later case, the HWC will have to handle the layer's composition.
-     * compositionType and hints are preserved between (*prepare)() calles
-     * unless the HWC_GEOMETRY_CHANGED flag is set.
+     * either HWC_FRAMEBUFFER, HWC_OVERLAY, or HWC_CURSOR_OVERLAY. For the
+     * HWC_FRAMEBUFFER type, composition for the layer is handled by
+     * SurfaceFlinger with OpenGL ES. For the latter two overlay types,
+     * the HWC will have to handle the layer's composition. compositionType
+     * and hints are preserved between (*prepare)() calles unless the
+     * HWC_GEOMETRY_CHANGED flag is set.
      *
      * (*prepare)() is called with HWC_GEOMETRY_CHANGED to indicate that the
      * list's geometry has changed, that is, when more than just the buffer's
@@ -617,18 +691,49 @@ typedef struct hwc_composer_device_1 {
     int (*eventControl)(struct hwc_composer_device_1* dev, int disp,
             int event, int enabled);
 
-    /*
-     * blank(..., blank)
-     * Blanks or unblanks a display's screen.
-     *
-     * Turns the screen off when blank is nonzero, on when blank is zero.
-     * Multiple sequential calls with the same blank value must be supported.
-     * The screen state transition must be be complete when the function
-     * returns.
-     *
-     * returns 0 on success, negative on error.
-     */
-    int (*blank)(struct hwc_composer_device_1* dev, int disp, int blank);
+    union {
+        /*
+         * For HWC 1.3 and earlier, the blank() interface is used.
+         *
+         * blank(..., blank)
+         * Blanks or unblanks a display's screen.
+         *
+         * Turns the screen off when blank is nonzero, on when blank is zero.
+         * Multiple sequential calls with the same blank value must be
+         * supported.
+         * The screen state transition must be be complete when the function
+         * returns.
+         *
+         * returns 0 on success, negative on error.
+         */
+        int (*blank)(struct hwc_composer_device_1* dev, int disp, int blank);
+
+        /*
+         * For HWC 1.4 and above, setPowerMode() will be used in place of
+         * blank().
+         *
+         * setPowerMode(..., mode)
+         * Sets the display screen's power state.
+         *
+         * Refer to the documentation of the HWC_POWER_MODE_* constants
+         * for information about each power mode.
+         *
+         * The functionality is similar to the blank() command in previous
+         * versions of HWC, but with support for more power states.
+         *
+         * The display driver is expected to retain and restore the low power
+         * state of the display while entering and exiting from suspend.
+         *
+         * Multiple sequential calls with the same mode value must be supported.
+         *
+         * The screen state transition must be be complete when the function
+         * returns.
+         *
+         * returns 0 on success, negative on error.
+         */
+        int (*setPowerMode)(struct hwc_composer_device_1* dev, int disp,
+                int mode);
+    };
 
     /*
      * Used to retrieve information about the h/w composer
@@ -665,16 +770,24 @@ typedef struct hwc_composer_device_1 {
      * total number of configurations available for the display is returned in
      * *numConfigs. If *numConfigs is zero on entry, then configs may be NULL.
      *
-     * HWC_DEVICE_API_VERSION_1_1 does not provide a way to choose a config.
-     * For displays that support multiple configurations, the h/w composer
-     * implementation should choose one and report it as the first config in
-     * the list. Reporting the not-chosen configs is not required.
+     * Hardware composers implementing HWC_DEVICE_API_VERSION_1_3 or prior
+     * shall choose one configuration to activate and report it as the first
+     * entry in the returned list. Reporting the inactive configurations is not
+     * required.
      *
-     * Returns 0 on success or -errno on error. If disp is a hotpluggable
-     * display type and no display is connected, an error should be returned.
+     * HWC_DEVICE_API_VERSION_1_4 and later provide configuration management
+     * through SurfaceFlinger, and hardware composers implementing these APIs
+     * must also provide getActiveConfig and setActiveConfig. Hardware composers
+     * implementing these API versions may choose not to activate any
+     * configuration, leaving configuration selection to higher levels of the
+     * framework.
+     *
+     * Returns 0 on success or a negative error code on error. If disp is a
+     * hotpluggable display type and no display is connected, an error shall be
+     * returned.
      *
      * This field is REQUIRED for HWC_DEVICE_API_VERSION_1_1 and later.
-     * It should be NULL for previous versions.
+     * It shall be NULL for previous versions.
      */
     int (*getDisplayConfigs)(struct hwc_composer_device_1* dev, int disp,
             uint32_t* configs, size_t* numConfigs);
@@ -691,19 +804,80 @@ typedef struct hwc_composer_device_1 {
      * array will have one less value than the attributes array.
      *
      * This field is REQUIRED for HWC_DEVICE_API_VERSION_1_1 and later.
-     * It should be NULL for previous versions.
+     * It shall be NULL for previous versions.
      *
      * If disp is a hotpluggable display type and no display is connected,
      * or if config is not a valid configuration for the display, a negative
-     * value should be returned.
+     * error code shall be returned.
      */
     int (*getDisplayAttributes)(struct hwc_composer_device_1* dev, int disp,
             uint32_t config, const uint32_t* attributes, int32_t* values);
 
     /*
+     * (*getActiveConfig)() returns the index of the configuration that is
+     * currently active on the connected display. The index is relative to
+     * the list of configuration handles returned by getDisplayConfigs. If there
+     * is no active configuration, -1 shall be returned.
+     *
+     * Returns the configuration index on success or -1 on error.
+     *
+     * This field is REQUIRED for HWC_DEVICE_API_VERSION_1_4 and later.
+     * It shall be NULL for previous versions.
+     */
+    int (*getActiveConfig)(struct hwc_composer_device_1* dev, int disp);
+
+    /*
+     * (*setActiveConfig)() instructs the hardware composer to switch to the
+     * display configuration at the given index in the list of configuration
+     * handles returned by getDisplayConfigs.
+     *
+     * If this function returns without error, any subsequent calls to
+     * getActiveConfig shall return the index set by this function until one
+     * of the following occurs:
+     *   1) Another successful call of this function
+     *   2) The display is disconnected
+     *
+     * Returns 0 on success or a negative error code on error. If disp is a
+     * hotpluggable display type and no display is connected, or if index is
+     * outside of the range of hardware configurations returned by
+     * getDisplayConfigs, an error shall be returned.
+     *
+     * This field is REQUIRED for HWC_DEVICE_API_VERSION_1_4 and later.
+     * It shall be NULL for previous versions.
+     */
+    int (*setActiveConfig)(struct hwc_composer_device_1* dev, int disp,
+            int index);
+    /*
+     * Asynchronously update the location of the cursor layer.
+     *
+     * Within the standard prepare()/set() composition loop, the client
+     * (surfaceflinger) can request that a given layer uses dedicated cursor
+     * composition hardware by specifiying the HWC_IS_CURSOR_LAYER flag. Only
+     * one layer per display can have this flag set. If the layer is suitable
+     * for the platform's cursor hardware, hwcomposer will return from prepare()
+     * a composition type of HWC_CURSOR_OVERLAY for that layer. This indicates
+     * not only that the client is not responsible for compositing that layer,
+     * but also that the client can continue to update the position of that layer
+     * after a call to set(). This can reduce the visible latency of mouse
+     * movement to visible, on-screen cursor updates. Calls to
+     * setCursorPositionAsync() may be made from a different thread doing the
+     * prepare()/set() composition loop, but care must be taken to not interleave
+     * calls of setCursorPositionAsync() between calls of set()/prepare().
+     *
+     * Notes:
+     * - Only one layer per display can be specified as a cursor layer with
+     *   HWC_IS_CURSOR_LAYER.
+     * - hwcomposer will only return one layer per display as HWC_CURSOR_OVERLAY
+     * - This returns 0 on success or -errno on error.
+     * - This field is optional for HWC_DEVICE_API_VERSION_1_4 and later. It
+     *   should be null for previous versions.
+     */
+    int (*setCursorPositionAsync)(struct hwc_composer_device_1 *dev, int disp, int x_pos, int y_pos);
+
+    /*
      * Reserved for future use. Must be NULL.
      */
-    void* reserved_proc[4];
+    void* reserved_proc[1];
 
 } hwc_composer_device_1_t;
 
@@ -720,10 +894,6 @@ static inline int hwc_close_1(hwc_composer_device_1_t* device) {
 }
 
 /*****************************************************************************/
-
-#if !HWC_REMOVE_DEPRECATED_VERSIONS
-#include <hardware/hwcomposer_v0.h>
-#endif
 
 __END_DECLS
 
