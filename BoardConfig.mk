@@ -142,6 +142,9 @@ BOARD_SYSTEMIMAGE_PARTITION_SIZE := 685768704
 BOARD_USERDATAIMAGE_PARTITION_SIZE := 14539537408
 BOARD_FLASH_BLOCK_SIZE := 4096
 
+# Enable dex-preoptimization to speed up first boot sequence
+WITH_DEXPREOPT := true
+
 # No sync framework for this device...
 TARGET_RUNNING_WITHOUT_SYNC_FRAMEWORK := true
 
