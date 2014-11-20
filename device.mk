@@ -99,7 +99,14 @@ endif
 PRODUCT_COPY_FILES += \
 	$(DEVICE_FOLDER)/bcmdhd.cal:system/etc/wifi/bcmdhd.cal
 
-PRODUCT_PROPERTY_OVERRIDES := \
+PRODUCT_PACKAGES += \
+	libwpa_client \
+	hostapd \
+	dhcpcd.conf \
+	wpa_supplicant \
+	wpa_supplicant.conf
+
+PRODUCT_PROPERTY_OVERRIDES += \
 	wifi.interface=wlan0
 
 # Set default USB interface
