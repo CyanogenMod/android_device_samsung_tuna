@@ -33,6 +33,7 @@ PRODUCT_AAPT_PREF_CONFIG := xhdpi
 # HALs
 PRODUCT_PACKAGES += \
 	hwcomposer.tuna \
+	camera.tuna \
 	lights.tuna \
 	nfc.tuna \
 	power.tuna \
@@ -213,16 +214,31 @@ PRODUCT_PACKAGES += \
 
 # TI OMAP4
 PRODUCT_PACKAGES += \
-    libion_ti \
-    pvrsrvinit
+	libion_ti \
+	smc_pa_ctrl \
+	tf_daemon \
+	libtf_crypto_sst \
+	pvrsrvinit \
+	libPVRScopeServices.so
+
+PRODUCT_PACKAGES += \
+	libdomx \
+	libOMX_Core \
+	libOMX.TI.DUCATI1.VIDEO.H264E \
+	libOMX.TI.DUCATI1.VIDEO.MPEG4E \
+	libOMX.TI.DUCATI1.VIDEO.DECODER \
+	libOMX.TI.DUCATI1.VIDEO.DECODER.secure \
+	libOMX.TI.DUCATI1.VIDEO.CAMERA \
+	libOMX.TI.DUCATI1.MISC.SAMPLE \
+	libstagefrighthw \
+	libI420colorconvert \
+	libtiutils_custom
 
 # Needed for gralloc
 PRODUCT_PACKAGES += \
     libcorkscrew
 
 $(call inherit-product, frameworks/native/build/phone-xhdpi-1024-dalvik-heap.mk)
-
-$(call inherit-product, hardware/ti/omap4xxx/omap4.mk)
 
 $(call inherit-product-if-exists, hardware/broadcom/wlan/bcmdhd/firmware/bcm4330/device-bcm.mk)
 
