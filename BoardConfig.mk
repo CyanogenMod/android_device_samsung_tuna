@@ -16,8 +16,30 @@
 
 DEVICE_FOLDER := device/samsung/tuna
 
-# This variable is set first, so it can be overridden
-# by BoardConfigVendor.mk
+# TI Enhancement Settings (Part 1)
+#OMAP_ENHANCEMENT := true
+#OMAP_ENHANCEMENT_BURST_CAPTURE := true
+#OMAP_ENHANCEMENT_S3D := true
+#OMAP_ENHANCEMENT_CPCAM := true
+#OMAP_ENHANCEMENT_VTC := true
+#OMAP_ENHANCEMENT_MULTIGPU := true
+#BOARD_USE_TI_ENHANCED_DOMX := true
+
+PRODUCT_VENDOR_KERNEL_HEADERS := $(DEVICE_FOLDER)/kernel-headers
+
+TARGET_SPECIFIC_HEADER_PATH := $(DEVICE_FOLDER)/include
+
+# Setup custom omap4xxx defines
+BOARD_USE_CUSTOM_LIBION := true
+
+# Camera
+#TI_OMAP4_CAMERAHAL_VARIANT := true
+#TI_CAMERAHAL_USES_LEGACY_DOMX_DCC := true
+#TI_CAMERAHAL_MAX_CAMERAS_SUPPORTED := 2
+#TI_CAMERAHAL_TREAT_FRONT_AS_BACK := true
+#TI_CAMERAHAL_DEBUG_ENABLED := true
+#TI_CAMERAHAL_VERBOSE_DEBUG_ENABLED := true
+#TI_CAMERAHAL_DEBUG_FUNCTION_NAMES := true
 USE_CAMERA_STUB := true
 
 # Use the non-open-source parts, if they're present
@@ -31,6 +53,7 @@ TARGET_BOARD_INFO_FILE := $(DEVICE_FOLDER)/board-info.txt
 TARGET_BOOTLOADER_BOARD_NAME := tuna
 
 # Processor
+TARGET_BOARD_OMAP_CPU := 4460
 TARGET_CPU_ABI := armeabi-v7a
 TARGET_CPU_ABI2 := armeabi
 TARGET_CPU_SMP := true
@@ -45,10 +68,60 @@ TARGET_KERNEL_CONFIG := tuna_defconfig
 TARGET_KERNEL_SOURCE := kernel/samsung/tuna
 
 # EGL
-BOARD_EGL_CFG := $(DEVICE_FOLDER)/egl.cfg
 USE_OPENGL_RENDERER := true
 
 BOARD_USE_TI_DUCATI_H264_PROFILE := true
+
+# External SGX Module
+SGX_MODULES:
+	make clean -C $(DEVICE_FOLDER)/pvr-source/eurasiacon/build/linux2/omap4430_android
+	cp $(TARGET_KERNEL_SOURCE)/drivers/video/omap2/omapfb/omapfb.h $(KERNEL_OUT)/drivers/video/omap2/omapfb/omapfb.h
+	make -j8 -C $(DEVICE_FOLDER)/pvr-source/eurasiacon/build/linux2/omap4430_android ARCH=arm KERNEL_CROSS_COMPILE=arm-eabi- CROSS_COMPILE=arm-eabi- KERNELDIR=$(KERNEL_OUT) TARGET_PRODUCT="blaze_tablet" BUILD=release TARGET_SGX=540 PLATFORM_VERSION=4.0
+	mv $(KERNEL_OUT)/../../target/kbuild/pvrsrvkm_sgx540_120.ko $(KERNEL_MODULES_OUT)
+	$(ARM_EABI_TOOLCHAIN)/arm-eabi-strip --strip-unneeded $(KERNEL_MODULES_OUT)/pvrsrvkm_sgx540_120.ko
+
+TARGET_KERNEL_MODULES += SGX_MODULES
+
+# TI Enhancement Settings (Part 2)
+ifdef BOARD_USE_TI_ENHANCED_DOMX
+    BOARD_USE_TI_DUCATI_H264_PROFILE := true
+    BOARD_USE_TI_DOMX_LOW_SECURE_HEAP := true
+    COMMON_GLOBAL_CFLAGS += -DENHANCED_DOMX
+    ENHANCED_DOMX := true
+    TI_CUSTOM_DOMX_PATH := $(DEVICE_FOLDER)/domx
+    DOMX_PATH := $(DEVICE_FOLDER)/domx
+else
+    DOMX_PATH := hardware/ti/omap4xxx/domx
+endif
+
+ifdef OMAP_ENHANCEMENT
+    COMMON_GLOBAL_CFLAGS += -DOMAP_ENHANCEMENT -DTARGET_OMAP4 -DFORCE_SCREENSHOT_CPU_PATH
+endif
+
+ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
+    COMMON_GLOBAL_CFLAGS += -DOMAP_ENHANCEMENT_BURST_CAPTURE
+endif
+
+ifdef OMAP_ENHANCEMENT_S3D
+    COMMON_GLOBAL_CFLAGS += -DOMAP_ENHANCEMENT_S3D
+endif
+
+ifdef OMAP_ENHANCEMENT_CPCAM
+    COMMON_GLOBAL_CFLAGS += -DOMAP_ENHANCEMENT_CPCAM
+    PRODUCT_MAKEFILES += $(LOCAL_DIR)/sdk_addon/ti_omap_addon.mk
+endif
+
+ifdef OMAP_ENHANCEMENT_VTC
+    COMMON_GLOBAL_CFLAGS += -DOMAP_ENHANCEMENT_VTC
+endif
+
+ifdef USE_ITTIAM_AAC
+    COMMON_GLOBAL_CFLAGS += -DUSE_ITTIAM_AAC
+endif
+
+ifdef OMAP_ENHANCEMENT_MULTIGPU
+    COMMON_GLOBAL_CFLAGS += -DOMAP_ENHANCEMENT_MULTIGPU
+endif
 
 # Include HDCP keys
 BOARD_CREATE_TUNA_HDCP_KEYS_SYMLINK := true

@@ -32,6 +32,9 @@ on post-fs-data
         chown drmrpc drmrpc /data/smc/storage.bin
         chown drmrpc drmrpc /data/smc/system.bin
 
+	# symlink egl.cfg
+    symlink /sys/egl/egl.cfg /system/lib/egl/egl.cfg
+
 	# camera calibration
 	mkdir /data/misc/camera 0770 media media
 	mkdir /data/misc/camera/R5_MVEN003_LD2_ND0_IR0_SH0_FL1_SVEN003_DCCID1044 0770 media media
@@ -85,6 +88,10 @@ on fs
 # change permissions for i2c-2 device
 	chmod 0660 /dev/i2c-2
 	chown media media /dev/i2c-2
+
+# pvr module
+    insmod /system/lib/modules/pvrsrvkm_sgx540_120.ko
+    start pvrsrvinit
 
 # change permissions for Tiler driver
     chmod 0777 /dev/tiler
@@ -148,11 +155,12 @@ service fRom /system/bin/fRom \
 	class late_start
 	oneshot
 
-service pvrsrvctl /vendor/bin/pvrsrvctl --start --no-module
-	class core
-	user root
-	group root
-	oneshot
+service pvrsrvinit /vendor/bin/pvrsrvinit
+    class core
+    user root
+    group root
+    oneshot
+    disabled
 
 # create filesystems if necessary
 service setup_fs /system/bin/setup_fs \
