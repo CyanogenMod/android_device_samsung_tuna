@@ -68,19 +68,7 @@ on fs
 	mkdir /factory 0775 radio radio
 	mount_all /fstab.tuna
 	restorecon /dev/block/platform/omap/omap_hsmmc.0/by-name/radio
-	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /factory rw remount
-	restorecon /factory
-	restorecon /factory/imei/mps_code.dat
-	restorecon /factory/.nv_state
-	restorecon /factory/.nv_data.bak
-	restorecon /factory/nv_data.bin
-	restorecon /factory/nv_data.bin.md5
-	restorecon /factory/hdcp.keys
-	restorecon /factory/imei
-	restorecon /factory/wifi
-	restorecon /factory/wv.keys
-	restorecon /factory/bluetooth
-	restorecon /factory/bluetooth/bt_addr
+	restorecon_recursive /factory
 	mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /factory ro remount
 	setprop ro.crypto.fuse_sdcard true
 
@@ -102,10 +90,6 @@ on fs
 
 # change permissions for ION driver
     chmod 0777 /dev/ion
-
-# We chown/chmod /factory because mount is run as root + defaults
-	chown radio radio /factory
-	chmod 0775 /factory
 
 # add symlink for HDCP key
         symlink /factory/hdcp.keys /system/vendor/firmware/hdcp.keys
