@@ -147,8 +147,8 @@ WITH_DEXPREOPT := true
 # No sync framework for this device...
 TARGET_RUNNING_WITHOUT_SYNC_FRAMEWORK := true
 
-#TARGET_PROVIDES_INIT_RC := true
-#TARGET_USERIMAGES_SPARSE_EXT_DISABLED := true
+# Needed for RIL
+TARGET_NEEDS_BIONIC_MD5 := true
 
 # Wifi
 BOARD_WLAN_DEVICE                := bcmdhd
