@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-key 114   VOLUME_DOWN       WAKE
-key 115   VOLUME_UP         WAKE
-key 116   POWER             WAKE
+key 114   VOLUME_DOWN
+key 115   VOLUME_UP
+key 116   POWER
