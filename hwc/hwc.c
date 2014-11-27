@@ -2566,12 +2566,14 @@ static int hwc_device_open(const hw_module_t* module, const char* name, hw_devic
         ALOGI("Primary display is HDMI");
         hwc_dev->on_tv = 1;
     } else {
+#ifndef HDMI_DISABLED
         hwc_dev->hdmi_fb_fd = open("/dev/graphics/fb1", O_RDWR);
         if (hwc_dev->hdmi_fb_fd < 0) {
             ALOGE("failed to open hdmi fb (%d)", errno);
             err = -errno;
             goto done;
         }
+#endif
     }
 
     set_primary_display_transform_matrix(hwc_dev);

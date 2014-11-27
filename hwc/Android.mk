@@ -31,6 +31,10 @@ LOCAL_MODULE := hwcomposer.$(TARGET_BOOTLOADER_BOARD_NAME)
 LOCAL_CFLAGS := -DLOG_TAG=\"ti_hwc\"
 LOCAL_C_INCLUDES += external/libpng external/zlib
 
+ifeq ($(TARGET_TI_HWC_HDMI_DISABLED),true)
+    LOCAL_CFLAGS += -DHDMI_DISABLED
+endif
+
 LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/../edid/inc \
     $(LOCAL_PATH)/../include
