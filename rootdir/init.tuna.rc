@@ -254,5 +254,7 @@ service bugreport /system/bin/dumpstate -d -p -B \
 	oneshot
 	keycodes 114 115 116
 
-service battery_charger /charger
+service battery_charger /sbin/healthd -c
 	class charger
+	critical
+	seclabel u:r:healthd:s0

@@ -46,7 +46,6 @@ PRODUCT_PACKAGES += \
 
 # Charging mode
 PRODUCT_PACKAGES += \
-	charger \
 	charger_res_images
 
 # Audio
