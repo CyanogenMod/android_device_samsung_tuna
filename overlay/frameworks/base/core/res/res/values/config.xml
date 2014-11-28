@@ -30,9 +30,6 @@
     <!-- Default LED off time for notification LED in milliseconds. -->
     <integer name="config_defaultNotificationLedOff">1000</integer>
 
-    <!-- Our amoled doesn't animate well. -->
-    <bool name="config_animateScreenLights">false</bool>
-
     <integer name="config_undockedHdmiRotation">90</integer>
     <integer name="config_deskDockKeepsScreenOn">0</integer>
     <integer name="config_carDockKeepsScreenOn">1</integer>
