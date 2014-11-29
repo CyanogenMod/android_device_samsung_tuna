@@ -20,6 +20,11 @@ on init
     mkdir /mnt/media_rw/usbdisk 0775 system system
     mkdir /storage/usbdisk 0000 system system
 
+    # KSM
+    write /sys/kernel/mm/ksm/pages_to_scan 100
+    write /sys/kernel/mm/ksm/sleep_millisecs 500
+    write /sys/kernel/mm/ksm/run 1
+
 on post-fs-data
     mkdir /data/media 0770 media_rw media_rw
 
