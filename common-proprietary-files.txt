@@ -1,4 +1,4 @@
-bin/fRom
+vendor/bin/fRom
 vendor/bin/pvrsrvctl
 vendor/firmware/ducati-m3.bin
 vendor/firmware/libpn544_fw.so
