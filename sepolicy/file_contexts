@@ -3,6 +3,7 @@
 /dev/block/mmcblk0p4            u:object_r:radio_device:s0
 /dev/block/mmcblk0p9            u:object_r:radio_device:s0
 /dev/block/platform/omap/omap_hsmmc.0/by-name/radio     u:object_r:radio_device:s0
+/dev/an30259a_leds              u:object_r:video_device:s0
 /dev/cdma_.*                    u:object_r:radio_device:s0
 /dev/lte_.*                     u:object_r:radio_device:s0
 /dev/tiler                      u:object_r:video_device:s0
@@ -33,3 +34,7 @@
 
 # Accelerometer
 /dev/accelirq                   u:object_r:sensors_device:s0
+
+# System binaries
+/system/bin/pvrsrvinit u:object_r:pvrsrvinit_exec:s0
+/system/vendor/bin/fRom u:object_r:fRom_exec:s0

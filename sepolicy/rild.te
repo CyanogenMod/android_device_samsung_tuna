@@ -1,0 +1,2 @@
+allow rild radio_data_file:dir setattr;
+allow rild self:process execmem;

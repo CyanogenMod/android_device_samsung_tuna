@@ -1,0 +1,2 @@
+allow init radio_device:lnk_file relabelto;
+allow init self:capability sys_module;
