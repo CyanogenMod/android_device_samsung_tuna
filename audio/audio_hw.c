@@ -71,11 +71,11 @@
 #define MIXER_DL1_BT_VX_SWITCH              "DL1 BT_VX Switch"
 #define MIXER_VOICE_CAPTURE_MIXER_CAPTURE   "Voice Capture Mixer Capture"
 
-#define MIXER_HS_LEFT_PLAYBACK              "HS Left Playback"
-#define MIXER_HS_RIGHT_PLAYBACK             "HS Right Playback"
-#define MIXER_HF_LEFT_PLAYBACK              "HF Left Playback"
-#define MIXER_HF_RIGHT_PLAYBACK             "HF Right Playback"
-#define MIXER_EARPHONE_ENABLE_SWITCH        "Earphone Enable Switch"
+#define MIXER_HS_LEFT_PLAYBACK              "Headset Left Playback"
+#define MIXER_HS_RIGHT_PLAYBACK             "Headset Right Playback"
+#define MIXER_HF_LEFT_PLAYBACK              "Handsfree Left Playback"
+#define MIXER_HF_RIGHT_PLAYBACK             "Handsfree Right Playback"
+#define MIXER_EARPHONE_ENABLE_SWITCH        "Earphone Playback Switch"
 
 #define MIXER_ANALOG_LEFT_CAPTURE_ROUTE     "Analog Left Capture Route"
 #define MIXER_ANALOG_RIGHT_CAPTURE_ROUTE    "Analog Right Capture Route"
