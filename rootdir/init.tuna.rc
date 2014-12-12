@@ -142,6 +142,7 @@ service fRom /system/vendor/bin/fRom \
 	class late_start
 	seclabel u:r:fRom:s0
 	oneshot
+	disabled
 
 service pvrsrvinit /system/bin/pvrsrvinit
     class core
