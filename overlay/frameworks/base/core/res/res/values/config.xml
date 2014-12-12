@@ -33,7 +33,6 @@
     <integer name="config_undockedHdmiRotation">90</integer>
     <integer name="config_deskDockKeepsScreenOn">0</integer>
     <integer name="config_carDockKeepsScreenOn">1</integer>
-    <bool name="config_deskDockEnablesAccelerometer">true</bool>
 
     <!-- If this is true, the screen will come on when you unplug usb/power/whatever. -->
     <bool name="config_unplugTurnsOnScreen">true</bool>
