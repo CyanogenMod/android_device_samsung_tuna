@@ -16,6 +16,9 @@
 
 DEVICE_FOLDER := device/samsung/tuna
 
+# CMHW
+BOARD_HARDWARE_CLASS := $(DEVICE_FOLDER)/cmhw
+
 # TI Enhancement Settings (Part 1)
 #OMAP_ENHANCEMENT := true
 #OMAP_ENHANCEMENT_BURST_CAPTURE := true
@@ -64,7 +67,7 @@ TARGET_ARCH_VARIANT := armv7-a-neon
 # Kernel
 BOARD_KERNEL_BASE := 0x80000000
 # BOARD_KERNEL_CMDLINE :=
-TARGET_KERNEL_CONFIG := tuna_defconfig
+TARGET_KERNEL_CONFIG := cyanogenmod_tuna_defconfig
 TARGET_KERNEL_SOURCE := kernel/samsung/tuna
 
 # EGL
