@@ -88,7 +88,7 @@ static void tuna_power_init(struct power_module *module)
 
     sysfs_write(CPUFREQ_INTERACTIVE "timer_rate", "20000");
     sysfs_write(CPUFREQ_INTERACTIVE "min_sample_time", "60000");
-    sysfs_write(CPUFREQ_INTERACTIVE "hispeed_freq", "700000");
+    sysfs_write(CPUFREQ_INTERACTIVE "hispeed_freq", "920000");
     sysfs_write(CPUFREQ_INTERACTIVE "target_loads", "70 920000:80 1200000:99");
     sysfs_write(CPUFREQ_INTERACTIVE "go_hispeed_load", "99");
     sysfs_write(CPUFREQ_INTERACTIVE "above_hispeed_delay", "80000");
