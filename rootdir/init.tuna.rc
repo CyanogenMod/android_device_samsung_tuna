@@ -270,3 +270,19 @@ service battery_charger /sbin/healthd -c
 	class charger
 	critical
 	seclabel u:r:healthd:s0
+
+# CyanogenMod Performance Profiles
+# Powersave
+on property:sys.perf.profile=0
+	write /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq 700000
+	write /sys/devices/platform/omap/pvrsrvkm.0/sgxfreq/frequency_limit 384000000
+
+# Balanced
+on property:sys.perf.profile=1
+	write /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq 920000
+	write /sys/devices/platform/omap/pvrsrvkm.0/sgxfreq/frequency_limit 384000000
+
+# Performance
+on property:sys.perf.profile=2
+	write /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq 920000
+	write /sys/devices/platform/omap/pvrsrvkm.0/sgxfreq/frequency_limit 512000000
