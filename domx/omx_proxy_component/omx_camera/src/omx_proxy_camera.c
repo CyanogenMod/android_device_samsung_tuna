@@ -114,8 +114,10 @@ OMX_PTR gCamIonHdl[MAX_NUM_INTERNAL_BUFFERS][2];
 
 /* Tiler heap resservation specific */
 #define OMAP_ION_HEAP_TILER_ALLOCATION_MASK (1<<4)
+#ifndef OMAP_TUNA
 /* store handles for tracking and freeing */
 OMX_PTR gComponentBufferAllocation[PROXY_MAXNUMOFPORTS][MAX_NUM_INTERNAL_BUFFERS];
+#endif
 
 /* Incase of multiple instance, making sure DCC is initialized only for
    first instance */
@@ -189,7 +191,6 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
                 gCamIonHdl[i][1] = NULL;
             }
         }
-#endif
 
         for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
             for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
@@ -199,6 +200,7 @@ static OMX_ERRORTYPE ComponentPrivateDeInit(OMX_IN OMX_HANDLETYPE hComponent)
                 gComponentBufferAllocation[i][j] = NULL;
             }
         }
+#endif
 
 	eError = PROXY_ComponentDeInit(hComponent);
 
@@ -246,7 +248,9 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
 			}
 			dcc_loaded = OMX_TRUE;
 		}
-	} else if (eCmd == OMX_CommandPortDisable) {
+	}
+#ifndef OMAP_TUNA
+	else if (eCmd == OMX_CommandPortDisable) {
             int i, j;
             for (i = 0; i < MAX_NUM_INTERNAL_BUFFERS; i++) {
                 for (j = 0; j < PROXY_MAXNUMOFPORTS; j++) {
@@ -258,9 +262,8 @@ static OMX_ERRORTYPE Camera_SendCommand(OMX_IN OMX_HANDLETYPE hComponent,
                     }
                 }
             }
-
         }
-
+#endif
 
 	eError =
 	PROXY_SendCommand(hComponent,eCmd,nParam,pCmdData);
@@ -400,11 +403,12 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
     OMX_INOUT OMX_PTR pComponentParameterStructure)
 {
     OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *)hComponent;
+#ifndef OMAP_TUNA
     struct ion_handle *handle;
     OMX_U32 i =0;
     OMX_S32 ret = 0;
     PROXY_COMPONENT_PRIVATE *pCompPrv;
-    OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *)hComponent;
     OMX_U32 stride_Y = 0, stride_UV = 0;
 #ifndef OMAP_TUNA
     OMX_TI_PARAM_VTCSLICE *pVtcConfig;// = (OMX_TI_PARAM_VTCSLICE *)pComponentParameterStructure;
@@ -516,6 +520,7 @@ static OMX_ERRORTYPE CameraSetParam(OMX_IN OMX_HANDLETYPE
 	default:
 		 break;
 	}
+#endif
 	eError = __PROXY_SetParameter(hComponent,
 								nParamIndex,
 								pComponentParameterStructure,
@@ -576,14 +581,13 @@ OMX_ERRORTYPE OMX_ComponentInit(OMX_HANDLETYPE hComponent)
             gCamIonHdl[i][0] = NULL;
             gCamIonHdl[i][1] = NULL;
         }
-#endif
 
         for (i = 0; i < PROXY_MAXNUMOFPORTS; i++) {
             for (j = 0; j < MAX_NUM_INTERNAL_BUFFERS; j++) {
                 gComponentBufferAllocation[i][j] = NULL;
             }
         }
-
+#endif
 	pHandle->ComponentDeInit = ComponentPrivateDeInit;
 	pHandle->GetConfig = CameraGetConfig;
 	pHandle->SetConfig = CameraSetConfig;
