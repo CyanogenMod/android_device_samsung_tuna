@@ -917,7 +917,7 @@ static OMX_ERRORTYPE PROXY_UseBuffer(OMX_IN OMX_HANDLETYPE hComponent,
 	OMX_COMPONENTTYPE *hComp = (OMX_COMPONENTTYPE *) hComponent;
 	OMX_BOOL bSlotFound = OMX_FALSE;
 	OMX_PTR pAuxBuf0 = pBuffer;
-	OMX_PTR pMappedMetaDataBuffer = NULL;
+	//OMX_PTR pMappedMetaDataBuffer = NULL;
 	OMX_TI_PARAM_METADATABUFFERINFO tMetaDataBuffer;
 	OMX_U32 nBufferHeight = 0;
 	OMX_CONFIG_RECTTYPE tParamRect;
