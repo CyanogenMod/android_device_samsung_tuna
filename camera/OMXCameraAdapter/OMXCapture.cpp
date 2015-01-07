@@ -743,8 +743,10 @@ status_t OMXCameraAdapter::startImageCapture()
         return NO_ERROR;
     }
 
+#ifndef OMAP_TUNA
     // Camera framework doesn't expect face callbacks once capture is triggered
     pauseFaceDetection(true);
+#endif
 
     //During bracketing image capture is already active
     {
@@ -922,9 +924,11 @@ status_t OMXCameraAdapter::stopImageCapture()
         }
     }
 
+#ifndef OMAP_TUNA
     // After capture, face detection should be disabled
     // and application needs to restart face detection
     stopFaceDetection();
+#endif
 
     //Wait here for the capture to be done, in worst case timeout and proceed with cleanup
     mCaptureSem.WaitTimeout(OMX_CAPTURE_TIMEOUT);
@@ -1092,7 +1096,7 @@ status_t OMXCameraAdapter::UseBuffersCapture(void* bufArr, int num)
     //TODO: Support more pixelformats
 
     CAMHAL_LOGDB("Params Width = %d", (int)imgCaptureData->mWidth);
-    CAMHAL_LOGDB("Params Height = %d", (int)imgCaptureData->mWidth);
+    CAMHAL_LOGDB("Params Height = %d", (int)imgCaptureData->mHeight);
 
     if (mPendingCaptureSettings & SetFormat) {
         mPendingCaptureSettings &= ~SetFormat;

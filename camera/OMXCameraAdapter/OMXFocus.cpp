@@ -110,8 +110,10 @@ status_t OMXCameraAdapter::doAutoFocus()
 
     OMX_INIT_STRUCT_PTR (&focusStatus, OMX_PARAM_FOCUSSTATUSTYPE);
 
+#ifndef OMAP_TUNA
     // If the app calls autoFocus, the camera will stop sending face callbacks.
     pauseFaceDetection(true);
+#endif
 
     // This is needed for applying FOCUS_REGION correctly
     if ( (!mFocusAreas.isEmpty()) && (!mFocusAreas.itemAt(0)->isZeroArea()))
@@ -319,8 +321,10 @@ status_t OMXCameraAdapter::cancelAutoFocus()
        // re-apply CAF after unlocking and canceling
        // mPending3Asettings |= SetFocus;
     }
+#ifndef OMAP_TUNA
     // If the apps call #cancelAutoFocus()}, the face callbacks will also resume.
     pauseFaceDetection(false);
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -472,8 +476,10 @@ status_t OMXCameraAdapter::returnFocusStatus(bool timeoutReached)
         notifyFocusSubscribers(focusStatus);
         }
 
+#ifndef OMAP_TUNA
     // After focus, face detection will resume sending face callbacks
     pauseFaceDetection(false);
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 

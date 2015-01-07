@@ -297,7 +297,7 @@ bool AppCallbackNotifier::notificationThread()
 
     if(mFrameQ.hasMsg()) {
        ///Received a frame from one of the frame providers
-       //CAMHAL_LOGDA("Notification Thread received a frame from frame provider (CameraAdapter)");
+       CAMHAL_LOGDA("Notification Thread received a frame from frame provider (CameraAdapter)");
        notifyFrame();
     }
 
@@ -404,6 +404,7 @@ void AppCallbackNotifier::notifyEvent()
 
                     break;
 
+#ifndef OMAP_TUNA
                 case CameraHalEvent::EVENT_FACE:
 
                     faceEvtData = evt->mEventData->faceEvent;
@@ -430,6 +431,7 @@ void AppCallbackNotifier::notifyEvent()
                         }
 
                     break;
+#endif
 
                 case CameraHalEvent::ALL_EVENTS:
                     break;
@@ -764,8 +766,8 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
                     memset(dest, 0, (mPreviewMemory->size / MAX_BUFFERS));
                 }
             } else {
-              if ((NULL == frame->mYuv[0]) || (NULL == frame->mYuv[1])){
-                CAMHAL_LOGEA("Error! One of the YUV Pointer is NULL");
+              if ((0 == frame->mYuv[0]) || (0 == frame->mYuv[1])){ //NULL ==
+                CAMHAL_LOGEA("Error! One of the YUV Pointer is 0"); //is NULL
                 goto exit;
               }
               else{

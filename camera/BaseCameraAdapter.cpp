@@ -959,6 +959,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
 
              break;
 
+#ifndef OMAP_TUNA
          case CameraAdapter::CAMERA_START_FD:
 
              ret = startFaceDetection();
@@ -970,6 +971,7 @@ status_t BaseCameraAdapter::sendCommand(CameraCommands operation, int value1, in
              ret = stopFaceDetection();
 
              break;
+#endif
 
          case CameraAdapter::CAMERA_SWITCH_TO_EXECUTING:
            ret = switchToExecuting();

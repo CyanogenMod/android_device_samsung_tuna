@@ -2760,7 +2760,7 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
 
                 ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_SMOOTH_ZOOM);
                 break;
-
+#ifndef OMAP_TUNA
             case CAMERA_CMD_START_FACE_DETECTION:
 
                 ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_START_FD);
@@ -2772,7 +2772,7 @@ status_t CameraHal::sendCommand(int32_t cmd, int32_t arg1, int32_t arg2)
                 ret = mCameraAdapter->sendCommand(CameraAdapter::CAMERA_STOP_FD);
 
                 break;
-
+#endif
             default:
                 break;
             };
