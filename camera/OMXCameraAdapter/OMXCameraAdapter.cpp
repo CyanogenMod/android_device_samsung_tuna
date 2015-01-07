@@ -2554,12 +2554,14 @@ void OMXCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
     if (device_orientation != mDeviceOrientation) {
         mDeviceOrientation = device_orientation;
 
+#ifndef OMAP_TUNA
         mFaceDetectionLock.lock();
         if (mFaceDetectionRunning) {
             // restart face detection with new rotation
             setFaceDetection(true, mDeviceOrientation);
         }
         mFaceDetectionLock.unlock();
+#endif
     }
     CAMHAL_LOGVB("orientation = %d tilt = %d device_orientation = %d", orientation, tilt, mDeviceOrientation);
 
@@ -2975,6 +2977,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             }
 
         recalculateFPS();
+#ifndef OMAP_TUNA
             {
             Mutex::Autolock lock(mFaceDetectionLock);
             if ( mFaceDetectionRunning && !mFaceDetectionPaused ) {
@@ -2996,6 +2999,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
                 }
             }
             }
+#endif
 
         ///Prepare the frames to be sent - initialize CameraFrame object and reference count
         // TODO(XXX): ancillary data for snapshot frame is not being sent for video snapshot
