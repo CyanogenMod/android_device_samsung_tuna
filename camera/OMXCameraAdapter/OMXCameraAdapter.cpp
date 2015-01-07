@@ -411,11 +411,15 @@ OMXCameraAdapter::OMXCameraPortParameters *OMXCameraAdapter::getPortParams(Camer
         ret = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
         break;
     case CameraFrame::RAW_FRAME:
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
         if (mRawCapture) {
             ret = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mVideoPortIndex];
         } else {
+#endif
             ret = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mImagePortIndex];
+#ifdef CAMERAHAL_USE_RAW_IMAGE_SAVING
         }
+#endif
         break;
     case CameraFrame::PREVIEW_FRAME_SYNC:
     case CameraFrame::SNAPSHOT_FRAME:

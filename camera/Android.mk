@@ -1,5 +1,10 @@
 LOCAL_PATH:= $(call my-dir)
 
+TI_CAMERAHAL_DEBUG_ENABLED := true
+TI_CAMERAHAL_VERBOSE_DEBUG_ENABLED := true
+TI_CAMERAHAL_DEBUG_FUNCTION_NAMES := true
+TI_CAMERAHAL_DONT_USE_RAW_IMAGE_SAVING := true
+
 OMAP4_CAMERA_HAL_USES:= OMX
 #OMAP4_CAMERA_HAL_USES:= USB
 #OMAP4_CAMERA_HAL_USES:= ALL
@@ -96,7 +101,7 @@ TI_CAMERAHAL_COMMON_SHARED_LIBRARIES := \
     libbinder \
     libutils \
     libcutils \
-    libtiutils_custom \
+    libtiutils_$(TARGET_BOOTLOADER_BOARD_NAME) \
     libcamera_client \
     libgui \
     libion_ti \
