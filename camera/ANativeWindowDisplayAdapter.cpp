@@ -1296,7 +1296,7 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
         mFramesType.removeItem((int) mBuffers[i].opaque);
     }
 
-    CAMHAL_LOGVB("handleFrameReturn: found graphic buffer %d of %d", i, mBufferCount-1);
+    CAMHAL_LOGSVB("handleFrameReturn: found graphic buffer %d of %d", i, mBufferCount-1);
     mFrameProvider->returnFrame(&mBuffers[i], frameType);
 
     return true;

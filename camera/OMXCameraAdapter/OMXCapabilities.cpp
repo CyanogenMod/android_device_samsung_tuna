@@ -337,7 +337,10 @@ const LUTtype OMXCameraAdapter::mBracketingModesLUT = {
 
 // values for supported camera facing direction
 const CapU32 OMXCameraAdapter::mFacing [] = {
-#ifndef OMAP_TUNA
+#ifdef OMAP_TUNA
+    { 1, TICameraParameters::FACING_BACK },
+    { 0, TICameraParameters::FACING_FRONT},
+#else
     { OMX_TI_SENFACING_BACK , TICameraParameters::FACING_BACK },
     { OMX_TI_SENFACING_FRONT, TICameraParameters::FACING_FRONT},
 #endif
@@ -762,13 +765,13 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
                             ARRAY_SIZE(mPreviewPortraitRes),
                             supported,
                             MAX_PROP_VALUE_LENGTH);
+#endif
 
         if ( NO_ERROR != ret ) {
             CAMHAL_LOGEB("Error inserting supported Potrait preview sizes 0x%x", ret);
         } else {
             params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
         }
-#endif
     }
     else // 3d mode
     {
@@ -1623,7 +1626,13 @@ status_t OMXCameraAdapter::insertFacing(CameraProperties::Properties* params, OM
 
     memset(supported, '\0', sizeof(supported));
 
-#ifndef OMAP_TUNA
+#ifdef OMAP_TUNA
+    if(caps.tSenMounting.nSenId == 305) {
+        i = 0;
+    } else {
+        i = 1;
+    }
+#else
     for (i = 0; i < ARRAY_SIZE(mFacing); i++) {
         if((OMX_TI_SENFACING_TYPE)mFacing[i].num == caps.tSenMounting.eFacing) {
             break;
@@ -1643,6 +1652,7 @@ status_t OMXCameraAdapter::insertFacing(CameraProperties::Properties* params, OM
     return ret;
 }
 
+#ifndef OMAP_TUNA
 status_t OMXCameraAdapter::insertFocalLength(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
@@ -1666,6 +1676,7 @@ status_t OMXCameraAdapter::insertFocalLength(CameraProperties::Properties* param
 
     return ret;
 }
+#endif
 
 status_t OMXCameraAdapter::insertAutoConvergenceModes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
@@ -2039,6 +2050,13 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::MAX_FD_SW_FACES, DEFAULT_MAX_FD_SW_FACES);
     params->set(CameraProperties::AUTO_EXPOSURE_LOCK, DEFAULT_AE_LOCK);
     params->set(CameraProperties::AUTO_WHITEBALANCE_LOCK, DEFAULT_AWB_LOCK);
+#ifdef OMAP_TUNA
+    if(caps.tSenMounting.nSenId == 305) {
+        params->set(CameraProperties::FOCAL_LENGTH, DEFAULT_FOCAL_LENGTH_PRIMARY);
+    } else {
+        params->set(CameraProperties::FOCAL_LENGTH, DEFAULT_FOCAL_LENGTH_SECONDARY);
+    }
+#endif
     params->set(CameraProperties::HOR_ANGLE, DEFAULT_HOR_ANGLE);
     params->set(CameraProperties::VER_ANGLE, DEFAULT_VER_ANGLE);
     params->set(CameraProperties::VIDEO_SIZE, DEFAULT_VIDEO_SIZE);
@@ -2158,9 +2176,11 @@ status_t OMXCameraAdapter::insertCapabilities(CameraProperties::Properties* para
         ret = insertFacing(params, caps);
     }
 
+#ifndef OMAP_TUNA
     if ( NO_ERROR == ret) {
         ret = insertFocalLength(params, caps);
     }
+#endif
 
     if ( NO_ERROR == ret) {
         ret = insertAutoConvergenceModes(params, caps);

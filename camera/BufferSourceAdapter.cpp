@@ -791,7 +791,7 @@ bool BufferSourceAdapter::handleFrameReturn()
 
     mFramesWithCameraAdapterMap.add((buffer_handle_t *) mBuffers[i].opaque, i);
 
-    CAMHAL_LOGVB("handleFrameReturn: found graphic buffer %d of %d", i, mBufferCount - 1);
+    CAMHAL_LOGSVB("handleFrameReturn: found graphic buffer %d of %d", i, mBufferCount - 1);
 
     mFrameProvider->returnFrame(&mBuffers[i], formatToOutputFrameType(mPixelFormat));
     return true;
