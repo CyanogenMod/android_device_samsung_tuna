@@ -21,16 +21,14 @@
 *
 */
 
-#define LOG_TAG "CameraHAL"
-
 #include "SensorListener.h"
-#include "CameraHal.h"
 
 #include <stdint.h>
 #include <math.h>
 #include <sys/types.h>
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 /*** static declarations ***/
 static const float RADIANS_2_DEG = (float) (180 / M_PI);
@@ -46,7 +44,7 @@ static int sensor_events_listener(int fd, int events, void* data)
     ASensorEvent sen_events[8];
     while ((num_sensors = listener->mSensorEventQueue->read(sen_events, 8)) > 0) {
         for (int i = 0; i < num_sensors; i++) {
-            if (sen_events[i].type == Sensor::TYPE_ACCELEROMETER) {
+            if (sen_events[i].type == android::Sensor::TYPE_ACCELEROMETER) {
                 float x = sen_events[i].vector.azimuth;
                 float y = sen_events[i].vector.pitch;
                 float z = sen_events[i].vector.roll;
@@ -79,7 +77,7 @@ static int sensor_events_listener(int fd, int events, void* data)
                 }
                 listener->handleOrientation(orient, tilt);
                 CAMHAL_LOGVB(" tilt = %d orientation = %d", tilt, orient);
-            } else if (sen_events[i].type == Sensor::TYPE_GYROSCOPE) {
+            } else if (sen_events[i].type == android::Sensor::TYPE_GYROSCOPE) {
                 CAMHAL_LOGVA("GYROSCOPE EVENT");
             }
         }
@@ -132,11 +130,11 @@ SensorListener::~SensorListener() {
 
 status_t SensorListener::initialize() {
     status_t ret = NO_ERROR;
-    SensorManager& mgr(SensorManager::getInstance());
+    android::SensorManager& mgr(android::SensorManager::getInstance());
 
     LOG_FUNCTION_NAME;
 
-    sp<Looper> mLooper;
+    android::sp<android::Looper> mLooper;
 
     mSensorEventQueue = mgr.createEventQueue();
     if (mSensorEventQueue == NULL) {
@@ -145,7 +143,7 @@ status_t SensorListener::initialize() {
         goto out;
     }
 
-    mLooper = new Looper(false);
+    mLooper = new android::Looper(false);
     mLooper->addFd(mSensorEventQueue->getFd(), 0, ALOOPER_EVENT_INPUT, sensor_events_listener, this);
 
     if (mSensorLooperThread.get() == NULL)
@@ -157,7 +155,7 @@ status_t SensorListener::initialize() {
         goto out;
     }
 
-    ret = mSensorLooperThread->run("sensor looper thread", PRIORITY_URGENT_DISPLAY);
+    ret = mSensorLooperThread->run("sensor looper thread", android::PRIORITY_URGENT_DISPLAY);
     if (ret == INVALID_OPERATION){
         CAMHAL_LOGDA("thread already running ?!?");
     } else if (ret != NO_ERROR) {
@@ -184,7 +182,7 @@ void SensorListener::setCallbacks(orientation_callback_t orientation_cb, void *c
 void SensorListener::handleOrientation(uint32_t orientation, uint32_t tilt) {
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(&mLock);
+    android::AutoMutex lock(&mLock);
 
     if (mOrientationCb && (sensorsEnabled & SENSOR_ORIENTATION)) {
         mOrientationCb(orientation, tilt, mCbCookie);
@@ -194,15 +192,15 @@ void SensorListener::handleOrientation(uint32_t orientation, uint32_t tilt) {
 }
 
 void SensorListener::enableSensor(sensor_type_t type) {
-    Sensor const* sensor;
-    SensorManager& mgr(SensorManager::getInstance());
+    android::Sensor const* sensor;
+    android::SensorManager& mgr(android::SensorManager::getInstance());
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(&mLock);
+    android::AutoMutex lock(&mLock);
 
     if ((type & SENSOR_ORIENTATION) && !(sensorsEnabled & SENSOR_ORIENTATION)) {
-        sensor = mgr.getDefaultSensor(Sensor::TYPE_ACCELEROMETER);
+        sensor = mgr.getDefaultSensor(android::Sensor::TYPE_ACCELEROMETER);
         CAMHAL_LOGDB("orientation = %p (%s)", sensor, sensor->getName().string());
         mSensorEventQueue->enableSensor(sensor);
         mSensorEventQueue->setEventRate(sensor, ms2ns(100));
@@ -213,15 +211,15 @@ void SensorListener::enableSensor(sensor_type_t type) {
 }
 
 void SensorListener::disableSensor(sensor_type_t type) {
-    Sensor const* sensor;
-    SensorManager& mgr(SensorManager::getInstance());
+    android::Sensor const* sensor;
+    android::SensorManager& mgr(android::SensorManager::getInstance());
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(&mLock);
+    android::AutoMutex lock(&mLock);
 
     if ((type & SENSOR_ORIENTATION) && (sensorsEnabled & SENSOR_ORIENTATION)) {
-        sensor = mgr.getDefaultSensor(Sensor::TYPE_ACCELEROMETER);
+        sensor = mgr.getDefaultSensor(android::Sensor::TYPE_ACCELEROMETER);
         CAMHAL_LOGDB("orientation = %p (%s)", sensor, sensor->getName().string());
         mSensorEventQueue->disableSensor(sensor);
         sensorsEnabled &= ~SENSOR_ORIENTATION;
@@ -230,4 +228,5 @@ void SensorListener::disableSensor(sensor_type_t type) {
     LOG_FUNCTION_NAME_EXIT;
 }
 
-} // namespace android
+} // namespace Camera
+} // namespace Ti

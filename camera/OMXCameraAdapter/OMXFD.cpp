@@ -21,25 +21,15 @@
 *
 */
 
-#undef LOG_TAG
-
-#define LOG_TAG "CameraHAL"
-
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 
-#define FACE_DETECTION_THRESHOLD 80
+namespace Ti {
+namespace Camera {
 
-// constants used for face smooth filtering
-static const int HorizontalFilterThreshold = 40;
-static const int VerticalFilterThreshold = 40;
-static const int HorizontalFaceSizeThreshold = 30;
-static const int VerticalFaceSizeThreshold = 30;
+const uint32_t OMXCameraAdapter::FACE_DETECTION_THRESHOLD = 80;
 
-
-namespace android {
-
-status_t OMXCameraAdapter::setParametersFD(const CameraParameters &params,
+status_t OMXCameraAdapter::setParametersFD(const android::CameraParameters &params,
                                            BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
@@ -55,9 +45,9 @@ status_t OMXCameraAdapter::startFaceDetection()
 {
     status_t ret = NO_ERROR;
 
-    Mutex::Autolock lock(mFaceDetectionLock);
+    android::AutoMutex lock(mFaceDetectionLock);
 
-    ret = setFaceDetection(true, mDeviceOrientation);
+    ret = setFaceDetection(true, mFaceOrientation);
     if (ret != NO_ERROR) {
         goto out;
     }
@@ -82,17 +72,21 @@ status_t OMXCameraAdapter::stopFaceDetection()
     BaseCameraAdapter::AdapterState state;
     BaseCameraAdapter::getState(state);
 
-    Mutex::Autolock lock(mFaceDetectionLock);
+    android::AutoMutex lock(mFaceDetectionLock);
 
-    ret = setFaceDetection(false, mDeviceOrientation);
+    ret = setFaceDetection(false, mFaceOrientation);
     if (ret != NO_ERROR) {
         goto out;
     }
 
-    // Reset 3A settings
-    ret = setParameters3A(mParams, state);
-    if (ret != NO_ERROR) {
-        goto out;
+    if ( mFaceDetectionRunning ) {
+        //Enable region priority and disable face priority for AF
+        setAlgoPriority(REGION_PRIORITY, FOCUS_ALGO, true);
+        setAlgoPriority(FACE_PRIORITY, FOCUS_ALGO , false);
+
+        //Enable Region priority and disable Face priority
+        setAlgoPriority(REGION_PRIORITY, EXPOSURE_ALGO, true);
+        setAlgoPriority(FACE_PRIORITY, EXPOSURE_ALGO, false);
     }
 
     if (mPending3Asettings) {
@@ -106,12 +100,28 @@ status_t OMXCameraAdapter::stopFaceDetection()
 
 void OMXCameraAdapter::pauseFaceDetection(bool pause)
 {
-    Mutex::Autolock lock(mFaceDetectionLock);
+    android::AutoMutex lock(mFaceDetectionLock);
     // pausing will only take affect if fd is already running
     if (mFaceDetectionRunning) {
         mFaceDetectionPaused = pause;
         faceDetectionNumFacesLastOutput = 0;
     }
+}
+
+status_t OMXCameraAdapter::setFaceDetectionOrientation(OMX_U32 orientation)
+{
+    status_t ret = NO_ERROR;
+
+    android::AutoMutex lock(mFaceDetectionLock);
+
+    mFaceOrientation = orientation;
+
+    if (mFaceDetectionRunning) {
+        // restart face detection with new rotation
+        setFaceDetection(true, orientation);
+    }
+
+    return ret;
 }
 
 status_t OMXCameraAdapter::setFaceDetection(bool enable, OMX_U32 orientation)
@@ -162,7 +172,9 @@ status_t OMXCameraAdapter::setFaceDetection(bool enable, OMX_U32 orientation)
 
     if ( NO_ERROR == ret )
         {
-        ret = setExtraData(enable, mCameraAdapterParameters.mPrevPortIndex, OMX_FaceDetection);
+        // TODO(XXX): Should enable/disable FD extra data separately
+        // on each port.
+        ret = setExtraData(enable, OMX_ALL, OMX_FaceDetection);
 
         if ( NO_ERROR != ret )
             {
@@ -185,18 +197,15 @@ status_t OMXCameraAdapter::setFaceDetection(bool enable, OMX_U32 orientation)
     return ret;
 }
 
-status_t OMXCameraAdapter::detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
-                                       sp<CameraFDResult> &result,
-                                       size_t previewWidth,
-                                       size_t previewHeight)
+status_t OMXCameraAdapter::createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHeader,
+                                          android::sp<CameraMetadataResult> &result,
+                                          size_t previewWidth,
+                                          size_t previewHeight)
 {
     status_t ret = NO_ERROR;
-    OMX_ERRORTYPE eError = OMX_ErrorNone;
-    OMX_TI_FACERESULT *faceResult;
-    OMX_OTHER_EXTRADATATYPE *extraData;
-    OMX_FACEDETECTIONTYPE *faceData;
-    OMX_TI_PLATFORMPRIVATE *platformPrivate;
-    camera_frame_metadata_t *faces;
+    status_t faceRet = NO_ERROR;
+    status_t metaRet = NO_ERROR;
+    OMX_FACEDETECTIONTYPE *faceData = NULL;
 
     LOG_FUNCTION_NAME;
 
@@ -210,78 +219,78 @@ status_t OMXCameraAdapter::detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
         return-EINVAL;
     }
 
-    platformPrivate = (OMX_TI_PLATFORMPRIVATE *) (pBuffHeader->pPlatformPrivate);
-    if ( NULL != platformPrivate ) {
-        if ( sizeof(OMX_TI_PLATFORMPRIVATE) == platformPrivate->nSize ) {
-            CAMHAL_LOGVB("Size = %d, sizeof = %d, pAuxBuf = 0x%x, pAuxBufSize= %d, pMetaDataBufer = 0x%x, nMetaDataSize = %d",
-                         platformPrivate->nSize,
-                         sizeof(OMX_TI_PLATFORMPRIVATE),
-                         platformPrivate->pAuxBuf1,
-                         platformPrivate->pAuxBufSize1,
-                         platformPrivate->pMetaDataBuffer,
-                         platformPrivate->nMetaDataSize);
+    if ( mFaceDetectionRunning && !mFaceDetectionPaused ) {
+        OMX_OTHER_EXTRADATATYPE *extraData;
+
+        extraData = getExtradata(pBuffHeader->pPlatformPrivate,
+                                 (OMX_EXTRADATATYPE)OMX_FaceDetection);
+
+        if ( NULL != extraData ) {
+            CAMHAL_LOGVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",
+                         extraData->nSize,
+                         sizeof(OMX_OTHER_EXTRADATATYPE),
+                         extraData->eType,
+                         extraData->nDataSize,
+                         extraData->nPortIndex,
+                         extraData->nVersion);
         } else {
-            CAMHAL_LOGDB("OMX_TI_PLATFORMPRIVATE size mismatch: expected = %d, received = %d",
-                         ( unsigned int ) sizeof(OMX_TI_PLATFORMPRIVATE),
-                         ( unsigned int ) platformPrivate->nSize);
+            CAMHAL_LOGD("FD extra data not found!");
             return -EINVAL;
         }
-    }  else {
-        CAMHAL_LOGDA("Invalid OMX_TI_PLATFORMPRIVATE");
-        return-EINVAL;
-    }
 
-
-    if ( 0 >= platformPrivate->nMetaDataSize ) {
-        CAMHAL_LOGDB("OMX_TI_PLATFORMPRIVATE nMetaDataSize is size is %d",
-                     ( unsigned int ) platformPrivate->nMetaDataSize);
-        return -EINVAL;
-    }
-
-    extraData = getExtradata((OMX_OTHER_EXTRADATATYPE *) (platformPrivate->pMetaDataBuffer),
-            platformPrivate->nMetaDataSize, (OMX_EXTRADATATYPE)OMX_FaceDetection);
-
-    if ( NULL != extraData ) {
-        CAMHAL_LOGVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",
-                     extraData->nSize,
-                     sizeof(OMX_OTHER_EXTRADATATYPE),
-                     extraData->eType,
-                     extraData->nDataSize,
-                     extraData->nPortIndex,
-                     extraData->nVersion);
-    } else {
-        CAMHAL_LOGDA("Invalid OMX_OTHER_EXTRADATATYPE");
-        return -EINVAL;
-    }
-
-    faceData = ( OMX_FACEDETECTIONTYPE * ) extraData->data;
-    if ( NULL != faceData ) {
-        if ( sizeof(OMX_FACEDETECTIONTYPE) == faceData->nSize ) {
-            CAMHAL_LOGVB("Faces detected %d",
-                         faceData->ulFaceCount,
-                         faceData->nSize,
-                         sizeof(OMX_FACEDETECTIONTYPE),
-                         faceData->eCameraView,
-                         faceData->nPortIndex,
-                         faceData->nVersion);
+        faceData = ( OMX_FACEDETECTIONTYPE * ) extraData->data;
+        if ( NULL != faceData ) {
+            if ( sizeof(OMX_FACEDETECTIONTYPE) == faceData->nSize ) {
+                CAMHAL_LOGVB("Faces detected %d",
+                             faceData->ulFaceCount,
+                             faceData->nSize,
+                             sizeof(OMX_FACEDETECTIONTYPE),
+                             faceData->eCameraView,
+                             faceData->nPortIndex,
+                             faceData->nVersion);
+            } else {
+                CAMHAL_LOGEB("OMX_FACEDETECTIONTYPE size mismatch: expected = %d, received = %d",
+                             ( unsigned int ) sizeof(OMX_FACEDETECTIONTYPE),
+                             ( unsigned int ) faceData->nSize);
+                return -EINVAL;
+            }
         } else {
-            CAMHAL_LOGDB("OMX_FACEDETECTIONTYPE size mismatch: expected = %d, received = %d",
-                         ( unsigned int ) sizeof(OMX_FACEDETECTIONTYPE),
-                         ( unsigned int ) faceData->nSize);
+            CAMHAL_LOGEA("Invalid OMX_FACEDETECTIONTYPE");
             return -EINVAL;
         }
-    } else {
-        CAMHAL_LOGEA("Invalid OMX_FACEDETECTIONTYPE");
-        return -EINVAL;
     }
 
-    ret = encodeFaceCoordinates(faceData, &faces, previewWidth, previewHeight);
+    result = new (std::nothrow) CameraMetadataResult;
+    if(NULL == result.get()) {
+        ret = NO_MEMORY;
+        return ret;
+    }
 
-    if ( NO_ERROR == ret ) {
-        result = new CameraFDResult(faces);
+    //Encode face coordinates
+    faceRet = encodeFaceCoordinates(faceData, result->getMetadataResult()
+                                            , previewWidth, previewHeight);
+    if ((NO_ERROR == faceRet) || (NOT_ENOUGH_DATA == faceRet)) {
+        // Ignore harmless errors (no error and no update) and go ahead and encode
+        // the preview meta data
+        metaRet = encodePreviewMetadata(result->getMetadataResult()
+                                        , pBuffHeader->pPlatformPrivate);
+        if ( (NO_ERROR != metaRet) && (NOT_ENOUGH_DATA != metaRet) )  {
+           // Some 'real' error occurred during preview meta data encod, clear metadata
+           // result and return correct error code
+           result.clear();
+           ret = metaRet;
+        }
     } else {
+        //Some real error occurred during face encoding, clear metadata result
+        // and return correct error code
         result.clear();
-        result = NULL;
+        ret = faceRet;
+    }
+
+    if((NOT_ENOUGH_DATA == faceRet) && (NOT_ENOUGH_DATA == metaRet)) {
+        //No point sending the callback if nothing is changed
+        result.clear();
+        ret = faceRet;
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -290,40 +299,38 @@ status_t OMXCameraAdapter::detectFaces(OMX_BUFFERHEADERTYPE* pBuffHeader,
 }
 
 status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *faceData,
-                                                 camera_frame_metadata_t **pFaces,
+                                                 camera_frame_metadata_t *metadataResult,
                                                  size_t previewWidth,
                                                  size_t previewHeight)
 {
     status_t ret = NO_ERROR;
     camera_face_t *faces;
-    camera_frame_metadata_t *faceResult;
     size_t hRange, vRange;
     double tmp;
+    bool faceArrayChanged = false;
 
     LOG_FUNCTION_NAME;
 
-    if ( NULL == faceData ) {
-        CAMHAL_LOGEA("Invalid OMX_FACEDETECTIONTYPE parameter");
-        return EINVAL;
+    hRange = CameraMetadataResult::RIGHT - CameraMetadataResult::LEFT;
+    vRange = CameraMetadataResult::BOTTOM - CameraMetadataResult::TOP;
+
+    android::AutoMutex lock(mFaceDetectionLock);
+
+    // Avoid memory leak if called twice on same CameraMetadataResult
+    if ( (0 < metadataResult->number_of_faces) && (NULL != metadataResult->faces) ) {
+        free(metadataResult->faces);
+        metadataResult->number_of_faces = 0;
+        metadataResult->faces = NULL;
     }
 
-    LOG_FUNCTION_NAME
-
-    hRange = CameraFDResult::RIGHT - CameraFDResult::LEFT;
-    vRange = CameraFDResult::BOTTOM - CameraFDResult::TOP;
-
-    faceResult = ( camera_frame_metadata_t * ) malloc(sizeof(camera_frame_metadata_t));
-    if ( NULL == faceResult ) {
-        return -ENOMEM;
-    }
-
-    if ( 0 < faceData->ulFaceCount ) {
+    if ( (NULL != faceData) && (0 < faceData->ulFaceCount) ) {
         int orient_mult;
         int trans_left, trans_top, trans_right, trans_bot;
 
         faces = ( camera_face_t * ) malloc(sizeof(camera_face_t)*faceData->ulFaceCount);
         if ( NULL == faces ) {
-            return -ENOMEM;
+            ret = NO_MEMORY;
+            goto out;
         }
 
         /**
@@ -359,7 +366,7 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
         / *               (r, b)
           */
 
-        if (mDeviceOrientation == 180) {
+        if (mFaceOrientation == 180) {
             orient_mult = -1;
             trans_left = 2; // right is now left
             trans_top = 3; // bottom is now top
@@ -386,7 +393,7 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
             if(faceData->tFacePosition[j].nScore <= FACE_DETECTION_THRESHOLD)
              continue;
 
-            if (mDeviceOrientation == 180) {
+            if (mFaceOrientation == 180) {
                 // from sensor pov, the left pos is the right corner of the face in pov of frame
                 nLeft = faceData->tFacePosition[j].nLeft + faceData->tFacePosition[j].nWidth;
                 nTop =  faceData->tFacePosition[j].nTop + faceData->tFacePosition[j].nHeight;
@@ -417,20 +424,21 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
 
             faces[i].score = faceData->tFacePosition[j].nScore;
             faces[i].id = 0;
-            faces[i].left_eye[0] = CameraFDResult::INVALID_DATA;
-            faces[i].left_eye[1] = CameraFDResult::INVALID_DATA;
-            faces[i].right_eye[0] = CameraFDResult::INVALID_DATA;
-            faces[i].right_eye[1] = CameraFDResult::INVALID_DATA;
-            faces[i].mouth[0] = CameraFDResult::INVALID_DATA;
-            faces[i].mouth[1] = CameraFDResult::INVALID_DATA;
+            faces[i].left_eye[0] = CameraMetadataResult::INVALID_DATA;
+            faces[i].left_eye[1] = CameraMetadataResult::INVALID_DATA;
+            faces[i].right_eye[0] = CameraMetadataResult::INVALID_DATA;
+            faces[i].right_eye[1] = CameraMetadataResult::INVALID_DATA;
+            faces[i].mouth[0] = CameraMetadataResult::INVALID_DATA;
+            faces[i].mouth[1] = CameraMetadataResult::INVALID_DATA;
             i++;
             }
 
-        faceResult->number_of_faces = i;
-        faceResult->faces = faces;
+        metadataResult->number_of_faces = i;
+        metadataResult->faces = faces;
 
-        for (int i = 0; i  < faceResult->number_of_faces; i++)
+        for (int i = 0; i  < metadataResult->number_of_faces; i++)
         {
+            bool faceChanged = true;
             int centerX = (faces[i].rect[trans_left] + faces[i].rect[trans_right] ) / 2;
             int centerY = (faces[i].rect[trans_top] + faces[i].rect[trans_bot] ) / 2;
 
@@ -448,43 +456,49 @@ status_t OMXCameraAdapter::encodeFaceCoordinates(const OMX_FACEDETECTIONTYPE *fa
                 int tempSizeY = (faceDetectionLastOutput[j].rect[trans_bot] -
                                 faceDetectionLastOutput[j].rect[trans_top] ) ;
 
-                if ( (abs(tempCenterX - centerX) < HorizontalFilterThreshold) &&
-                     (abs(tempCenterY - centerY) < VerticalFilterThreshold) )
-                {
-                    // Found Face. It did not move too far.
-                    // Now check size of rectangle compare to last output
-                    if ( (abs (tempSizeX -sizeX) < HorizontalFaceSizeThreshold) &&
-                         (abs (tempSizeY -sizeY) < VerticalFaceSizeThreshold) )
-                    {
-                        // Rectangle is almost same as last time
-                        // Output exactly what was done for this face last time.
-                        faces[i] = faceDetectionLastOutput[j];
-                    }
-                    else
-                    {
-                        // TODO(XXX): Rectangle size changed but position is same.
-                        // Possibly we can apply just positional correctness.
+                if ( ( tempCenterX == centerX) &&
+                     ( tempCenterY == centerY) ) {
+                    // Found Face.
+                    // Now check size of rectangle
+                    // compare to last output.
+                    if ( ( tempSizeX == sizeX ) &&
+                         ( tempSizeY == sizeY ) ) {
+                        faceChanged = false;
                     }
                 }
+            }
+            // Send face detection data after some face coordinate changes
+            if (faceChanged) {
+                faceArrayChanged = true;
             }
         }
 
         // Save this output for next iteration
-        for (int i = 0; i  < faceResult->number_of_faces; i++)
+        for (int i = 0; i  < metadataResult->number_of_faces; i++)
         {
             faceDetectionLastOutput[i] = faces[i];
         }
-        faceDetectionNumFacesLastOutput = faceResult->number_of_faces;
     } else {
-        faceResult->number_of_faces = 0;
-        faceResult->faces = NULL;
+        metadataResult->number_of_faces = 0;
+        metadataResult->faces = NULL;
     }
 
-    *pFaces = faceResult;
+    // Send face detection data after face count changes
+    if (faceDetectionNumFacesLastOutput != metadataResult->number_of_faces) {
+        faceArrayChanged = true;
+    }
+    faceDetectionNumFacesLastOutput = metadataResult->number_of_faces;
+
+    if ( !faceArrayChanged ) {
+        ret = NOT_ENOUGH_DATA;
+    }
 
     LOG_FUNCTION_NAME_EXIT;
+
+out:
 
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

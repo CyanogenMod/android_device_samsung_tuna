@@ -16,7 +16,8 @@
 
 #include "CameraHal.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 const char CameraHal::PARAMS_DELIMITER []= ",";
 
@@ -46,7 +47,7 @@ void CameraHal::PPM(const char* str){
     ppm.tv_sec = ppm.tv_sec * 1000000;
     ppm.tv_sec = ppm.tv_sec + ppm.tv_usec - ppm_start.tv_usec;
 
-    ALOGD("PPM: %s :%ld.%ld ms", str, ( ppm.tv_sec /1000 ), ( ppm.tv_sec % 1000 ));
+    CAMHAL_LOGI("PPM: %s :%ld.%ld ms", str, ( ppm.tv_sec /1000 ), ( ppm.tv_sec % 1000 ));
 }
 
 #elif PPM_INSTRUMENTATION_ABS
@@ -76,7 +77,7 @@ void CameraHal::PPM(const char* str){
     absolute *= 1000;
     absolute += ppm.tv_usec /1000;
 
-    ALOGD("PPM: %s :%llu.%llu ms : %llu ms", str, ( elapsed /1000 ), ( elapsed % 1000 ), absolute);
+    CAMHAL_LOGI("PPM: %s :%llu.%llu ms : %llu ms", str, ( elapsed /1000 ), ( elapsed % 1000 ), absolute);
 }
 
 #endif
@@ -109,13 +110,12 @@ void CameraHal::PPM(const char* str, struct timeval* ppm_first, ...){
     ppm.tv_sec = ppm.tv_sec * 1000000;
     ppm.tv_sec = ppm.tv_sec + ppm.tv_usec - ppm_first->tv_usec;
 
-    ALOGD("PPM: %s :%ld.%ld ms :  %llu ms", temp_str, ( ppm.tv_sec /1000 ), ( ppm.tv_sec % 1000 ), absolute);
+    CAMHAL_LOGI("PPM: %s :%ld.%ld ms :  %llu ms", temp_str, ( ppm.tv_sec /1000 ), ( ppm.tv_sec % 1000 ), absolute);
 
     va_end(args);
 }
 
 #endif
 
-};
-
-
+} // namespace Camera
+} // namespace Ti

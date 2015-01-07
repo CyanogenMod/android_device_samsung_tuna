@@ -17,7 +17,8 @@
 
 #include "ErrorUtils.h"
 
-namespace android {
+namespace Ti {
+namespace Utils {
 
 /**
    @brief Method to convert from POSIX to Android errors
@@ -135,7 +136,5 @@ status_t ErrorUtils::omxToAndroidError(OMX_ERRORTYPE error)
 }
 
 
-};
-
-
-
+} // namespace Utils
+} // namespace Ti

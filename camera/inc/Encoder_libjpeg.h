@@ -29,11 +29,19 @@
 
 extern "C" {
 #include "jhead.h"
+
+#undef TRUE
+#undef FALSE
+
 }
 
-#define CANCEL_TIMEOUT 3000000 // 3 seconds
+#include "CameraHal.h"
 
-namespace android {
+#define CANCEL_TIMEOUT 5000000 // 5 seconds
+
+namespace Ti {
+namespace Camera {
+
 /**
  * libjpeg encoder class - uses libjpeg to encode yuv
  */
@@ -45,6 +53,7 @@ typedef void (*encoder_libjpeg_callback_t) (void* main_jpeg,
                                             void* cookie1,
                                             void* cookie2,
                                             void* cookie3,
+                                            void* cookie4,
                                             bool canceled);
 
 // these have to match strings defined in external/jhead/exif.c
@@ -86,7 +95,12 @@ class ExifElementsTable {
     public:
         ExifElementsTable() :
            gps_tag_count(0), exif_tag_count(0), position(0),
-           jpeg_opened(false), has_datetime_tag(false) { }
+           jpeg_opened(false)
+        {
+#ifdef ANDROID_API_JB_OR_LATER
+            has_datetime_tag = false;
+#endif
+        }
         ~ExifElementsTable();
 
         status_t insertElement(const char* tag, const char* value);
@@ -102,10 +116,12 @@ class ExifElementsTable {
         unsigned int exif_tag_count;
         unsigned int position;
         bool jpeg_opened;
+#ifdef ANDROID_API_JB_OR_LATER
         bool has_datetime_tag;
+#endif
 };
 
-class Encoder_libjpeg : public Thread {
+class Encoder_libjpeg : public android::Thread {
     /* public member types and variables */
     public:
         struct params {
@@ -131,9 +147,9 @@ class Encoder_libjpeg : public Thread {
                         CameraFrame::FrameType type,
                         void* cookie1,
                         void* cookie2,
-                        void* cookie3)
-            : Thread(false), mMainInput(main_jpeg), mThumbnailInput(tn_jpeg), mCb(cb),
-              mCancelEncoding(false), mCookie1(cookie1), mCookie2(cookie2), mCookie3(cookie3),
+                        void* cookie3, void *cookie4)
+            : android::Thread(false), mMainInput(main_jpeg), mThumbnailInput(tn_jpeg), mCb(cb),
+              mCancelEncoding(false), mCookie1(cookie1), mCookie2(cookie2), mCookie3(cookie3), mCookie4(cookie4),
               mType(type), mThumb(NULL) {
             this->incStrong(this);
             mCancelSem.Create(0);
@@ -145,10 +161,9 @@ class Encoder_libjpeg : public Thread {
 
         virtual bool threadLoop() {
             size_t size = 0;
-            sp<Encoder_libjpeg> tn = NULL;
             if (mThumbnailInput) {
                 // start thread to encode thumbnail
-                mThumb = new Encoder_libjpeg(mThumbnailInput, NULL, NULL, mType, NULL, NULL, NULL);
+                mThumb = new Encoder_libjpeg(mThumbnailInput, NULL, NULL, mType, NULL, NULL, NULL, NULL);
                 mThumb->run();
             }
 
@@ -167,7 +182,7 @@ class Encoder_libjpeg : public Thread {
             }
 
             if(mCb) {
-                mCb(mMainInput, mThumbnailInput, mType, mCookie1, mCookie2, mCookie3, mCancelEncoding);
+                mCb(mMainInput, mThumbnailInput, mType, mCookie1, mCookie2, mCookie3, mCookie4, mCancelEncoding);
             }
 
             // encoder thread runs, self-destructs, and then exits
@@ -197,13 +212,15 @@ class Encoder_libjpeg : public Thread {
         void* mCookie1;
         void* mCookie2;
         void* mCookie3;
+        void* mCookie4;
         CameraFrame::FrameType mType;
-        sp<Encoder_libjpeg> mThumb;
-        Semaphore mCancelSem;
+        android::sp<Encoder_libjpeg> mThumb;
+        Utils::Semaphore mCancelSem;
 
         size_t encode(params*);
 };
 
-}
+} // namespace Camera
+} // namespace Ti
 
 #endif

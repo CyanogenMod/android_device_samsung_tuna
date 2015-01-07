@@ -21,27 +21,40 @@
 *
 */
 
-#include "CameraHal.h"
 #include "CameraProperties.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 const char CameraProperties::INVALID[]="prop-invalid-key";
 const char CameraProperties::CAMERA_NAME[]="prop-camera-name";
 const char CameraProperties::CAMERA_SENSOR_INDEX[]="prop-sensor-index";
+const char CameraProperties::CAMERA_SENSOR_ID[] = "prop-sensor-id";
 const char CameraProperties::ORIENTATION_INDEX[]="prop-orientation";
 const char CameraProperties::FACING_INDEX[]="prop-facing";
-const char CameraProperties::S3D_SUPPORTED[]="prop-s3d-supported";
 const char CameraProperties::SUPPORTED_PREVIEW_SIZES[] = "prop-preview-size-values";
+const char CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES[] = "prop-preview-subsampled-size-values";
+const char CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[] = "prop-preview-topbottom-size-values";
+const char CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[] = "prop-preview-sidebyside-size-values";
 const char CameraProperties::SUPPORTED_PREVIEW_FORMATS[] = "prop-preview-format-values";
 const char CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES[] = "prop-preview-frame-rate-values";
+const char CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES_EXT[] = "prop-preview-frame-rate-ext-values";
 const char CameraProperties::SUPPORTED_PICTURE_SIZES[] = "prop-picture-size-values";
+const char CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES[] = "prop-picture-subsampled-size-values";
+const char CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES[] = "prop-picture-topbottom-size-values";
+const char CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[] = "prop-picture-sidebyside-size-values";
 const char CameraProperties::SUPPORTED_PICTURE_FORMATS[] = "prop-picture-format-values";
 const char CameraProperties::SUPPORTED_THUMBNAIL_SIZES[] = "prop-jpeg-thumbnail-size-values";
 const char CameraProperties::SUPPORTED_WHITE_BALANCE[] = "prop-whitebalance-values";
 const char CameraProperties::SUPPORTED_EFFECTS[] = "prop-effect-values";
 const char CameraProperties::SUPPORTED_ANTIBANDING[] = "prop-antibanding-values";
 const char CameraProperties::SUPPORTED_EXPOSURE_MODES[] = "prop-exposure-mode-values";
+const char CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MIN[] = "prop-manual-exposure-min";
+const char CameraProperties::SUPPORTED_MANUAL_EXPOSURE_MAX[] = "prop-manual-exposure-max";
+const char CameraProperties::SUPPORTED_MANUAL_EXPOSURE_STEP[] = "prop-manual-exposure-step";
+const char CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MIN[] = "prop-manual-gain-iso-min";
+const char CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_MAX[] = "prop-manual-gain-iso-max";
+const char CameraProperties::SUPPORTED_MANUAL_GAIN_ISO_STEP[] = "prop-manual-gain-iso-step";
 const char CameraProperties::SUPPORTED_EV_MAX[] = "prop-ev-compensation-max";
 const char CameraProperties::SUPPORTED_EV_MIN[] = "prop-ev-compensation-min";
 const char CameraProperties::SUPPORTED_EV_STEP[] = "prop-ev-compensation-step";
@@ -79,21 +92,30 @@ const char CameraProperties::SATURATION[] = "prop-saturation-default";
 const char CameraProperties::SHARPNESS[] = "prop-sharpness-default";
 const char CameraProperties::IPP[] = "prop-ipp-default";
 const char CameraProperties::GBCE[] = "prop-gbce-default";
-const char CameraProperties::S3D2D_PREVIEW[] = "prop-s3d2d-preview";
-const char CameraProperties::S3D2D_PREVIEW_MODES[] = "prop-s3d2d-preview-values";
-const char CameraProperties::AUTOCONVERGENCE[] = "prop-auto-convergence";
+const char CameraProperties::SUPPORTED_GBCE[] = "prop-gbce-supported";
+const char CameraProperties::GLBCE[] = "prop-glbce-default";
+const char CameraProperties::SUPPORTED_GLBCE[] = "prop-glbce-supported";
+const char CameraProperties::S3D_PRV_FRAME_LAYOUT[] = "prop-s3d-prv-frame-layout";
+const char CameraProperties::S3D_PRV_FRAME_LAYOUT_VALUES[] = "prop-s3d-prv-frame-layout-values";
+const char CameraProperties::S3D_CAP_FRAME_LAYOUT[] = "prop-s3d-cap-frame-layout";
+const char CameraProperties::S3D_CAP_FRAME_LAYOUT_VALUES[] = "prop-s3d-cap-frame-layout-values";
 const char CameraProperties::AUTOCONVERGENCE_MODE[] = "prop-auto-convergence-mode";
-const char CameraProperties::MANUALCONVERGENCE_VALUES[] = "prop-manual-convergence-values";
+const char CameraProperties::AUTOCONVERGENCE_MODE_VALUES[] = "prop-auto-convergence-mode-values";
+const char CameraProperties::MANUAL_CONVERGENCE[] = "prop-manual-convergence";
+const char CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MIN[] = "prop-supported-manual-convergence-min";
+const char CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MAX[] = "prop-supported-manual-convergence-max";
+const char CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_STEP[] = "prop-supported-manual-convergence-step";
 const char CameraProperties::VSTAB[] = "prop-vstab-default";
 const char CameraProperties::VSTAB_SUPPORTED[] = "prop-vstab-supported";
+const char CameraProperties::VNF[] = "prop-vnf-default";
+const char CameraProperties::VNF_SUPPORTED[] = "prop-vnf-supported";
 const char CameraProperties::REVISION[] = "prop-revision";
 const char CameraProperties::FOCAL_LENGTH[] = "prop-focal-length";
 const char CameraProperties::HOR_ANGLE[] = "prop-horizontal-angle";
 const char CameraProperties::VER_ANGLE[] = "prop-vertical-angle";
 const char CameraProperties::FRAMERATE_RANGE[] = "prop-framerate-range-default";
-const char CameraProperties::FRAMERATE_RANGE_IMAGE[] = "prop-framerate-range-image-default";
-const char CameraProperties::FRAMERATE_RANGE_VIDEO[]="prop-framerate-range-video-default";
 const char CameraProperties::FRAMERATE_RANGE_SUPPORTED[]="prop-framerate-range-values";
+const char CameraProperties::FRAMERATE_RANGE_EXT_SUPPORTED[]="prop-framerate-range-ext-values";
 const char CameraProperties::SENSOR_ORIENTATION[]= "sensor-orientation";
 const char CameraProperties::SENSOR_ORIENTATION_VALUES[]= "sensor-orientation-values";
 const char CameraProperties::EXIF_MAKE[] = "prop-exif-make";
@@ -111,8 +133,13 @@ const char CameraProperties::METERING_AREAS[] = "prop-metering-areas";
 const char CameraProperties::VIDEO_SNAPSHOT_SUPPORTED[] = "prop-video-snapshot-supported";
 const char CameraProperties::VIDEO_SIZE[] = "video-size";
 const char CameraProperties::SUPPORTED_VIDEO_SIZES[] = "video-size-values";
-const char CameraProperties::PREFERRED_PREVIEW_SIZE_FOR_VIDEO[] = "preferred-preview-size-for-video";
-
+const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED[] = "prop-mechanical-misalignment-correction-supported";
+const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION[] = "prop-mechanical-misalignment-correction";
+const char CameraProperties::CAP_MODE_VALUES[] = "prop-mode-values";
+const char CameraProperties::RAW_WIDTH[] = "prop-raw-width-values";
+const char CameraProperties::RAW_HEIGHT[] = "prop-raw-height-values";
+const char CameraProperties::MAX_PICTURE_WIDTH[] = "prop-max-picture-width";
+const char CameraProperties::MAX_PICTURE_HEIGHT[] = "prop-max-picture-height";
 
 const char CameraProperties::DEFAULT_VALUE[] = "";
 
@@ -124,7 +151,7 @@ int CameraProperties::getProperties(int cameraIndex, CameraProperties::Propertie
 {
     LOG_FUNCTION_NAME;
 
-    if((unsigned int)cameraIndex >= mCamerasSupported)
+    if(cameraIndex >= mCamerasSupported)
     {
         LOG_FUNCTION_NAME_EXIT;
         return -EINVAL;
@@ -136,57 +163,78 @@ int CameraProperties::getProperties(int cameraIndex, CameraProperties::Propertie
     return 0;
 }
 
-ssize_t CameraProperties::Properties::set(const char *prop, const char *value)
-{
-    if(!prop)
-        return -EINVAL;
-    if(!value)
-        value = DEFAULT_VALUE;
+void CameraProperties::Properties::set(const char * const prop, const char * const value) {
+    CAMHAL_ASSERT(prop);
 
-    return mProperties->replaceValueFor(String8(prop), String8(value));
+    if ( !value ) {
+        mProperties[mCurrentMode].removeItem(android::String8(prop));
+    } else {
+        mProperties[mCurrentMode].replaceValueFor(android::String8(prop), android::String8(value));
+    }
 }
 
-ssize_t CameraProperties::Properties::set(const char *prop, int value)
-{
+void CameraProperties::Properties::set(const char * const prop, const int value) {
     char s_val[30];
-
     sprintf(s_val, "%d", value);
-
-    return set(prop, s_val);
+    set(prop, s_val);
 }
 
-const char* CameraProperties::Properties::get(const char * prop)
-{
-    String8 value = mProperties->valueFor(String8(prop));
-    return value.string();
+const char* CameraProperties::Properties::get(const char * prop) const {
+    return mProperties[mCurrentMode].valueFor(android::String8(prop)).string();
 }
 
-void CameraProperties::Properties::dump()
-{
-    for (size_t i = 0; i < mProperties->size(); i++)
-    {
-        CAMHAL_LOGDB("%s = %s\n",
-                        mProperties->keyAt(i).string(),
-                        mProperties->valueAt(i).string());
+int CameraProperties::Properties::getInt(const char * prop) const {
+    android::String8 value = mProperties[mCurrentMode].valueFor(android::String8(prop));
+    if (value.isEmpty()) {
+        return -1;
     }
+    return strtol(value, 0, 0);
 }
 
-const char* CameraProperties::Properties::keyAt(unsigned int index)
-{
-    if(index < mProperties->size())
-    {
-        return mProperties->keyAt(index).string();
+void CameraProperties::Properties::setSensorIndex(int idx) {
+    OperatingMode originalMode = getMode();
+    for ( int i = 0 ; i < MODE_MAX ; i++ ) {
+        setMode(static_cast<OperatingMode>(i));
+        set(CAMERA_SENSOR_INDEX, idx);
+    }
+    setMode(originalMode);
+}
+
+void CameraProperties::Properties::setMode(OperatingMode mode) {
+    CAMHAL_ASSERT(mode >= 0 && mode < MODE_MAX);
+    mCurrentMode = mode;
+}
+
+OperatingMode CameraProperties::Properties::getMode() const {
+    return mCurrentMode;
+}
+
+void CameraProperties::Properties::dump() {
+    CAMHAL_LOGD("================================");
+    CAMHAL_LOGD("Dumping properties for camera: %d", getInt("prop-sensor-index"));
+
+    for (size_t i = 0; i < mProperties[mCurrentMode].size(); i++) {
+        CAMHAL_LOGD("%s = %s",
+                mProperties[mCurrentMode].keyAt(i).string(),
+                mProperties[mCurrentMode].valueAt(i).string());
+    }
+
+    CAMHAL_LOGD("--------------------------------");
+}
+
+const char* CameraProperties::Properties::keyAt(const unsigned int index) const {
+    if (index < mProperties[mCurrentMode].size()) {
+        return mProperties[mCurrentMode].keyAt(index).string();
     }
     return NULL;
 }
 
-const char* CameraProperties::Properties::valueAt(unsigned int index)
-{
-    if(index < mProperties->size())
-    {
-        return mProperties->valueAt(index).string();
+const char* CameraProperties::Properties::valueAt(const unsigned int index) const {
+    if (index < mProperties[mCurrentMode].size()) {
+        return mProperties[mCurrentMode].valueAt(index).string();
     }
     return NULL;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

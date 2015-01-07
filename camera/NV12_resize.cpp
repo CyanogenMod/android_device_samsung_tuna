@@ -1,12 +1,27 @@
+/*
+ * Copyright (C) Texas Instruments - http://www.ti.com/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "NV12_resize.h"
 
-//#define LOG_NDEBUG 0
-#define LOG_NIDEBUG 0
-#define LOG_NDDEBUG 0
-
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif
 #define LOG_TAG "NV12_resize"
+
 #define STRIDE 4096
-#include <utils/Log.h>
 
 /*==========================================================================
 * Function Name  : VT_resizeFrame_Video_opt2_lp
@@ -23,95 +38,82 @@
 *            faster version.
 ============================================================================*/
 mmBool
-VT_resizeFrame_Video_opt2_lp
-(
- structConvImage* i_img_ptr,        /* Points to the input image           */
- structConvImage* o_img_ptr,        /* Points to the output image          */
- IC_rect_type*  cropout,          /* how much to resize to in final image */
- mmUint16 dummy                         /* Transparent pixel value              */
- )
-{
-  ALOGV("VT_resizeFrame_Video_opt2_lp+");
+VT_resizeFrame_Video_opt2_lp(
+        structConvImage* i_img_ptr,      /* Points to the input image            */
+        structConvImage* o_img_ptr,      /* Points to the output image           */
+        IC_rect_type*  cropout,          /* how much to resize to in final image */
+        mmUint16 dummy                   /* Transparent pixel value              */
+        ) {
+    LOG_FUNCTION_NAME;
 
-  mmUint16 row,col;
-  mmUint32 resizeFactorX;
-  mmUint32 resizeFactorY;
+    mmUint16 row,col;
+    mmUint32 resizeFactorX;
+    mmUint32 resizeFactorY;
 
+    mmUint16 x, y;
 
-  mmUint16 x, y;
+    mmUchar* ptr8;
+    mmUchar *ptr8Cb, *ptr8Cr;
 
-  mmUchar* ptr8;
-  mmUchar *ptr8Cb, *ptr8Cr;
+    mmUint16 xf, yf;
+    mmUchar* inImgPtrY;
+    mmUchar* inImgPtrU;
+    mmUchar* inImgPtrV;
+    mmUint32 cox, coy, codx, cody;
+    mmUint16 idx,idy, idxC;
 
+    if ( i_img_ptr->uWidth == o_img_ptr->uWidth ) {
+        if ( i_img_ptr->uHeight == o_img_ptr->uHeight ) {
+            CAMHAL_LOGV("************************f(i_img_ptr->uHeight == o_img_ptr->uHeight) are same *********************\n");
+            CAMHAL_LOGV("************************(i_img_ptr->width == %d" , i_img_ptr->uWidth );
+            CAMHAL_LOGV("************************(i_img_ptr->uHeight == %d" , i_img_ptr->uHeight );
+            CAMHAL_LOGV("************************(o_img_ptr->width == %d" ,o_img_ptr->uWidth );
+            CAMHAL_LOGV("************************(o_img_ptr->uHeight == %d" , o_img_ptr->uHeight );
+        }
+    }
 
-  mmUint16 xf, yf;
-  mmUchar* inImgPtrY;
-  mmUchar* inImgPtrU;
-  mmUchar* inImgPtrV;
-  mmUint32 cox, coy, codx, cody;
-  mmUint16 idx,idy, idxC;
+    if ( !i_img_ptr || !i_img_ptr->imgPtr || !o_img_ptr || !o_img_ptr->imgPtr ) {
+        CAMHAL_LOGE("Image Point NULL");
+        return false;
+    }
 
-  if(i_img_ptr->uWidth == o_img_ptr->uWidth)
-	{
-		if(i_img_ptr->uHeight == o_img_ptr->uHeight)
-			{
-				ALOGV("************************f(i_img_ptr->uHeight == o_img_ptr->uHeight) are same *********************\n");
-				ALOGV("************************(i_img_ptr->width == %d" , i_img_ptr->uWidth );
-				ALOGV("************************(i_img_ptr->uHeight == %d" , i_img_ptr->uHeight );
-				ALOGV("************************(o_img_ptr->width == %d" ,o_img_ptr->uWidth );
-				ALOGV("************************(o_img_ptr->uHeight == %d" , o_img_ptr->uHeight );
-			}
-	}
+    inImgPtrY = (mmUchar *) i_img_ptr->imgPtr + i_img_ptr->uOffset;
+    inImgPtrU = (mmUchar *) i_img_ptr->clrPtr + i_img_ptr->uOffset/2;
+    inImgPtrV = (mmUchar*)inImgPtrU + 1;
 
-  if (!i_img_ptr || !i_img_ptr->imgPtr ||
-    !o_img_ptr || !o_img_ptr->imgPtr)
-  {
-	ALOGE("Image Point NULL");
-	ALOGV("VT_resizeFrame_Video_opt2_lp-");
-	return FALSE;
-  }
+    if ( !cropout ) {
+        cox = 0;
+        coy = 0;
+        codx = o_img_ptr->uWidth;
+        cody = o_img_ptr->uHeight;
+    } else {
+        cox = cropout->x;
+        coy = cropout->y;
+        codx = cropout->uWidth;
+        cody = cropout->uHeight;
+    }
+    idx = i_img_ptr->uWidth;
+    idy = i_img_ptr->uHeight;
 
-  inImgPtrY = (mmUchar *) i_img_ptr->imgPtr + i_img_ptr->uOffset;
-  inImgPtrU = (mmUchar *) i_img_ptr->clrPtr + i_img_ptr->uOffset/2;
-  inImgPtrV = (mmUchar*)inImgPtrU + 1;
+    /* make sure valid input size */
+    if ( idx < 1 || idy < 1 || i_img_ptr->uStride < 1 ) {
+        CAMHAL_LOGE("idx or idy less then 1 idx = %d idy = %d stride = %d", idx, idy, i_img_ptr->uStride);
+        return false;
+    }
 
-  if (cropout == NULL)
-  {
-    cox = 0;
-    coy = 0;
-    codx = o_img_ptr->uWidth;
-    cody = o_img_ptr->uHeight;
-  }
-  else
-  {
-    cox = cropout->x;
-    coy = cropout->y;
-    codx = cropout->uWidth;
-    cody = cropout->uHeight;
-  }
-  idx = i_img_ptr->uWidth;
-  idy = i_img_ptr->uHeight;
+    resizeFactorX = ((idx-1)<<9) / codx;
+    resizeFactorY = ((idy-1)<<9) / cody;
 
-  /* make sure valid input size */
-  if (idx < 1 || idy < 1 || i_img_ptr->uStride < 1)
-	{
-	ALOGE("idx or idy less then 1 idx = %d idy = %d stride = %d", idx, idy, i_img_ptr->uStride);
-	ALOGV("VT_resizeFrame_Video_opt2_lp-");
-	return FALSE;
-	}
+    if( i_img_ptr->eFormat != IC_FORMAT_YCbCr420_lp ||
+            o_img_ptr->eFormat != IC_FORMAT_YCbCr420_lp ) {
+        CAMHAL_LOGE("eFormat not supported");
+        return false;
+    }
 
-  resizeFactorX = ((idx-1)<<9) / codx;
-  resizeFactorY = ((idy-1)<<9) / cody;
-
-  if(i_img_ptr->eFormat == IC_FORMAT_YCbCr420_lp &&
-    o_img_ptr->eFormat == IC_FORMAT_YCbCr420_lp)
-  {
     ptr8 = (mmUchar*)o_img_ptr->imgPtr + cox + coy*o_img_ptr->uWidth;
 
-
     ////////////////////////////for Y//////////////////////////
-    for (row=0; row < cody; row++)
-    {
+    for ( row = 0; row < cody; row++ ) {
         mmUchar *pu8Yrow1 = NULL;
         mmUchar *pu8Yrow2 = NULL;
         y  = (mmUint16) ((mmUint32) (row*resizeFactorY) >> 9);
@@ -119,8 +121,7 @@ VT_resizeFrame_Video_opt2_lp
         pu8Yrow1 = inImgPtrY + (y) * i_img_ptr->uStride;
         pu8Yrow2 = pu8Yrow1 + i_img_ptr->uStride;
 
-        for (col=0; col < codx; col++)
-        {
+        for ( col = 0; col < codx; col++ ) {
             mmUchar in11, in12, in21, in22;
             mmUchar *pu8ptr1 = NULL;
             mmUchar *pu8ptr2 = NULL;
@@ -128,11 +129,8 @@ VT_resizeFrame_Video_opt2_lp
             mmUint16 accum_1;
             //mmUint32 accum_W;
 
-
-
             x  = (mmUint16) ((mmUint32)  (col*resizeFactorX) >> 9);
             xf = (mmUchar)  ((mmUint32) ((col*resizeFactorX) >> 6) & 0x7);
-
 
             //accum_W = 0;
             accum_1 =  0;
@@ -175,7 +173,6 @@ VT_resizeFrame_Video_opt2_lp
             accum_1 = (accum_1>>6);
             *ptr8 = (mmUchar)accum_1 ;
 
-
             ptr8++;
         }
         ptr8 = ptr8 + (o_img_ptr->uStride - codx);
@@ -189,8 +186,7 @@ VT_resizeFrame_Video_opt2_lp
     ptr8Cr = (mmUchar*)(ptr8Cb+1);
 
     idxC = (idx>>1);
-    for (row=0; row < (((cody)>>1)); row++)
-    {
+    for ( row = 0; row < (((cody)>>1)); row++ ) {
         mmUchar *pu8Cbr1 = NULL;
         mmUchar *pu8Cbr2 = NULL;
         mmUchar *pu8Crr1 = NULL;
@@ -204,8 +200,7 @@ VT_resizeFrame_Video_opt2_lp
         pu8Crr1 = inImgPtrV + (y) * i_img_ptr->uStride;
         pu8Crr2 = pu8Crr1 + i_img_ptr->uStride;
 
-        for (col=0; col < (((codx)>>1)); col++)
-        {
+        for ( col = 0; col < (((codx)>>1)); col++ ) {
             mmUchar in11, in12, in21, in22;
             mmUchar *pu8Cbc1 = NULL;
             mmUchar *pu8Cbc2 = NULL;
@@ -216,20 +211,16 @@ VT_resizeFrame_Video_opt2_lp
             mmUint16 accum_1Cb, accum_1Cr;
             //mmUint32 accum_WCb, accum_WCr;
 
-
             x  = (mmUint16) ((mmUint32)  (col*resizeFactorX) >> 9);
             xf = (mmUchar)  ((mmUint32) ((col*resizeFactorX) >> 6) & 0x7);
-
 
             //accum_WCb = accum_WCr =  0;
             accum_1Cb = accum_1Cr =  0;
 
             pu8Cbc1 = pu8Cbr1 + (x*2);
             pu8Cbc2 = pu8Cbr2 + (x*2);
-	    pu8Crc1 = pu8Crr1 + (x*2);
+            pu8Crc1 = pu8Crr1 + (x*2);
             pu8Crc2 = pu8Crr2 + (x*2);
-
-
 
             /* A pixel */
             w = bWeights[xf][yf][0];
@@ -238,7 +229,7 @@ VT_resizeFrame_Video_opt2_lp
             accum_1Cb = (w * in11);
             //    accum_WCb += (w);
 
-			in11 = *(pu8Crc1);
+            in11 = *(pu8Crc1);
             accum_1Cr = (w * in11);
             //accum_WCr += (w);
 
@@ -260,7 +251,7 @@ VT_resizeFrame_Video_opt2_lp
             accum_1Cb += (w * in21);
             //accum_WCb += (w);
 
-			in21 = *(pu8Crc2);
+            in21 = *(pu8Crc2);
             accum_1Cr += (w * in21);
             //accum_WCr += (w);
 
@@ -280,7 +271,6 @@ VT_resizeFrame_Video_opt2_lp
             accum_1Cb = (accum_1Cb>>6);
             *ptr8Cb = (mmUchar)accum_1Cb ;
 
-
             accum_1Cr = (accum_1Cr >> 6);
             *ptr8Cr = (mmUchar)accum_1Cr ;
 
@@ -294,14 +284,7 @@ VT_resizeFrame_Video_opt2_lp
         ptr8Cr = ptr8Cr + (o_img_ptr->uStride-codx);
     }
     ///////////////////For Cb- Cr////////////////////////////////////////
-  }
-  else
-  {
-	ALOGE("eFormat not supported");
-	ALOGV("VT_resizeFrame_Video_opt2_lp-");
-	return FALSE;
-  }
-  ALOGV("success");
-  ALOGV("VT_resizeFrame_Video_opt2_lp-");
-  return TRUE;
+
+    CAMHAL_LOGV("success");
+    return true;
 }

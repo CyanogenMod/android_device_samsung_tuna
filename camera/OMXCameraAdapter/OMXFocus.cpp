@@ -22,10 +22,6 @@
 *
 */
 
-#undef LOG_TAG
-
-#define LOG_TAG "CameraHAL"
-
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 #include "ErrorUtils.h"
@@ -34,23 +30,26 @@
 #define AF_IMAGE_CALLBACK_TIMEOUT 5000000 //5 seconds timeout
 #define AF_VIDEO_CALLBACK_TIMEOUT 2800000 //2.8 seconds timeout
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
-status_t OMXCameraAdapter::setParametersFocus(const CameraParameters &params,
+const nsecs_t OMXCameraAdapter::CANCEL_AF_TIMEOUT =  seconds_to_nanoseconds(1);
+
+status_t OMXCameraAdapter::setParametersFocus(const android::CameraParameters &params,
                                               BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
     const char *str = NULL;
-    Vector< sp<CameraArea> > tempAreas;
+    android::Vector<android::sp<CameraArea> > tempAreas;
     size_t MAX_FOCUS_AREAS;
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mFocusAreasLock);
+    android::AutoMutex lock(mFocusAreasLock);
 
-    str = params.get(CameraParameters::KEY_FOCUS_AREAS);
+    str = params.get(android::CameraParameters::KEY_FOCUS_AREAS);
 
-    MAX_FOCUS_AREAS = atoi(params.get(CameraParameters::KEY_MAX_NUM_FOCUS_AREAS));
+    MAX_FOCUS_AREAS = atoi(params.get(android::CameraParameters::KEY_MAX_NUM_FOCUS_AREAS));
 
     if ( NULL != str ) {
         ret = CameraArea::parseAreas(str, ( strlen(str) + 1 ), tempAreas);
@@ -72,7 +71,7 @@ status_t OMXCameraAdapter::setParametersFocus(const CameraParameters &params,
         }
     }
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return ret;
 }
@@ -84,6 +83,7 @@ status_t OMXCameraAdapter::doAutoFocus()
     OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE focusControl;
     OMX_PARAM_FOCUSSTATUSTYPE focusStatus;
     OMX_CONFIG_BOOLEANTYPE bOMX;
+    CameraAdapter::AdapterState state;
     nsecs_t timeout = 0;
 
     LOG_FUNCTION_NAME;
@@ -102,18 +102,23 @@ status_t OMXCameraAdapter::doAutoFocus()
         return NO_ERROR;
         }
 
-
     if( ((AF_ACTIVE & getState()) != AF_ACTIVE) && ((AF_ACTIVE & getNextState()) != AF_ACTIVE) ) {
        CAMHAL_LOGDA("Auto focus got canceled before doAutoFocus could be called");
        return NO_ERROR;
     }
 
+    // AF when fixed focus modes are set should be a no-op.
+    if ( ( mParameters3A.Focus == OMX_IMAGE_FocusControlOff ) ||
+         ( mParameters3A.Focus == OMX_IMAGE_FocusControlAutoInfinity ) ||
+         ( mParameters3A.Focus == OMX_IMAGE_FocusControlHyperfocal ) ) {
+        returnFocusStatus(true);
+        return NO_ERROR;
+    }
+
     OMX_INIT_STRUCT_PTR (&focusStatus, OMX_PARAM_FOCUSSTATUSTYPE);
 
-#ifndef OMAP_TUNA
     // If the app calls autoFocus, the camera will stop sending face callbacks.
     pauseFaceDetection(true);
-#endif
 
     // This is needed for applying FOCUS_REGION correctly
     if ( (!mFocusAreas.isEmpty()) && (!mFocusAreas.itemAt(0)->isZeroArea()))
@@ -154,8 +159,7 @@ status_t OMXCameraAdapter::doAutoFocus()
          ( focusStatus.eFocusStatus == OMX_FocusStatusRequest ||
            focusStatus.eFocusStatus == OMX_FocusStatusUnableToReach ||
            focusStatus.eFocusStatus == OMX_FocusStatusLost ) ) ||
-            (mParameters3A.Focus !=  (OMX_IMAGE_FOCUSCONTROLTYPE)OMX_IMAGE_FocusControlAuto) )
-        {
+            (mParameters3A.Focus !=  (OMX_IMAGE_FOCUSCONTROLTYPE)OMX_IMAGE_FocusControlAuto) ) {
         OMX_INIT_STRUCT_PTR (&bOMX, OMX_CONFIG_BOOLEANTYPE);
         bOMX.bEnabled = OMX_TRUE;
 
@@ -163,6 +167,12 @@ status_t OMXCameraAdapter::doAutoFocus()
         eError = OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
                                (OMX_INDEXTYPE)OMX_TI_IndexConfigAutofocusEnable,
                                &bOMX);
+        if ( OMX_ErrorNone != eError ) {
+            return Utils::ErrorUtils::omxToAndroidError(eError);
+        }
+
+        {
+            android::AutoMutex lock(mDoAFMutex);
 
         // force AF, Ducati will take care of whether CAF
         // or AF will be performed, depending on light conditions
@@ -172,29 +182,31 @@ status_t OMXCameraAdapter::doAutoFocus()
             focusControl.eFocusControl = OMX_IMAGE_FocusControlAutoLock;
         }
 
-        if ( focusControl.eFocusControl != OMX_IMAGE_FocusControlAuto )
-            {
             eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
                                     OMX_IndexConfigFocusControl,
                                     &focusControl);
+
+            if ( OMX_ErrorNone != eError ) {
+                CAMHAL_LOGEB("Error while starting focus 0x%x", eError);
+                return INVALID_OPERATION;
+            } else {
+                CAMHAL_LOGDA("Autofocus started successfully");
             }
 
-        if ( OMX_ErrorNone != eError ) {
-            CAMHAL_LOGEB("Error while starting focus 0x%x", eError);
-            return INVALID_OPERATION;
-        } else {
-            CAMHAL_LOGDA("Autofocus started successfully");
-        }
+            // No need to wait if preview is about to stop
+            getNextState(state);
+            if ( ( PREVIEW_ACTIVE & state ) != PREVIEW_ACTIVE ) {
+                return NO_ERROR;
+            }
 
-        // configure focus timeout based on capture mode
-        timeout = (mCapMode == VIDEO_MODE) ?
-                        ( ( nsecs_t ) AF_VIDEO_CALLBACK_TIMEOUT * 1000 ) :
-                        ( ( nsecs_t ) AF_IMAGE_CALLBACK_TIMEOUT * 1000 );
+            // configure focus timeout based on capture mode
+            timeout = (mCapMode == VIDEO_MODE) ?
+                            ( ( nsecs_t ) AF_VIDEO_CALLBACK_TIMEOUT * 1000 ) :
+                            ( ( nsecs_t ) AF_IMAGE_CALLBACK_TIMEOUT * 1000 );
 
-            {
-            Mutex::Autolock lock(mDoAFMutex);
+
             ret = mDoAFCond.waitRelative(mDoAFMutex, timeout);
-            }
+        }
 
         //If somethiing bad happened while we wait
         if (mComponentState == OMX_StateInvalid) {
@@ -206,6 +218,7 @@ status_t OMXCameraAdapter::doAutoFocus()
             CAMHAL_LOGEA("Autofocus callback timeout expired");
             ret = returnFocusStatus(true);
         } else {
+            CAMHAL_LOGDA("Autofocus callback received");
             ret = returnFocusStatus(false);
         }
     } else { // Focus mode in continuous
@@ -227,18 +240,16 @@ status_t OMXCameraAdapter::stopAutoFocus()
 
     LOG_FUNCTION_NAME;
 
-    if ( OMX_StateInvalid == mComponentState )
-      {
+    if ( OMX_StateInvalid == mComponentState )  {
         CAMHAL_LOGEA("OMX component in Invalid state");
         returnFocusStatus(false);
         return -EINVAL;
-      }
+    }
 
-    if ( OMX_StateExecuting != mComponentState )
-        {
+    if ( OMX_StateExecuting != mComponentState ) {
           CAMHAL_LOGEA("OMX component not in executing state");
         return NO_ERROR;
-        }
+    }
 
     if ( mParameters3A.Focus == OMX_IMAGE_FocusControlAutoInfinity ) {
         // No need to stop focus if we are in infinity mode. Nothing to stop.
@@ -251,19 +262,20 @@ status_t OMXCameraAdapter::stopAutoFocus()
     eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
                             OMX_IndexConfigFocusControl,
                             &focusControl);
-    if ( OMX_ErrorNone != eError )
-        {
+    if ( OMX_ErrorNone != eError ) {
         CAMHAL_LOGEB("Error while stopping focus 0x%x", eError);
-        return ErrorUtils::omxToAndroidError(eError);
-    } else {
+        return Utils::ErrorUtils::omxToAndroidError(eError);
+    }
+#ifdef CAMERAHAL_TUNA
+    else {
         // This is a WA. Usually the OMX Camera component should
         // generate AF status change OMX event fairly quickly
         // ( after one preview frame ) and this notification should
         // actually come from 'handleFocusCallback()'.
-        Mutex::Autolock lock(mDoAFMutex);
+        android::AutoMutex lock(mDoAFMutex);
         mDoAFCond.broadcast();
     }
-
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -294,7 +306,7 @@ status_t OMXCameraAdapter::getFocusMode(OMX_IMAGE_CONFIG_FOCUSCONTROLTYPE &focus
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::cancelAutoFocus()
@@ -310,21 +322,32 @@ status_t OMXCameraAdapter::cancelAutoFocus()
         return ret;
     }
 
-    //Stop the AF only for modes other than CAF  or Inifinity
+    //Stop the AF only for modes other than CAF, Inifinity or Off
     if ( ( focusMode.eFocusControl != OMX_IMAGE_FocusControlAuto ) &&
          ( focusMode.eFocusControl != ( OMX_IMAGE_FOCUSCONTROLTYPE )
-                 OMX_IMAGE_FocusControlAutoInfinity ) ) {
+                 OMX_IMAGE_FocusControlAutoInfinity ) &&
+         ( focusMode.eFocusControl != OMX_IMAGE_FocusControlOff ) ) {
+        android::AutoMutex lock(mCancelAFMutex);
         stopAutoFocus();
+        ret = mCancelAFCond.waitRelative(mCancelAFMutex, CANCEL_AF_TIMEOUT);
+        if ( NO_ERROR != ret ) {
+            CAMHAL_LOGE("Cancel AF timeout!");
+        }
     } else if (focusMode.eFocusControl == OMX_IMAGE_FocusControlAuto) {
        // This re-enabling of CAF doesn't seem to
        // be needed any more.
        // re-apply CAF after unlocking and canceling
        // mPending3Asettings |= SetFocus;
     }
-#ifndef OMAP_TUNA
+
+    {
+        // Signal to 'doAutoFocus()'
+        android::AutoMutex lock(mDoAFMutex);
+        mDoAFCond.broadcast();
+    }
+
     // If the apps call #cancelAutoFocus()}, the face callbacks will also resume.
     pauseFaceDetection(false);
-#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -349,7 +372,7 @@ status_t OMXCameraAdapter::setFocusCallback(bool enabled)
     if ( OMX_StateExecuting != mComponentState )
         {
           CAMHAL_LOGEA("OMX component not in executing state");
-        ret = NO_ERROR;
+        return NO_ERROR;
         }
 
     if ( NO_ERROR == ret )
@@ -454,9 +477,9 @@ status_t OMXCameraAdapter::returnFocusStatus(bool timeoutReached)
             } else {
                 CAMHAL_LOGDA("Focus locked. Applied focus locks successfully");
             }
+
             stopAutoFocus();
             }
-
         //Query current focus distance after AF is complete
         updateFocusDistances(mParameters);
        }
@@ -476,10 +499,8 @@ status_t OMXCameraAdapter::returnFocusStatus(bool timeoutReached)
         notifyFocusSubscribers(focusStatus);
         }
 
-#ifndef OMAP_TUNA
     // After focus, face detection will resume sending face callbacks
     pauseFaceDetection(false);
-#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -514,6 +535,7 @@ status_t OMXCameraAdapter::checkFocus(OMX_PARAM_FOCUSSTATUSTYPE *eFocusStatus)
     if ( NO_ERROR == ret )
         {
         OMX_INIT_STRUCT_PTR (eFocusStatus, OMX_PARAM_FOCUSSTATUSTYPE);
+
         eError = OMX_GetConfig(mCameraAdapterParameters.mHandleComp,
                                OMX_IndexConfigCommonFocusStatus,
                                eFocusStatus);
@@ -534,7 +556,7 @@ status_t OMXCameraAdapter::checkFocus(OMX_PARAM_FOCUSSTATUSTYPE *eFocusStatus)
     return ret;
 }
 
-status_t OMXCameraAdapter::updateFocusDistances(CameraParameters &params)
+status_t OMXCameraAdapter::updateFocusDistances(android::CameraParameters &params)
 {
     OMX_U32 focusNear, focusOptimal, focusFar;
     status_t ret = NO_ERROR;
@@ -620,7 +642,7 @@ status_t OMXCameraAdapter::encodeFocusDistance(OMX_U32 dist, char *buffer, size_
         {
         if ( 0 == dist )
             {
-            strncpy(buffer, CameraParameters::FOCUS_DISTANCE_INFINITY, ( length - 1 ));
+            strncpy(buffer, android::CameraParameters::FOCUS_DISTANCE_INFINITY, ( length - 1 ));
             }
         else
             {
@@ -638,7 +660,7 @@ status_t OMXCameraAdapter::encodeFocusDistance(OMX_U32 dist, char *buffer, size_
 status_t OMXCameraAdapter::addFocusDistances(OMX_U32 &near,
                                              OMX_U32 &optimal,
                                              OMX_U32 &far,
-                                             CameraParameters& params)
+                                             android::CameraParameters& params)
 {
     status_t ret = NO_ERROR;
 
@@ -677,7 +699,7 @@ status_t OMXCameraAdapter::addFocusDistances(OMX_U32 &near,
                                                                               mFocusDistOptimal,
                                                                               mFocusDistFar);
 
-        params.set(CameraParameters::KEY_FOCUS_DISTANCES, mFocusDistBuffer);
+        params.set(android::CameraParameters::KEY_FOCUS_DISTANCES, mFocusDistBuffer);
         }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -690,12 +712,19 @@ status_t OMXCameraAdapter::setTouchFocus()
     status_t ret = NO_ERROR;
     OMX_ERRORTYPE eError = OMX_ErrorNone;
 
-    OMX_ALGOAREASTYPE **focusAreas;
+    OMX_ALGOAREASTYPE *focusAreas;
     OMX_TI_CONFIG_SHAREDBUFFER sharedBuffer;
     MemoryManager memMgr;
+    CameraBuffer *bufferlist;
     int areasSize = 0;
 
     LOG_FUNCTION_NAME;
+
+    ret = memMgr.initialize();
+    if ( ret != OK ) {
+        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
+        return ret;
+    }
 
     if ( OMX_StateInvalid == mComponentState )
         {
@@ -707,7 +736,8 @@ status_t OMXCameraAdapter::setTouchFocus()
         {
 
         areasSize = ((sizeof(OMX_ALGOAREASTYPE)+4095)/4096)*4096;
-        focusAreas = (OMX_ALGOAREASTYPE**) memMgr.allocateBuffer(0, 0, NULL, areasSize, 1);
+        bufferlist = memMgr.allocateBufferList(0, 0, NULL, areasSize, 1);
+        focusAreas = (OMX_ALGOAREASTYPE*) bufferlist[0].opaque;
 
         OMXCameraPortParameters * mPreviewData = NULL;
         mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -718,51 +748,60 @@ status_t OMXCameraAdapter::setTouchFocus()
             return -ENOMEM;
             }
 
-        OMX_INIT_STRUCT_PTR (focusAreas[0], OMX_ALGOAREASTYPE);
+        OMX_INIT_STRUCT_PTR (focusAreas, OMX_ALGOAREASTYPE);
 
-        focusAreas[0]->nPortIndex = OMX_ALL;
-        focusAreas[0]->nNumAreas = mFocusAreas.size();
-        focusAreas[0]->nAlgoAreaPurpose = OMX_AlgoAreaFocus;
+        focusAreas->nPortIndex = OMX_ALL;
+        focusAreas->nNumAreas = mFocusAreas.size();
+        focusAreas->nAlgoAreaPurpose = OMX_AlgoAreaFocus;
 
         // If the area is the special case of (0, 0, 0, 0, 0), then
         // the algorithm needs nNumAreas to be set to 0,
         // in order to automatically choose the best fitting areas.
         if ( mFocusAreas.itemAt(0)->isZeroArea() )
             {
-            focusAreas[0]->nNumAreas = 0;
+            focusAreas->nNumAreas = 0;
             }
 
-        for ( unsigned int n = 0; n < mFocusAreas.size(); n++)
-            {
-            // transform the coordinates to 3A-type coordinates
-            mFocusAreas.itemAt(n)->transfrom(mPreviewData->mWidth,
-                                            mPreviewData->mHeight,
-                                            focusAreas[0]->tAlgoAreas[n].nTop,
-                                            focusAreas[0]->tAlgoAreas[n].nLeft,
-                                            focusAreas[0]->tAlgoAreas[n].nWidth,
-                                            focusAreas[0]->tAlgoAreas[n].nHeight);
+        for ( unsigned int n = 0; n < mFocusAreas.size(); n++) {
+            int widthDivisor = 1;
+            int heightDivisor = 1;
 
-            focusAreas[0]->tAlgoAreas[n].nLeft =
-                    ( focusAreas[0]->tAlgoAreas[n].nLeft * TOUCH_FOCUS_RANGE ) / mPreviewData->mWidth;
-            focusAreas[0]->tAlgoAreas[n].nTop =
-                    ( focusAreas[0]->tAlgoAreas[n].nTop* TOUCH_FOCUS_RANGE ) / mPreviewData->mHeight;
-            focusAreas[0]->tAlgoAreas[n].nWidth =
-                    ( focusAreas[0]->tAlgoAreas[n].nWidth * TOUCH_FOCUS_RANGE ) / mPreviewData->mWidth;
-            focusAreas[0]->tAlgoAreas[n].nHeight =
-                    ( focusAreas[0]->tAlgoAreas[n].nHeight * TOUCH_FOCUS_RANGE ) / mPreviewData->mHeight;
-            focusAreas[0]->tAlgoAreas[n].nPriority = mFocusAreas.itemAt(n)->getWeight();
+            if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutTopBottom) {
+                heightDivisor = 2;
+            }
+            if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutLeftRight) {
+                widthDivisor = 2;
+            }
+
+            // transform the coordinates to 3A-type coordinates
+            mFocusAreas.itemAt(n)->transfrom((size_t)mPreviewData->mWidth/widthDivisor,
+                                            (size_t)mPreviewData->mHeight/heightDivisor,
+                                            (size_t&)focusAreas->tAlgoAreas[n].nTop,
+                                            (size_t&)focusAreas->tAlgoAreas[n].nLeft,
+                                            (size_t&)focusAreas->tAlgoAreas[n].nWidth,
+                                            (size_t&)focusAreas->tAlgoAreas[n].nHeight);
+
+            focusAreas->tAlgoAreas[n].nLeft =
+                    ( focusAreas->tAlgoAreas[n].nLeft * TOUCH_FOCUS_RANGE ) / mPreviewData->mWidth;
+            focusAreas->tAlgoAreas[n].nTop =
+                    ( focusAreas->tAlgoAreas[n].nTop* TOUCH_FOCUS_RANGE ) / mPreviewData->mHeight;
+            focusAreas->tAlgoAreas[n].nWidth =
+                    ( focusAreas->tAlgoAreas[n].nWidth * TOUCH_FOCUS_RANGE ) / mPreviewData->mWidth;
+            focusAreas->tAlgoAreas[n].nHeight =
+                    ( focusAreas->tAlgoAreas[n].nHeight * TOUCH_FOCUS_RANGE ) / mPreviewData->mHeight;
+            focusAreas->tAlgoAreas[n].nPriority = mFocusAreas.itemAt(n)->getWeight();
 
              CAMHAL_LOGDB("Focus area %d : top = %d left = %d width = %d height = %d prio = %d",
-                    n, (int)focusAreas[0]->tAlgoAreas[n].nTop, (int)focusAreas[0]->tAlgoAreas[n].nLeft,
-                    (int)focusAreas[0]->tAlgoAreas[n].nWidth, (int)focusAreas[0]->tAlgoAreas[n].nHeight,
-                    (int)focusAreas[0]->tAlgoAreas[n].nPriority);
-             }
+                    n, (int)focusAreas->tAlgoAreas[n].nTop, (int)focusAreas->tAlgoAreas[n].nLeft,
+                    (int)focusAreas->tAlgoAreas[n].nWidth, (int)focusAreas->tAlgoAreas[n].nHeight,
+                    (int)focusAreas->tAlgoAreas[n].nPriority);
+        }
 
         OMX_INIT_STRUCT_PTR (&sharedBuffer, OMX_TI_CONFIG_SHAREDBUFFER);
 
         sharedBuffer.nPortIndex = OMX_ALL;
         sharedBuffer.nSharedBuffSize = areasSize;
-        sharedBuffer.pSharedBuff = (OMX_U8 *) focusAreas[0];
+        sharedBuffer.pSharedBuff = (OMX_U8 *) camera_buffer_get_omx_ptr (&bufferlist[0]);
 
         if ( NULL == sharedBuffer.pSharedBuff )
             {
@@ -781,10 +820,9 @@ status_t OMXCameraAdapter::setTouchFocus()
             }
 
     EXIT:
-        if (NULL != focusAreas)
+        if (NULL != bufferlist)
             {
-            memMgr.freeBuffer((void*) focusAreas);
-            focusAreas = NULL;
+            memMgr.freeBufferList (bufferlist);
             }
         }
 
@@ -808,17 +846,22 @@ void OMXCameraAdapter::handleFocusCallback() {
         CAMHAL_LOGEA("Focus status check failed!");
         // signal and unblock doAutoFocus
         if (AF_ACTIVE & nextState) {
-            Mutex::Autolock lock(mDoAFMutex);
+            android::AutoMutex lock(mDoAFMutex);
             mDoAFCond.broadcast();
         }
         return;
     }
 
-    if ( ( eFocusStatus.eFocusStatus != OMX_FocusStatusRequest ) &&
-         ( eFocusStatus.eFocusStatus != OMX_FocusStatusOff ) ) {
+    if ( eFocusStatus.eFocusStatus == OMX_FocusStatusOff ) {
+        android::AutoMutex lock(mCancelAFMutex);
+        mCancelAFCond.signal();
+        return;
+    }
+
+    if (eFocusStatus.eFocusStatus != OMX_FocusStatusRequest) {
         // signal doAutoFocus when a end of scan message comes
         // ignore start of scan
-        Mutex::Autolock lock(mDoAFMutex);
+        android::AutoMutex lock(mDoAFMutex);
         mDoAFCond.broadcast();
     }
 
@@ -843,4 +886,5 @@ void OMXCameraAdapter::handleFocusCallback() {
     notifyFocusSubscribers(focusStatus);
 }
 
-};
+} // namespace Camera
+} // namespace Ti

@@ -14,17 +14,10 @@
  * limitations under the License.
  */
 
-
-
-#define LOG_TAG "CameraHAL"
-
-
 #include "CameraHal.h"
 #include "TICameraParameters.h"
 
 extern "C" {
-
-#include <ion_ti/ion.h>
 
 //#include <timm_osal_interfaces.h>
 //#include <timm_osal_trace.h>
@@ -32,7 +25,8 @@ extern "C" {
 
 };
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 ///@todo Move these constants to a common header file, preferably in tiler.h
 #define STRIDE_8BIT (4 * 1024)
@@ -43,92 +37,112 @@ namespace android {
 ///Utility Macro Declarations
 
 /*--------------------MemoryManager Class STARTS here-----------------------------*/
-void* MemoryManager::allocateBuffer(int width, int height, const char* format, int &bytes, int numBufs)
+MemoryManager::MemoryManager() {
+    mIonFd = -1;
+}
+
+MemoryManager::~MemoryManager() {
+    if ( mIonFd >= 0 ) {
+        ion_close(mIonFd);
+        mIonFd = -1;
+    }
+}
+
+status_t MemoryManager::initialize() {
+    if ( mIonFd == -1 ) {
+        mIonFd = ion_open();
+        if ( mIonFd < 0 ) {
+            CAMHAL_LOGE("ion_open() failed, error: %d", mIonFd);
+            mIonFd = -1;
+            return NO_INIT;
+        }
+    }
+
+    return OK;
+}
+
+CameraBuffer* MemoryManager::allocateBufferList(int width, int height, const char* format, int &size, int numBufs)
 {
     LOG_FUNCTION_NAME;
 
-    if(mIonFd < 0)
-        {
-        mIonFd = ion_open();
-        if(mIonFd < 0)
-            {
-            CAMHAL_LOGEA("ion_open failed!!!");
-            return NULL;
-            }
-        }
+    CAMHAL_ASSERT(mIonFd != -1);
 
     ///We allocate numBufs+1 because the last entry will be marked NULL to indicate end of array, which is used when freeing
     ///the buffers
     const uint numArrayEntriesC = (uint)(numBufs+1);
 
     ///Allocate a buffer array
-    uint32_t *bufsArr = new uint32_t [numArrayEntriesC];
-    if(!bufsArr)
-        {
-        CAMHAL_LOGEB("Allocation failed when creating buffers array of %d uint32_t elements", numArrayEntriesC);
+    CameraBuffer *buffers = new CameraBuffer [numArrayEntriesC];
+    if(!buffers) {
+        CAMHAL_LOGEB("Allocation failed when creating buffers array of %d CameraBuffer elements", numArrayEntriesC);
         goto error;
-        }
+    }
 
     ///Initialize the array with zeros - this will help us while freeing the array in case of error
     ///If a value of an array element is NULL, it means we didnt allocate it
-    memset(bufsArr, 0, sizeof(*bufsArr) * numArrayEntriesC);
+    memset(buffers, 0, sizeof(CameraBuffer) * numArrayEntriesC);
 
     //2D Allocations are not supported currently
-    if(bytes != 0)
-        {
+    if(size != 0) {
         struct ion_handle *handle;
         int mmap_fd;
+        size_t stride;
 
         ///1D buffers
-        for (int i = 0; i < numBufs; i++)
-            {
-            int ret = ion_alloc(mIonFd, bytes, 0, 1 << ION_HEAP_TYPE_CARVEOUT, &handle);
-            if(ret < 0)
-                {
-                CAMHAL_LOGEB("ion_alloc resulted in error %d", ret);
-                goto error;
-                }
+        for (int i = 0; i < numBufs; i++) {
+            unsigned char *data;
+            int ret = ion_alloc(mIonFd, size, 0, 1 << ION_HEAP_TYPE_CARVEOUT,
+                    &handle);
+            if((ret < 0) || ((int)handle == -ENOMEM)) {
+                ret = ion_alloc_tiler(mIonFd, (size_t)size, 1, TILER_PIXEL_FMT_PAGE,
+                OMAP_ION_HEAP_TILER_MASK, &handle, &stride);
+            }
 
-            CAMHAL_LOGDB("Before mapping, handle = %x, nSize = %d", handle, bytes);
-            if ((ret = ion_map(mIonFd, handle, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
-                          (unsigned char**)&bufsArr[i], &mmap_fd)) < 0)
-                {
+            if((ret < 0) || ((int)handle == -ENOMEM)) {
+                CAMHAL_LOGEB("FAILED to allocate ion buffer of size=%d. ret=%d(0x%x)", size, ret, ret);
+                goto error;
+            }
+
+            CAMHAL_LOGDB("Before mapping, handle = %p, nSize = %d", handle, size);
+            if ((ret = ion_map(mIonFd, handle, size, PROT_READ | PROT_WRITE, MAP_SHARED, 0,
+                          &data, &mmap_fd)) < 0) {
                 CAMHAL_LOGEB("Userspace mapping of ION buffers returned error %d", ret);
                 ion_free(mIonFd, handle);
                 goto error;
-                }
-
-            mIonHandleMap.add(bufsArr[i], (unsigned int)handle);
-            mIonFdMap.add(bufsArr[i], (unsigned int) mmap_fd);
-            mIonBufLength.add(bufsArr[i], (unsigned int) bytes);
             }
 
+            buffers[i].type = CAMERA_BUFFER_ION;
+            buffers[i].opaque = data;
+            buffers[i].mapped = data;
+            buffers[i].ion_handle = handle;
+            buffers[i].ion_fd = mIonFd;
+            buffers[i].fd = mmap_fd;
+            buffers[i].size = size;
+
         }
-    else // If bytes is not zero, then it is a 2-D tiler buffer request
-        {
-        }
-
-        LOG_FUNCTION_NAME_EXIT;
-
-        return (void*)bufsArr;
-
-error:
-    ALOGE("Freeing buffers already allocated after error occurred");
-    if(bufsArr)
-        freeBuffer(bufsArr);
-
-    if ( NULL != mErrorNotifier.get() )
-        {
-        mErrorNotifier->errorNotify(-ENOMEM);
-        }
-
-    if (mIonFd >= 0)
-    {
-        ion_close(mIonFd);
-        mIonFd = -1;
     }
 
     LOG_FUNCTION_NAME_EXIT;
+
+    return buffers;
+
+error:
+
+    CAMHAL_LOGE("Freeing buffers already allocated after error occurred");
+    if(buffers)
+        freeBufferList(buffers);
+
+    if ( NULL != mErrorNotifier.get() )
+        mErrorNotifier->errorNotify(-ENOMEM);
+    LOG_FUNCTION_NAME_EXIT;
+
+    return NULL;
+}
+
+CameraBuffer* MemoryManager::getBufferList(int *numBufs) {
+    LOG_FUNCTION_NAME;
+    if (numBufs) *numBufs = -1;
+
     return NULL;
 }
 
@@ -152,50 +166,38 @@ int MemoryManager::getFd()
     return -1;
 }
 
-int MemoryManager::freeBuffer(void* buf)
+int MemoryManager::freeBufferList(CameraBuffer *buffers)
 {
     status_t ret = NO_ERROR;
     LOG_FUNCTION_NAME;
 
-    uint32_t *bufEntry = (uint32_t*)buf;
+    int i;
 
-    if(!bufEntry)
+    if(!buffers)
         {
         CAMHAL_LOGEA("NULL pointer passed to freebuffer");
         LOG_FUNCTION_NAME_EXIT;
         return BAD_VALUE;
         }
 
-    while(*bufEntry)
+    i = 0;
+    while(buffers[i].type == CAMERA_BUFFER_ION)
         {
-        unsigned int ptr = (unsigned int) *bufEntry++;
-        if(mIonBufLength.valueFor(ptr))
+        if(buffers[i].size)
             {
-            munmap((void *)ptr, mIonBufLength.valueFor(ptr));
-            close(mIonFdMap.valueFor(ptr));
-            ion_free(mIonFd, (ion_handle*)mIonHandleMap.valueFor(ptr));
-            mIonHandleMap.removeItem(ptr);
-            mIonBufLength.removeItem(ptr);
-            mIonFdMap.removeItem(ptr);
+            munmap(buffers[i].opaque, buffers[i].size);
+            close(buffers[i].fd);
+            ion_free(mIonFd, buffers[i].ion_handle);
             }
         else
             {
             CAMHAL_LOGEA("Not a valid Memory Manager buffer");
             }
+        i++;
         }
 
-    ///@todo Check if this way of deleting array is correct, else use malloc/free
-    uint32_t * bufArr = (uint32_t*)buf;
-    delete [] bufArr;
+    delete [] buffers;
 
-    if(mIonBufLength.size() == 0)
-        {
-        if(mIonFd >= 0)
-            {
-            ion_close(mIonFd);
-            mIonFd = -1;
-            }
-        }
     LOG_FUNCTION_NAME_EXIT;
     return ret;
 }
@@ -222,7 +224,8 @@ status_t MemoryManager::setErrorHandler(ErrorNotifier *errorNotifier)
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti
 
 
 /*--------------------MemoryManager Class ENDS here-----------------------------*/
