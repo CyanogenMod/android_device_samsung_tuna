@@ -382,7 +382,7 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
             }
         }
 
-    CAMHAL_LOGVB("REFCOUNT 0x%x %d", frameBuf, refCount);
+    CAMHAL_LOGSVB("REFCOUNT 0x%x %d", frameBuf, refCount);
 
     if ( NO_ERROR == res )
         {
@@ -395,7 +395,7 @@ void BaseCameraAdapter::returnFrame(CameraBuffer * frameBuf, CameraFrame::FrameT
                  (CameraFrame::SNAPSHOT_FRAME == frameType)))
                 {
                 CAMHAL_LOGE("Buffer already with Ducati!! 0x%x", frameBuf);
-                for(int i=0;i<mBuffersWithDucati.size();i++) CAMHAL_LOGE("0x%x", mBuffersWithDucati.keyAt(i));
+                for(int i=0;i<mBuffersWithDucati.size();i++) CAMHAL_LOGSV("0x%x", mBuffersWithDucati.keyAt(i));
                 }
             mBuffersWithDucati.add((int)camera_buffer_get_omx_ptr(frameBuf),1);
 #endif
@@ -1399,7 +1399,7 @@ status_t BaseCameraAdapter::__sendFrameToSubscribers(CameraFrame* frame,
             return -EINVAL;
         }
 
-        CAMHAL_LOGVB("Type of Frame: 0x%x address: 0x%x refCount start %d",
+        CAMHAL_LOGSVB("Type of Frame: 0x%x address: 0x%x refCount start %d",
                      frame->mFrameType,
                      ( uint32_t ) frame->mBuffer,
                      refCount);

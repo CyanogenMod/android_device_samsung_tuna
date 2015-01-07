@@ -702,7 +702,9 @@ private:
     static status_t insertCaptureModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertVideoSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertFacing(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+#ifndef OMAP_TUNA
     static status_t insertFocalLength(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+#endif
     static status_t insertAutoConvergenceModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertManualConvergenceRange(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertLayout(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
@@ -969,6 +971,10 @@ private:
     static const char DEFAULT_MAX_FD_SW_FACES[];
     static const char * DEFAULT_AE_LOCK;
     static const char * DEFAULT_AWB_LOCK;
+#ifdef OMAP_TUNA
+    static const char DEFAULT_FOCAL_LENGTH_PRIMARY[];
+    static const char DEFAULT_FOCAL_LENGTH_SECONDARY[];
+#endif
     static const char DEFAULT_HOR_ANGLE[];
     static const char DEFAULT_VER_ANGLE[];
     static const char DEFAULT_VIDEO_SIZE[];

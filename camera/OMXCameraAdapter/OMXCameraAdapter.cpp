@@ -2990,7 +2990,7 @@ void OMXCameraAdapter::onOrientationEvent(uint32_t orientation, uint32_t tilt)
         // restart face detection with new rotation
         setFaceDetectionOrientation(mDeviceOrientation);
     }
-    CAMHAL_LOGVB("orientation = %d tilt = %d device_orientation = %d", orientation, tilt, mDeviceOrientation);
+    CAMHAL_LOGSVB("orientation = %d tilt = %d device_orientation = %d", orientation, tilt, mDeviceOrientation);
 
     LOG_FUNCTION_NAME_EXIT;
 }
@@ -3546,7 +3546,7 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
         if(mBuffersWithDucati.indexOfKey((uint32_t)pBuffHeader->pBuffer)<0)
             {
             CAMHAL_LOGE("Buffer was never with Ducati!! %p", pBuffHeader->pBuffer);
-            for(unsigned int i=0;i<mBuffersWithDucati.size();i++) CAMHAL_LOGE("0x%x", mBuffersWithDucati.keyAt(i));
+            for(unsigned int i=0;i<mBuffersWithDucati.size();i++) CAMHAL_LOGSV("0x%x", mBuffersWithDucati.keyAt(i));
             }
         mBuffersWithDucati.removeItem((int)pBuffHeader->pBuffer);
 #endif
@@ -3884,7 +3884,7 @@ status_t OMXCameraAdapter::sendCallBacks(CameraFrame frame, OMX_IN OMX_BUFFERHEA
       ret = sendFrameToSubscribers(&frame);
   }
 
-  CAMHAL_LOGVB("B 0x%x T %llu", frame.mBuffer, pBuffHeader->nTimeStamp);
+  CAMHAL_LOGSVB("B 0x%x T %llu", frame.mBuffer, pBuffHeader->nTimeStamp);
 
   LOG_FUNCTION_NAME_EXIT;
 
@@ -4042,7 +4042,7 @@ status_t OMXCameraAdapter::setExtraData(bool enable, OMX_U32 nPortIndex, OMX_EXT
 
     extraDataControl.nPortIndex = nPortIndex;
     extraDataControl.eExtraDataType = eType;
-#ifdef CAMERAHAL_TUNA
+#ifdef OMAP_TUNA
     extraDataControl.eCameraView = OMX_2D;
 #endif
 

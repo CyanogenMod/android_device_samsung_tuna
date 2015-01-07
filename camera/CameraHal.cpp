@@ -1108,6 +1108,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             mParameters.set(TICameraParameters::RAW_HEIGHT, valstr);
         }
 
+#ifndef OMAP_TUNA
         //TI extensions for enable/disable algos
         if( (valstr = params.get(TICameraParameters::KEY_ALGO_FIXED_GAMMA)) != NULL )
             {
@@ -1144,6 +1145,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             CAMHAL_LOGDB("Green Inballance Correction set %s", valstr);
             mParameters.set(TICameraParameters::KEY_ALGO_GIC, valstr);
             }
+#endif
 
         android::CameraParameters adapterParams = mParameters;
 
@@ -4287,16 +4289,16 @@ void CameraHal::resetPreviewRes(android::CameraParameters *params)
 void *
 camera_buffer_get_omx_ptr (CameraBuffer *buffer)
 {
-    CAMHAL_LOGV("buffer_type %d opaque %p", buffer->type, buffer->opaque);
+    CAMHAL_LOGSV("buffer_type %d opaque %p", buffer->type, buffer->opaque);
 
     if (buffer->type == CAMERA_BUFFER_ANW) {
         buffer_handle_t *handle = (buffer_handle_t *)buffer->opaque;
-        CAMHAL_LOGV("anw %08x", *handle);
+        CAMHAL_LOGSV("anw %08x", *handle);
         return (void *)*handle;
     } else if (buffer->type == CAMERA_BUFFER_ION) {
         return (void *)buffer->fd;
     } else {
-        CAMHAL_LOGV("other %08x", buffer->opaque);
+        CAMHAL_LOGSV("other %08x", buffer->opaque);
         return (void *)buffer->opaque;
     }
 }

@@ -29,6 +29,15 @@
 #   define CAMHAL_LOGD  DBGUTILS_LOGD
 #   define CAMHAL_LOGDA DBGUTILS_LOGDA
 #   define CAMHAL_LOGDB DBGUTILS_LOGDB
+#   ifdef CAMERAHAL_SUPERVERBOSE
+#       define CAMHAL_LOGSV  DBGUTILS_LOGV
+#       define CAMHAL_LOGSVA DBGUTILS_LOGVA
+#       define CAMHAL_LOGSVB DBGUTILS_LOGVB
+#   else
+#       define CAMHAL_LOGSV(...)
+#       define CAMHAL_LOGSVA(str)
+#       define CAMHAL_LOGSVB(str, ...)
+#   endif
 #   ifdef CAMERAHAL_DEBUG_VERBOSE
 #       define CAMHAL_LOGV  DBGUTILS_LOGV
 #       define CAMHAL_LOGVA DBGUTILS_LOGVA
@@ -42,6 +51,9 @@
 #   define CAMHAL_LOGD(...)
 #   define CAMHAL_LOGDA(str)
 #   define CAMHAL_LOGDB(str, ...)
+#   define CAMHAL_LOGSV(...)
+#   define CAMHAL_LOGSVA(str)
+#   define CAMHAL_LOGSVB(str, ...)
 #   define CAMHAL_LOGV(...)
 #   define CAMHAL_LOGVA(str)
 #   define CAMHAL_LOGVB(str, ...)

@@ -301,13 +301,13 @@ bool AppCallbackNotifier::notificationThread()
 
     if(mEventQ.hasMsg()) {
         ///Received an event from one of the event providers
-        CAMHAL_LOGDA("Notification Thread received an event from event provider (CameraAdapter)");
+        CAMHAL_LOGSVA("Notification Thread received an event from event provider (CameraAdapter)");
         notifyEvent();
      }
 
     if(mFrameQ.hasMsg()) {
        ///Received a frame from one of the frame providers
-       //CAMHAL_LOGDA("Notification Thread received a frame from frame provider (CameraAdapter)");
+       CAMHAL_LOGSVA("Notification Thread received a frame from frame provider (CameraAdapter)");
        notifyFrame();
     }
 

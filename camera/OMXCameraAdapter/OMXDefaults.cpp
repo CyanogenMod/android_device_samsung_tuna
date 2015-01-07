@@ -47,7 +47,11 @@ const char OMXCameraAdapter::DEFAULT_THUMBNAIL_QUALITY[] = "60";
 const char OMXCameraAdapter::DEFAULT_THUMBNAIL_SIZE[] = "160x120";
 const char OMXCameraAdapter::DEFAULT_PICTURE_FORMAT[] = "jpeg";
 const char OMXCameraAdapter::DEFAULT_S3D_PICTURE_LAYOUT[] = "tb-full";
+#ifdef OMAP_TUNA
+const char OMXCameraAdapter::DEFAULT_PICTURE_SIZE[] = "2592x1944";
+#else
 const char OMXCameraAdapter::DEFAULT_PICTURE_SIZE[] = "320x240";
+#endif
 const char OMXCameraAdapter::DEFAULT_PICTURE_SS_SIZE[] = "640x240";
 const char OMXCameraAdapter::DEFAULT_PICTURE_TB_SIZE[] = "320x480";
 const char OMXCameraAdapter::DEFAULT_PREVIEW_FORMAT[] = "yuv420sp";
@@ -67,6 +71,10 @@ const char OMXCameraAdapter::DEFAULT_WB[] = "auto";
 const char OMXCameraAdapter::DEFAULT_ZOOM[] = "0";
 const char OMXCameraAdapter::DEFAULT_MAX_FD_HW_FACES[] = __STRINGIFY(MAX_NUM_FACES_SUPPORTED);
 const char OMXCameraAdapter::DEFAULT_MAX_FD_SW_FACES[] = "0";
+#ifdef OMAP_TUNA
+const char OMXCameraAdapter::DEFAULT_FOCAL_LENGTH_PRIMARY[] = "3.43";
+const char OMXCameraAdapter::DEFAULT_FOCAL_LENGTH_SECONDARY[] = "1.95";
+#endif
 const char OMXCameraAdapter::DEFAULT_HOR_ANGLE[] = "54.8";
 const char OMXCameraAdapter::DEFAULT_VER_ANGLE[] = "42.5";
 const char * OMXCameraAdapter::DEFAULT_AE_LOCK = android::CameraParameters::FALSE;
@@ -75,7 +83,11 @@ const char OMXCameraAdapter::DEFAULT_VIDEO_SIZE[] = "1920x1080";
 const char OMXCameraAdapter::DEFAULT_SENSOR_ORIENTATION[] = "0";
 const char OMXCameraAdapter::DEFAULT_AUTOCONVERGENCE_MODE[] = "frame";
 const char OMXCameraAdapter::DEFAULT_MANUAL_CONVERGENCE[] = "0";
+#ifdef OMAP_TUNA
+const char * OMXCameraAdapter::DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE = android::CameraParameters::FALSE;
+#else
 const char * OMXCameraAdapter::DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE = android::CameraParameters::TRUE;
+#endif
 const char OMXCameraAdapter::DEFAULT_EXIF_MAKE[] = "default_make";
 const char OMXCameraAdapter::DEFAULT_EXIF_MODEL[] = "default_model";
 

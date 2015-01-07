@@ -266,7 +266,7 @@ status_t OMXCameraAdapter::stopAutoFocus()
         CAMHAL_LOGEB("Error while stopping focus 0x%x", eError);
         return Utils::ErrorUtils::omxToAndroidError(eError);
     }
-#ifdef CAMERAHAL_TUNA
+#ifdef OMAP_TUNA
     else {
         // This is a WA. Usually the OMX Camera component should
         // generate AF status change OMX event fairly quickly
