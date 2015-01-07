@@ -29,12 +29,8 @@
 #ifndef GENERAL_3A_SETTINGS_H
 #define GENERAL_3A_SETTINGS_H
 
-#define FOCUS_FACE_PRIORITY OMX_IMAGE_FocusControlMax -1
-#define FOCUS_REGION_PRIORITY OMX_IMAGE_FocusControlMax -2
-#define WB_FACE_PRIORITY OMX_WhiteBalControlMax -1
-#define EXPOSURE_FACE_PRIORITY OMX_ExposureControlMax - 1
-
-namespace android {
+namespace Ti {
+namespace Camera {
 
 struct userToOMX_LUT{
     const char * userDefinition;
@@ -58,15 +54,15 @@ const userToOMX_LUT isoUserToOMX[] = {
 };
 
 const userToOMX_LUT effects_UserToOMX [] = {
-    { CameraParameters::EFFECT_NONE, OMX_ImageFilterNone },
-    { CameraParameters::EFFECT_NEGATIVE, OMX_ImageFilterNegative },
-    { CameraParameters::EFFECT_SOLARIZE,  OMX_ImageFilterSolarize },
-    { CameraParameters::EFFECT_SEPIA, OMX_ImageFilterSepia },
-    { CameraParameters::EFFECT_MONO, OMX_ImageFilterGrayScale },
-    { CameraParameters::EFFECT_BLACKBOARD, OMX_TI_ImageFilterBlackBoard },
-    { CameraParameters::EFFECT_WHITEBOARD, OMX_TI_ImageFilterWhiteBoard },
-    { CameraParameters::EFFECT_AQUA, OMX_TI_ImageFilterAqua },
-    { CameraParameters::EFFECT_POSTERIZE, OMX_TI_ImageFilterPosterize },
+    { android::CameraParameters::EFFECT_NONE, OMX_ImageFilterNone },
+    { android::CameraParameters::EFFECT_NEGATIVE, OMX_ImageFilterNegative },
+    { android::CameraParameters::EFFECT_SOLARIZE,  OMX_ImageFilterSolarize },
+    { android::CameraParameters::EFFECT_SEPIA, OMX_ImageFilterSepia },
+    { android::CameraParameters::EFFECT_MONO, OMX_ImageFilterGrayScale },
+    { android::CameraParameters::EFFECT_BLACKBOARD, OMX_TI_ImageFilterBlackBoard },
+    { android::CameraParameters::EFFECT_WHITEBOARD, OMX_TI_ImageFilterWhiteBoard },
+    { android::CameraParameters::EFFECT_AQUA, OMX_TI_ImageFilterAqua },
+    { android::CameraParameters::EFFECT_POSTERIZE, OMX_TI_ImageFilterPosterize },
 #ifdef OMAP_ENHANCEMENT
     { TICameraParameters::EFFECT_NATURAL, OMX_ImageFilterNatural },
     { TICameraParameters::EFFECT_VIVID, OMX_ImageFilterVivid },
@@ -76,27 +72,24 @@ const userToOMX_LUT effects_UserToOMX [] = {
 };
 
 const userToOMX_LUT scene_UserToOMX [] = {
-    { CameraParameters::SCENE_MODE_AUTO, OMX_Manual },
-    { CameraParameters::SCENE_MODE_ACTION, OMX_TI_Action },
-    { CameraParameters::SCENE_MODE_NIGHT, OMX_TI_Night },
-    { CameraParameters::SCENE_MODE_PARTY, OMX_TI_Party },
-    { CameraParameters::SCENE_MODE_SUNSET, OMX_TI_Sunset },
-/*********** TODO: These scene modes are not verified. ************
- ***************** Have to verify and reeable later. **************
-    { CameraParameters::SCENE_MODE_THEATRE, OMX_TI_Theatre },
-    { CameraParameters::SCENE_MODE_LANDSCAPE, OMX_Landscape },
-    { CameraParameters::SCENE_MODE_NIGHT_PORTRAIT, OMX_NightPortrait },
-    { CameraParameters::SCENE_MODE_FIREWORKS, OMX_Fireworks },
-    { CameraParameters::SCENE_MODE_BEACH, OMX_TI_Beach },
-    { CameraParameters::SCENE_MODE_CANDLELIGHT, OMX_TI_Candlelight },
-    { CameraParameters::SCENE_MODE_PORTRAIT, OMX_TI_Portrait },
-    { CameraParameters::SCENE_MODE_SNOW, OMX_TI_Snow },
-    { CameraParameters::SCENE_MODE_STEADYPHOTO, OMX_TI_Steadyphoto },
-*********************************************************************/
+    { android::CameraParameters::SCENE_MODE_AUTO, OMX_Manual },
+    { android::CameraParameters::SCENE_MODE_LANDSCAPE, OMX_Landscape },
+    { android::CameraParameters::SCENE_MODE_NIGHT_PORTRAIT, OMX_NightPortrait },
+    { android::CameraParameters::SCENE_MODE_FIREWORKS, OMX_Fireworks },
+    { android::CameraParameters::SCENE_MODE_ACTION, OMX_TI_Action },
+    { android::CameraParameters::SCENE_MODE_BEACH, OMX_TI_Beach },
+    { android::CameraParameters::SCENE_MODE_CANDLELIGHT, OMX_TI_Candlelight },
+    { android::CameraParameters::SCENE_MODE_NIGHT, OMX_TI_Night },
+    { android::CameraParameters::SCENE_MODE_PARTY, OMX_TI_Party },
+    { android::CameraParameters::SCENE_MODE_PORTRAIT, OMX_TI_Portrait },
+    { android::CameraParameters::SCENE_MODE_SNOW, OMX_TI_Snow },
+    { android::CameraParameters::SCENE_MODE_STEADYPHOTO, OMX_TI_Steadyphoto },
+    { android::CameraParameters::SCENE_MODE_SUNSET, OMX_TI_Sunset },
+    { android::CameraParameters::SCENE_MODE_THEATRE, OMX_TI_Theatre },
+    { android::CameraParameters::SCENE_MODE_SPORTS, OMX_Sport },
 #ifdef OMAP_ENHANCEMENT
     { TICameraParameters::SCENE_MODE_CLOSEUP, OMX_Closeup },
     { TICameraParameters::SCENE_MODE_AQUA, OMX_Underwater },
-    { TICameraParameters::SCENE_MODE_SPORT, OMX_Sport },
     { TICameraParameters::SCENE_MODE_MOOD, OMX_Mood },
     { TICameraParameters::SCENE_MODE_NIGHT_INDOOR, OMX_NightIndoor },
     { TICameraParameters::SCENE_MODE_DOCUMENT, OMX_Document },
@@ -108,47 +101,45 @@ const userToOMX_LUT scene_UserToOMX [] = {
 };
 
 const userToOMX_LUT whiteBal_UserToOMX [] = {
-    { CameraParameters::WHITE_BALANCE_AUTO, OMX_WhiteBalControlAuto },
-    { CameraParameters::WHITE_BALANCE_DAYLIGHT, OMX_WhiteBalControlSunLight },
-    { CameraParameters::WHITE_BALANCE_CLOUDY_DAYLIGHT, OMX_WhiteBalControlCloudy },
-    { CameraParameters::WHITE_BALANCE_FLUORESCENT, OMX_WhiteBalControlFluorescent },
-    { CameraParameters::WHITE_BALANCE_INCANDESCENT, OMX_WhiteBalControlIncandescent },
-/********************** THESE ARE CURRENT NOT TUNED PROPERLY *************************
-    { CameraParameters::WHITE_BALANCE_SHADE, OMX_TI_WhiteBalControlShade },
-    { CameraParameters::WHITE_BALANCE_TWILIGHT, OMX_TI_WhiteBalControlTwilight },
-    { CameraParameters::WHITE_BALANCE_WARM_FLUORESCENT, OMX_TI_WhiteBalControlWarmFluorescent },
-**************************************************************************************/
+    { android::CameraParameters::WHITE_BALANCE_AUTO, OMX_WhiteBalControlAuto },
+    { android::CameraParameters::WHITE_BALANCE_DAYLIGHT, OMX_WhiteBalControlSunLight },
+    { android::CameraParameters::WHITE_BALANCE_CLOUDY_DAYLIGHT, OMX_WhiteBalControlCloudy },
+    { android::CameraParameters::WHITE_BALANCE_FLUORESCENT, OMX_WhiteBalControlFluorescent },
+    { android::CameraParameters::WHITE_BALANCE_INCANDESCENT, OMX_WhiteBalControlIncandescent },
+    { android::CameraParameters::WHITE_BALANCE_SHADE, OMX_TI_WhiteBalControlShade },
+    { android::CameraParameters::WHITE_BALANCE_TWILIGHT, OMX_TI_WhiteBalControlTwilight },
+    { android::CameraParameters::WHITE_BALANCE_WARM_FLUORESCENT, OMX_TI_WhiteBalControlWarmFluorescent },
 #ifdef OMAP_ENHANCEMENT
     { TICameraParameters::WHITE_BALANCE_TUNGSTEN, OMX_WhiteBalControlTungsten },
     { TICameraParameters::WHITE_BALANCE_HORIZON, OMX_WhiteBalControlHorizon },
-    { TICameraParameters::WHITE_BALANCE_FACE, WB_FACE_PRIORITY },
     { TICameraParameters::WHITE_BALANCE_SUNSET, OMX_TI_WhiteBalControlSunset }
 #endif
 };
 
 const userToOMX_LUT antibanding_UserToOMX [] = {
-    { CameraParameters::ANTIBANDING_OFF, OMX_FlickerCancelOff },
-    { CameraParameters::ANTIBANDING_AUTO, OMX_FlickerCancelAuto },
-    { CameraParameters::ANTIBANDING_50HZ, OMX_FlickerCancel50 },
-    { CameraParameters::ANTIBANDING_60HZ, OMX_FlickerCancel60 }
+    { android::CameraParameters::ANTIBANDING_OFF, OMX_FlickerCancelOff },
+    { android::CameraParameters::ANTIBANDING_AUTO, OMX_FlickerCancelAuto },
+    { android::CameraParameters::ANTIBANDING_50HZ, OMX_FlickerCancel50 },
+    { android::CameraParameters::ANTIBANDING_60HZ, OMX_FlickerCancel60 }
 };
 
 const userToOMX_LUT focus_UserToOMX [] = {
-    { CameraParameters::FOCUS_MODE_AUTO, OMX_IMAGE_FocusControlAutoLock },
-    { CameraParameters::FOCUS_MODE_INFINITY, OMX_IMAGE_FocusControlAutoInfinity },
-    { CameraParameters::FOCUS_MODE_INFINITY, OMX_IMAGE_FocusControlHyperfocal },
-    { CameraParameters::FOCUS_MODE_MACRO, OMX_IMAGE_FocusControlAutoMacro },
-    { CameraParameters::FOCUS_MODE_CONTINUOUS_VIDEO, OMX_IMAGE_FocusControlAuto },
-    { CameraParameters::FOCUS_MODE_CONTINUOUS_PICTURE, OMX_IMAGE_FocusControlAuto },
+    { android::CameraParameters::FOCUS_MODE_AUTO, OMX_IMAGE_FocusControlAutoLock },
+    { android::CameraParameters::FOCUS_MODE_INFINITY, OMX_IMAGE_FocusControlAutoInfinity },
+    { android::CameraParameters::FOCUS_MODE_INFINITY, OMX_IMAGE_FocusControlHyperfocal },
+    { android::CameraParameters::FOCUS_MODE_MACRO, OMX_IMAGE_FocusControlAutoMacro },
+    { android::CameraParameters::FOCUS_MODE_CONTINUOUS_VIDEO, OMX_IMAGE_FocusControlAuto },
+    { android::CameraParameters::FOCUS_MODE_CONTINUOUS_PICTURE, OMX_IMAGE_FocusControlAuto },
 #ifdef OMAP_ENHANCEMENT
-    { TICameraParameters::FOCUS_MODE_FACE , FOCUS_FACE_PRIORITY },
+    { TICameraParameters::FOCUS_MODE_FACE , OMX_IMAGE_FocusControlContinousFacePriority },
     { TICameraParameters::FOCUS_MODE_PORTRAIT, OMX_IMAGE_FocusControlPortrait },
     { TICameraParameters::FOCUS_MODE_EXTENDED, OMX_IMAGE_FocusControlExtended },
 #endif
+    { TICameraParameters::FOCUS_MODE_OFF , OMX_IMAGE_FocusControlOff }
 };
 
 const userToOMX_LUT exposure_UserToOMX [] = {
-    { TICameraParameters::EXPOSURE_MODE_OFF, OMX_ExposureControlOff },
+    { TICameraParameters::EXPOSURE_MODE_MANUAL, OMX_ExposureControlOff },
     { TICameraParameters::EXPOSURE_MODE_AUTO, OMX_ExposureControlAuto },
     { TICameraParameters::EXPOSURE_MODE_NIGHT, OMX_ExposureControlNight },
     { TICameraParameters::EXPOSURE_MODE_BACKLIGHT, OMX_ExposureControlBackLight },
@@ -158,15 +149,14 @@ const userToOMX_LUT exposure_UserToOMX [] = {
     { TICameraParameters::EXPOSURE_MODE_BEACH, OMX_ExposureControlBeach },
     { TICameraParameters::EXPOSURE_MODE_APERTURE, OMX_ExposureControlLargeAperture },
     { TICameraParameters::EXPOSURE_MODE_SMALL_APERTURE, OMX_ExposureControlSmallApperture },
-    { TICameraParameters::EXPOSURE_MODE_FACE, EXPOSURE_FACE_PRIORITY },
 };
 
 const userToOMX_LUT flash_UserToOMX [] = {
-    { CameraParameters::FLASH_MODE_OFF           ,OMX_IMAGE_FlashControlOff             },
-    { CameraParameters::FLASH_MODE_ON            ,OMX_IMAGE_FlashControlOn              },
-    { CameraParameters::FLASH_MODE_AUTO          ,OMX_IMAGE_FlashControlAuto            },
-    { CameraParameters::FLASH_MODE_TORCH         ,OMX_IMAGE_FlashControlTorch           },
-    { CameraParameters::FLASH_MODE_RED_EYE        ,OMX_IMAGE_FlashControlRedEyeReduction },
+    { android::CameraParameters::FLASH_MODE_OFF           ,OMX_IMAGE_FlashControlOff             },
+    { android::CameraParameters::FLASH_MODE_ON            ,OMX_IMAGE_FlashControlOn              },
+    { android::CameraParameters::FLASH_MODE_AUTO          ,OMX_IMAGE_FlashControlAuto            },
+    { android::CameraParameters::FLASH_MODE_TORCH         ,OMX_IMAGE_FlashControlTorch           },
+    { android::CameraParameters::FLASH_MODE_RED_EYE        ,OMX_IMAGE_FlashControlRedEyeReduction },
 #ifdef OMAP_ENHANCEMENT
     { TICameraParameters::FLASH_MODE_FILL_IN        ,OMX_IMAGE_FlashControlFillin          }
 #endif
@@ -241,11 +231,23 @@ class Gen3A_settings{
     int Sharpness;
     int ISO;
     int FlashMode;
+    int ManualExposure;
+    int ManualExposureRight;
+    int ManualGain;
+    int ManualGainRight;
 
     unsigned int Brightness;
     OMX_BOOL ExposureLock;
     OMX_BOOL FocusLock;
     OMX_BOOL WhiteBalanceLock;
+
+    OMX_BOOL AlgoFixedGamma;
+    OMX_BOOL AlgoNSF1;
+    OMX_BOOL AlgoNSF2;
+    OMX_BOOL AlgoSharpening;
+    OMX_BOOL AlgoThreeLinColorMap;
+    OMX_BOOL AlgoGIC;
+
 };
 
 /*
@@ -270,11 +272,21 @@ enum E3ASettingsFlags
     SetExpLock              = 1 << 16,
     SetWBLock               = 1 << 17,
     SetMeteringAreas        = 1 << 18,
+    SetManualExposure       = 1 << 19,
+
+    SetAlgoFixedGamma       = 1 << 20,
+    SetAlgoNSF1             = 1 << 21,
+    SetAlgoNSF2             = 1 << 22,
+    SetAlgoSharpening       = 1 << 23,
+    SetAlgoThreeLinColorMap = 1 << 24,
+    SetAlgoGIC              = 1 << 25,
+
 
     E3aSettingMax,
     E3AsettingsAll = ( ((E3aSettingMax -1 ) << 1) -1 ) /// all possible flags raised
 };
 
-};
+} // namespace Camera
+} // namespace Ti
 
 #endif //GENERAL_3A_SETTINGS_H

@@ -29,7 +29,8 @@
 
 #include "MessageQueue.h"
 
-namespace TIUTILS {
+namespace Ti {
+namespace Utils {
 
 /**
    @brief Constructor for the message queue class
@@ -278,6 +279,8 @@ bool MessageQueue::isEmpty()
 
 void MessageQueue::clear()
 {
+    LOG_FUNCTION_NAME;
+
     if(!this->fd_read)
         {
         MSGQ_LOGEA("read descriptor not initialized for message queue");
@@ -412,4 +415,5 @@ android::status_t MessageQueue::waitForMsg(MessageQueue *queue1, MessageQueue *q
     return ret;
     }
 
-};
+} // namespace Utils
+} // namespace Ti

@@ -21,24 +21,19 @@
 *
 */
 
-#undef LOG_TAG
-
-#define LOG_TAG "CameraHAL"
-
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 #include "ErrorUtils.h"
 
 #include <cutils/properties.h>
 
-#undef TRUE
-#undef FALSE
-#define TRUE "true"
-#define FALSE "false"
-
 #define METERING_AREAS_RANGE 0xFF
 
-namespace android {
+static const char PARAM_SEP[] = ",";
+
+namespace Ti {
+namespace Camera {
+
 const SceneModesEntry* OMXCameraAdapter::getSceneModeEntry(const char* name,
                                                                   OMX_SCENEMODETYPE scene) {
     const SceneModesEntry* cameraLUT = NULL;
@@ -69,7 +64,7 @@ const SceneModesEntry* OMXCameraAdapter::getSceneModeEntry(const char* name,
     return entry;
 }
 
-status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
+status_t OMXCameraAdapter::setParameters3A(const android::CameraParameters &params,
                                            BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
@@ -81,9 +76,9 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(m3ASettingsUpdateLock);
+    android::AutoMutex lock(m3ASettingsUpdateLock);
 
-    str = params.get(CameraParameters::KEY_SCENE_MODE);
+    str = params.get(android::CameraParameters::KEY_SCENE_MODE);
     mode = getLUTvalue_HALtoOMX( str, SceneLUT);
     if ( mFirstTimeInit || ((str != NULL) && ( mParameters3A.SceneMode != mode )) ) {
         if ( 0 <= mode ) {
@@ -113,22 +108,52 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
     }
 
 #ifdef OMAP_ENHANCEMENT
-
-    str = params.get(TICameraParameters::KEY_EXPOSURE_MODE);
-    mode = getLUTvalue_HALtoOMX( str, ExpLUT);
-    if ( ( str != NULL ) && ( mParameters3A.Exposure != mode ))
-        {
-        mParameters3A.Exposure = mode;
-        CAMHAL_LOGDB("Exposure mode %d", mode);
-        if ( 0 <= mParameters3A.Exposure )
-            {
-            mPending3Asettings |= SetExpMode;
+    if ( (str = params.get(TICameraParameters::KEY_EXPOSURE_MODE)) != NULL ) {
+        mode = getLUTvalue_HALtoOMX(str, ExpLUT);
+        if ( mParameters3A.Exposure != mode ) {
+            // If either the new or the old exposure mode is manual set also
+            // the SetManualExposure flag to call setManualExposureVal where
+            // the auto gain and exposure flags are configured
+            if ( mParameters3A.Exposure == OMX_ExposureControlOff ||
+                 mode == OMX_ExposureControlOff ) {
+                mPending3Asettings |= SetManualExposure;
+            }
+            mParameters3A.Exposure = mode;
+            CAMHAL_LOGDB("Exposure mode %d", mode);
+            if ( 0 <= mParameters3A.Exposure ) {
+                mPending3Asettings |= SetExpMode;
             }
         }
-
+        if ( mode == OMX_ExposureControlOff ) {
+            mode = params.getInt(TICameraParameters::KEY_MANUAL_EXPOSURE);
+            if ( mParameters3A.ManualExposure != mode ) {
+                mParameters3A.ManualExposure = mode;
+                CAMHAL_LOGDB("Manual Exposure = %d", mode);
+                mPending3Asettings |= SetManualExposure;
+            }
+            mode = params.getInt(TICameraParameters::KEY_MANUAL_EXPOSURE_RIGHT);
+            if ( mParameters3A.ManualExposureRight != mode ) {
+                mParameters3A.ManualExposureRight = mode;
+                CAMHAL_LOGDB("Manual Exposure right = %d", mode);
+                mPending3Asettings |= SetManualExposure;
+            }
+            mode = params.getInt(TICameraParameters::KEY_MANUAL_GAIN_ISO);
+            if ( mParameters3A.ManualGain != mode ) {
+                mParameters3A.ManualGain = mode;
+                CAMHAL_LOGDB("Manual Gain = %d", mode);
+                mPending3Asettings |= SetManualExposure;
+            }
+            mode = params.getInt(TICameraParameters::KEY_MANUAL_GAIN_ISO_RIGHT);
+            if ( mParameters3A.ManualGainRight != mode ) {
+                mParameters3A.ManualGainRight = mode;
+                CAMHAL_LOGDB("Manual Gain right = %d", mode);
+                mPending3Asettings |= SetManualExposure;
+            }
+        }
+    }
 #endif
 
-    str = params.get(CameraParameters::KEY_WHITE_BALANCE);
+    str = params.get(android::CameraParameters::KEY_WHITE_BALANCE);
     mode = getLUTvalue_HALtoOMX( str, WBalLUT);
     if (mFirstTimeInit || ((str != NULL) && (mode != mParameters3A.WhiteBallance)))
         {
@@ -141,7 +166,6 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
         }
 
 #ifdef OMAP_ENHANCEMENT
-
     varint = params.getInt(TICameraParameters::KEY_CONTRAST);
     if ( 0 <= varint )
         {
@@ -189,10 +213,9 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
             mPending3Asettings |= SetBrightness;
             }
         }
-
 #endif
 
-    str = params.get(CameraParameters::KEY_ANTIBANDING);
+    str = params.get(android::CameraParameters::KEY_ANTIBANDING);
     mode = getLUTvalue_HALtoOMX(str,FlickerLUT);
     if ( mFirstTimeInit || ( ( str != NULL ) && ( mParameters3A.Flicker != mode ) ))
         {
@@ -205,7 +228,6 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
         }
 
 #ifdef OMAP_ENHANCEMENT
-
     str = params.get(TICameraParameters::KEY_ISO);
     mode = getLUTvalue_HALtoOMX(str, IsoLUT);
     CAMHAL_LOGVB("ISO mode arrived in HAL : %s", str);
@@ -218,10 +240,9 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
             mPending3Asettings |= SetISO;
             }
         }
-
 #endif
 
-    str = params.get(CameraParameters::KEY_FOCUS_MODE);
+    str = params.get(android::CameraParameters::KEY_FOCUS_MODE);
     mode = getLUTvalue_HALtoOMX(str, FocusLUT);
     if ( (mFirstTimeInit || ((str != NULL) && (mParameters3A.Focus != mode))))
         {
@@ -237,19 +258,15 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
         CAMHAL_LOGDB("Focus %x", mParameters3A.Focus);
         }
 
-    str = params.get(CameraParameters::KEY_EXPOSURE_COMPENSATION);
-    varint = params.getInt(CameraParameters::KEY_EXPOSURE_COMPENSATION);
-    if ( mFirstTimeInit ||
-          (( str != NULL ) &&
-                  (mParameters3A.EVCompensation != varint )))
-        {
+    str = params.get(android::CameraParameters::KEY_EXPOSURE_COMPENSATION);
+    varint = params.getInt(android::CameraParameters::KEY_EXPOSURE_COMPENSATION);
+    if ( mFirstTimeInit || (str && (mParameters3A.EVCompensation != varint))) {
         CAMHAL_LOGDB("Setting EV Compensation to %d", varint);
-
         mParameters3A.EVCompensation = varint;
         mPending3Asettings |= SetEVCompensation;
         }
 
-    str = params.get(CameraParameters::KEY_FLASH_MODE);
+    str = params.get(android::CameraParameters::KEY_FLASH_MODE);
     mode = getLUTvalue_HALtoOMX( str, FlashLUT);
     if (  mFirstTimeInit || (( str != NULL ) && ( mParameters3A.FlashMode != mode )) )
         {
@@ -267,7 +284,7 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
     CAMHAL_LOGVB("Flash Setting %s", str);
     CAMHAL_LOGVB("FlashMode %d", mParameters3A.FlashMode);
 
-    str = params.get(CameraParameters::KEY_EFFECT);
+    str = params.get(android::CameraParameters::KEY_EFFECT);
     mode = getLUTvalue_HALtoOMX( str, EffLUT);
     if (  mFirstTimeInit || (( str != NULL ) && ( mParameters3A.Effect != mode )) )
         {
@@ -279,13 +296,13 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
             }
         }
 
-    str = params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED);
-    if ( (str != NULL) && (!strcmp(str, "true")) )
+    str = params.get(android::CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED);
+    if ( (str != NULL) && (!strcmp(str, android::CameraParameters::TRUE)) )
       {
         OMX_BOOL lock = OMX_FALSE;
         mUserSetExpLock = OMX_FALSE;
-        str = params.get(CameraParameters::KEY_AUTO_EXPOSURE_LOCK);
-        if (str && ((strcmp(str, "true")) == 0))
+        str = params.get(android::CameraParameters::KEY_AUTO_EXPOSURE_LOCK);
+        if (str && ((strcmp(str, android::CameraParameters::TRUE)) == 0))
           {
             CAMHAL_LOGVA("Locking Exposure");
             lock = OMX_TRUE;
@@ -304,13 +321,13 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
           }
       }
 
-    str = params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED);
-    if ( (str != NULL) && (!strcmp(str, "true")) )
+    str = params.get(android::CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED);
+    if ( (str != NULL) && (!strcmp(str, android::CameraParameters::TRUE)) )
       {
         OMX_BOOL lock = OMX_FALSE;
         mUserSetWbLock = OMX_FALSE;
-        str = params.get(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK);
-        if (str && ((strcmp(str, "true")) == 0))
+        str = params.get(android::CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK);
+        if (str && ((strcmp(str, android::CameraParameters::TRUE)) == 0))
           {
             CAMHAL_LOGVA("Locking WhiteBalance");
             lock = OMX_TRUE;
@@ -329,24 +346,24 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
       }
 
     str = params.get(TICameraParameters::KEY_AUTO_FOCUS_LOCK);
-    if (str && (strcmp(str, TRUE) == 0) && (mParameters3A.FocusLock != OMX_TRUE)) {
+    if (str && (strcmp(str, android::CameraParameters::TRUE) == 0) && (mParameters3A.FocusLock != OMX_TRUE)) {
         CAMHAL_LOGVA("Locking Focus");
         mParameters3A.FocusLock = OMX_TRUE;
         setFocusLock(mParameters3A);
-    } else if (str && (strcmp(str, FALSE) == 0) && (mParameters3A.FocusLock != OMX_FALSE)) {
+    } else if (str && (strcmp(str, android::CameraParameters::FALSE) == 0) && (mParameters3A.FocusLock != OMX_FALSE)) {
         CAMHAL_LOGVA("UnLocking Focus");
         mParameters3A.FocusLock = OMX_FALSE;
         setFocusLock(mParameters3A);
     }
 
-    str = params.get(CameraParameters::KEY_METERING_AREAS);
+    str = params.get(android::CameraParameters::KEY_METERING_AREAS);
     if ( (str != NULL) ) {
         size_t MAX_METERING_AREAS;
-        Vector< sp<CameraArea> > tempAreas;
+        android::Vector<android::sp<CameraArea> > tempAreas;
 
-        MAX_METERING_AREAS = atoi(params.get(CameraParameters::KEY_MAX_NUM_METERING_AREAS));
+        MAX_METERING_AREAS = atoi(params.get(android::CameraParameters::KEY_MAX_NUM_METERING_AREAS));
 
-        Mutex::Autolock lock(mMeteringAreasLock);
+        android::AutoMutex lock(mMeteringAreasLock);
 
         ret = CameraArea::parseAreas(str, ( strlen(str) + 1 ), tempAreas);
 
@@ -359,7 +376,7 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
 
             if ( MAX_METERING_AREAS >= mMeteringAreas.size() ) {
                 CAMHAL_LOGDB("Setting Metering Areas %s",
-                        params.get(CameraParameters::KEY_METERING_AREAS));
+                        params.get(android::CameraParameters::KEY_METERING_AREAS));
 
                 mPending3Asettings |= SetMeteringAreas;
             } else {
@@ -370,9 +387,46 @@ status_t OMXCameraAdapter::setParameters3A(const CameraParameters &params,
         }
     }
 
+// TI extensions for enable/disable algos
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_FIXED_GAMMA,
+                       mParameters3A.AlgoFixedGamma, SetAlgoFixedGamma, "Fixed Gamma");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_NSF1,
+                       mParameters3A.AlgoNSF1, SetAlgoNSF1, "NSF1");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_NSF2,
+                       mParameters3A.AlgoNSF2, SetAlgoNSF2, "NSF2");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_SHARPENING,
+                       mParameters3A.AlgoSharpening, SetAlgoSharpening, "Sharpening");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_THREELINCOLORMAP,
+                       mParameters3A.AlgoThreeLinColorMap, SetAlgoThreeLinColorMap, "ThreeLinColorMap");
+    declareParameter3ABool(params, TICameraParameters::KEY_ALGO_GIC, mParameters3A.AlgoGIC, SetAlgoGIC, "GIC");
+
     LOG_FUNCTION_NAME_EXIT;
 
     return ret;
+}
+
+void OMXCameraAdapter::declareParameter3ABool(const android::CameraParameters &params, const char *key,
+                                              OMX_BOOL &current_setting, E3ASettingsFlags pending,
+                                              const char *msg)
+{
+    OMX_BOOL val = OMX_TRUE;
+    const char *str = params.get(key);
+
+    if (str && ((strcmp(str, android::CameraParameters::FALSE)) == 0))
+        {
+        CAMHAL_LOGVB("Disabling %s", msg);
+        val = OMX_FALSE;
+        }
+    else
+        {
+        CAMHAL_LOGVB("Enabling %s", msg);
+        }
+    if (current_setting != val)
+        {
+        current_setting = val;
+        CAMHAL_LOGDB("%s %s", msg, current_setting ? "enabled" : "disabled");
+        mPending3Asettings |= pending;
+        }
 }
 
 int OMXCameraAdapter::getLUTvalue_HALtoOMX(const char * HalValue, LUTtype LUT)
@@ -396,30 +450,23 @@ const char* OMXCameraAdapter::getLUTvalue_OMXtoHAL(int OMXValue, LUTtype LUT)
     return NULL;
 }
 
-status_t OMXCameraAdapter::init3AParams(Gen3A_settings &Gen3A)
+int OMXCameraAdapter::getMultipleLUTvalue_OMXtoHAL(int OMXValue, LUTtype LUT, char * supported)
 {
-    LOG_FUNCTION_NAME;
+    int num = 0;
+    int remaining_size;
+    int LUTsize = LUT.size;
+    for(int i = 0; i < LUTsize; i++)
+        if( LUT.Table[i].omxDefinition == OMXValue )
+        {
+            num++;
+            if (supported[0] != '\0') {
+                strncat(supported, PARAM_SEP, 1);
+            }
+            remaining_size = ((((int)MAX_PROP_VALUE_LENGTH - 1 - (int)strlen(supported)) < 0) ? 0 : (MAX_PROP_VALUE_LENGTH - 1 - strlen(supported)));
+            strncat(supported, LUT.Table[i].userDefinition, remaining_size);
+        }
 
-    Gen3A.Effect = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_EFFECT, EffLUT);
-    Gen3A.FlashMode = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_FLASH_MODE, FlashLUT);
-    Gen3A.SceneMode = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_SCENE_MODE, SceneLUT);
-    Gen3A.EVCompensation = atoi(OMXCameraAdapter::DEFAULT_EV_COMPENSATION);
-    Gen3A.Focus = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_FOCUS_MODE, FocusLUT);
-    Gen3A.ISO = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_ISO_MODE, IsoLUT);
-    Gen3A.Flicker = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_ANTIBANDING, FlickerLUT);
-    Gen3A.Brightness = atoi(OMXCameraAdapter::DEFAULT_BRIGHTNESS);
-    Gen3A.Saturation = atoi(OMXCameraAdapter::DEFAULT_SATURATION) - SATURATION_OFFSET;
-    Gen3A.Sharpness = atoi(OMXCameraAdapter::DEFAULT_SHARPNESS) - SHARPNESS_OFFSET;
-    Gen3A.Contrast = atoi(OMXCameraAdapter::DEFAULT_CONTRAST) - CONTRAST_OFFSET;
-    Gen3A.WhiteBallance = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_WB, WBalLUT);
-    Gen3A.Exposure = getLUTvalue_HALtoOMX(OMXCameraAdapter::DEFAULT_EXPOSURE_MODE, ExpLUT);
-    Gen3A.ExposureLock = OMX_FALSE;
-    Gen3A.FocusLock = OMX_FALSE;
-    Gen3A.WhiteBalanceLock = OMX_FALSE;
-
-    LOG_FUNCTION_NAME_EXIT;
-
-    return NO_ERROR;
+    return num;
 }
 
 status_t OMXCameraAdapter::setExposureMode(Gen3A_settings& Gen3A)
@@ -453,7 +500,7 @@ status_t OMXCameraAdapter::setExposureMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 static bool isFlashDisabled() {
@@ -470,12 +517,78 @@ static bool isFlashDisabled() {
 
     char value[PROPERTY_VALUE_MAX];
     if (property_get("camera.flash_off", value, NULL) &&
-        (!strcasecmp(value, "true") || !strcasecmp(value, "1"))) {
-        ALOGW("flash is disabled for testing purpose");
+        (!strcasecmp(value, android::CameraParameters::TRUE) || !strcasecmp(value, "1"))) {
+        CAMHAL_LOGW("flash is disabled for testing purpose");
         return true;
     }
 
     return false;
+}
+
+status_t OMXCameraAdapter::setManualExposureVal(Gen3A_settings& Gen3A) {
+    OMX_ERRORTYPE eError = OMX_ErrorNone;
+    OMX_CONFIG_EXPOSUREVALUETYPE expVal;
+    OMX_TI_CONFIG_EXPOSUREVALUERIGHTTYPE expValRight;
+
+    LOG_FUNCTION_NAME;
+
+    if ( OMX_StateInvalid == mComponentState ) {
+        CAMHAL_LOGEA("OMX component is in invalid state");
+        return NO_INIT;
+    }
+
+    OMX_INIT_STRUCT_PTR (&expVal, OMX_CONFIG_EXPOSUREVALUETYPE);
+    OMX_INIT_STRUCT_PTR (&expValRight, OMX_TI_CONFIG_EXPOSUREVALUERIGHTTYPE);
+    expVal.nPortIndex = OMX_ALL;
+    expValRight.nPortIndex = OMX_ALL;
+
+    eError = OMX_GetConfig(mCameraAdapterParameters.mHandleComp,
+                   OMX_IndexConfigCommonExposureValue,
+                   &expVal);
+    if ( OMX_ErrorNone == eError ) {
+        eError = OMX_GetConfig(mCameraAdapterParameters.mHandleComp,
+                       (OMX_INDEXTYPE) OMX_TI_IndexConfigRightExposureValue,
+                       &expValRight);
+    }
+    if ( OMX_ErrorNone != eError ) {
+        CAMHAL_LOGEB("OMX_GetConfig error 0x%x (manual exposure values)", eError);
+        return Utils::ErrorUtils::omxToAndroidError(eError);
+    }
+
+    if ( Gen3A.Exposure != OMX_ExposureControlOff ) {
+        expVal.bAutoShutterSpeed = OMX_TRUE;
+        expVal.bAutoSensitivity = OMX_TRUE;
+    } else {
+        expVal.bAutoShutterSpeed = OMX_FALSE;
+        expVal.nShutterSpeedMsec = Gen3A.ManualExposure;
+        expValRight.nShutterSpeedMsec = Gen3A.ManualExposureRight;
+        if ( Gen3A.ManualGain <= 0 || Gen3A.ManualGainRight <= 0 ) {
+            expVal.bAutoSensitivity = OMX_TRUE;
+        } else {
+            expVal.bAutoSensitivity = OMX_FALSE;
+            expVal.nSensitivity = Gen3A.ManualGain;
+            expValRight.nSensitivity = Gen3A.ManualGainRight;
+        }
+    }
+
+    eError = OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                            OMX_IndexConfigCommonExposureValue,
+                            &expVal);
+    if ( OMX_ErrorNone == eError ) {
+        eError = OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                                (OMX_INDEXTYPE) OMX_TI_IndexConfigRightExposureValue,
+                                &expValRight);
+    }
+
+    if ( OMX_ErrorNone != eError ) {
+        CAMHAL_LOGEB("Error 0x%x while configuring manual exposure values", eError);
+    } else {
+        CAMHAL_LOGDA("Camera manual exposure values configured successfully");
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setFlashMode(Gen3A_settings& Gen3A)
@@ -544,7 +657,7 @@ status_t OMXCameraAdapter::setFlashMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getFlashMode(Gen3A_settings& Gen3A)
@@ -576,7 +689,7 @@ status_t OMXCameraAdapter::getFlashMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setFocusMode(Gen3A_settings& Gen3A)
@@ -685,7 +798,7 @@ status_t OMXCameraAdapter::setFocusMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getFocusMode(Gen3A_settings& Gen3A)
@@ -716,7 +829,7 @@ status_t OMXCameraAdapter::getFocusMode(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setScene(Gen3A_settings& Gen3A)
@@ -760,7 +873,7 @@ status_t OMXCameraAdapter::setScene(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setEVCompensation(Gen3A_settings& Gen3A)
@@ -804,7 +917,7 @@ status_t OMXCameraAdapter::setEVCompensation(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getEVCompensation(Gen3A_settings& Gen3A)
@@ -835,7 +948,7 @@ status_t OMXCameraAdapter::getEVCompensation(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setWBMode(Gen3A_settings& Gen3A)
@@ -855,21 +968,9 @@ status_t OMXCameraAdapter::setWBMode(Gen3A_settings& Gen3A)
     wb.nPortIndex = mCameraAdapterParameters.mPrevPortIndex;
     wb.eWhiteBalControl = ( OMX_WHITEBALCONTROLTYPE ) Gen3A.WhiteBallance;
 
-    if ( WB_FACE_PRIORITY == Gen3A.WhiteBallance )
-        {
-        //Disable Region priority and enable Face priority
-        setAlgoPriority(REGION_PRIORITY, WHITE_BALANCE_ALGO, false);
-        setAlgoPriority(FACE_PRIORITY, WHITE_BALANCE_ALGO, true);
-
-        //Then set the mode to auto
-        wb.eWhiteBalControl = OMX_WhiteBalControlAuto;
-        }
-    else
-        {
-        //Disable Face and Region priority
-        setAlgoPriority(FACE_PRIORITY, WHITE_BALANCE_ALGO, false);
-        setAlgoPriority(REGION_PRIORITY, WHITE_BALANCE_ALGO, false);
-        }
+    // disable face and region priorities
+    setAlgoPriority(FACE_PRIORITY, WHITE_BALANCE_ALGO, false);
+    setAlgoPriority(REGION_PRIORITY, WHITE_BALANCE_ALGO, false);
 
     eError = OMX_SetConfig( mCameraAdapterParameters.mHandleComp,
                          OMX_IndexConfigCommonWhiteBalance,
@@ -956,7 +1057,7 @@ status_t OMXCameraAdapter::setFlicker(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setBrightness(Gen3A_settings& Gen3A)
@@ -993,7 +1094,7 @@ status_t OMXCameraAdapter::setBrightness(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setContrast(Gen3A_settings& Gen3A)
@@ -1076,7 +1177,7 @@ status_t OMXCameraAdapter::setSharpness(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getSharpness(Gen3A_settings& Gen3A)
@@ -1107,7 +1208,7 @@ status_t OMXCameraAdapter::getSharpness(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setSaturation(Gen3A_settings& Gen3A)
@@ -1144,7 +1245,7 @@ status_t OMXCameraAdapter::setSaturation(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getSaturation(Gen3A_settings& Gen3A)
@@ -1175,13 +1276,14 @@ status_t OMXCameraAdapter::getSaturation(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setISO(Gen3A_settings& Gen3A)
 {
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_CONFIG_EXPOSUREVALUETYPE expValues;
+    OMX_TI_CONFIG_EXPOSUREVALUERIGHTTYPE expValRight;
 
     LOG_FUNCTION_NAME;
 
@@ -1191,41 +1293,60 @@ status_t OMXCameraAdapter::setISO(Gen3A_settings& Gen3A)
         return NO_INIT;
         }
 
+    // In case of manual exposure Gain is applied from setManualExposureVal
+    if ( Gen3A.Exposure == OMX_ExposureControlOff ) {
+        return NO_ERROR;
+    }
+
     OMX_INIT_STRUCT_PTR (&expValues, OMX_CONFIG_EXPOSUREVALUETYPE);
+    OMX_INIT_STRUCT_PTR (&expValRight, OMX_TI_CONFIG_EXPOSUREVALUERIGHTTYPE);
     expValues.nPortIndex = mCameraAdapterParameters.mPrevPortIndex;
+    expValRight.nPortIndex = mCameraAdapterParameters.mPrevPortIndex;
 
-    OMX_GetConfig( mCameraAdapterParameters.mHandleComp,
-                   OMX_IndexConfigCommonExposureValue,
-                   &expValues);
+    eError = OMX_GetConfig( mCameraAdapterParameters.mHandleComp,
+                    OMX_IndexConfigCommonExposureValue,
+                    &expValues);
 
-    if( 0 == Gen3A.ISO )
-        {
+    if ( OMX_ErrorNone == eError ) {
+        eError = OMX_GetConfig(mCameraAdapterParameters.mHandleComp,
+                        (OMX_INDEXTYPE) OMX_TI_IndexConfigRightExposureValue,
+                        &expValRight);
+    }
+
+    if ( OMX_ErrorNone != eError ) {
+        CAMHAL_LOGEB("OMX_GetConfig error 0x%x (manual exposure values)", eError);
+        return Utils::ErrorUtils::omxToAndroidError(eError);
+    }
+
+    if( 0 == Gen3A.ISO ) {
         expValues.bAutoSensitivity = OMX_TRUE;
-        }
-    else
-        {
+    } else {
         expValues.bAutoSensitivity = OMX_FALSE;
         expValues.nSensitivity = Gen3A.ISO;
-        }
+        expValRight.nSensitivity = expValues.nSensitivity;
+    }
 
     eError = OMX_SetConfig( mCameraAdapterParameters.mHandleComp,
-                         OMX_IndexConfigCommonExposureValue,
-                         &expValues);
-    if ( OMX_ErrorNone != eError )
-        {
+                            OMX_IndexConfigCommonExposureValue,
+                            &expValues);
+
+    if ( OMX_ErrorNone == eError ) {
+        eError = OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
+                            (OMX_INDEXTYPE) OMX_TI_IndexConfigRightExposureValue,
+                            &expValRight);
+    }
+    if ( OMX_ErrorNone != eError ) {
         CAMHAL_LOGEB("Error while configuring ISO 0x%x error = 0x%x",
                      ( unsigned int ) expValues.nSensitivity,
                      eError);
-        }
-    else
-        {
+    } else {
         CAMHAL_LOGDB("ISO 0x%x configured successfully",
                      ( unsigned int ) expValues.nSensitivity);
-        }
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::getISO(Gen3A_settings& Gen3A)
@@ -1256,7 +1377,7 @@ status_t OMXCameraAdapter::getISO(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setEffect(Gen3A_settings& Gen3A)
@@ -1293,7 +1414,7 @@ status_t OMXCameraAdapter::setEffect(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT;
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setWhiteBalanceLock(Gen3A_settings& Gen3A)
@@ -1325,7 +1446,7 @@ status_t OMXCameraAdapter::setWhiteBalanceLock(Gen3A_settings& Gen3A)
     }
   LOG_FUNCTION_NAME_EXIT
 
-  return ErrorUtils::omxToAndroidError(eError);
+  return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setExposureLock(Gen3A_settings& Gen3A)
@@ -1357,7 +1478,7 @@ status_t OMXCameraAdapter::setExposureLock(Gen3A_settings& Gen3A)
     }
   LOG_FUNCTION_NAME_EXIT
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setFocusLock(Gen3A_settings& Gen3A)
@@ -1388,7 +1509,7 @@ status_t OMXCameraAdapter::setFocusLock(Gen3A_settings& Gen3A)
 
     LOG_FUNCTION_NAME_EXIT
 
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_BOOL toggleFocus)
@@ -1422,7 +1543,6 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
     }
     else
     {
-        const char *lock_state_exp = toggleExp ? TRUE : FALSE;
         CAMHAL_LOGDA("Exposure Lock GetConfig successfull");
 
         /* Apply locks only when not applied already */
@@ -1431,7 +1551,6 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
             setExposureLock(mParameters3A);
         }
 
-        mParams.set(CameraParameters::KEY_AUTO_EXPOSURE_LOCK, lock_state_exp);
     }
 
     OMX_INIT_STRUCT_PTR (&lock, OMX_IMAGE_CONFIG_LOCKTYPE);
@@ -1469,7 +1588,6 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
     }
     else
     {
-        const char *lock_state_wb = toggleWb ? TRUE : FALSE;
         CAMHAL_LOGDA("WhiteBalance Lock GetConfig successfull");
 
         /* Apply locks only when not applied already */
@@ -1478,10 +1596,9 @@ status_t OMXCameraAdapter::set3ALock(OMX_BOOL toggleExp, OMX_BOOL toggleWb, OMX_
             setWhiteBalanceLock(mParameters3A);
         }
 
-        mParams.set(CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK, lock_state_wb);
     }
  EXIT:
-    return ErrorUtils::omxToAndroidError(eError);
+    return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
 status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
@@ -1489,14 +1606,21 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
   status_t ret = NO_ERROR;
   OMX_ERRORTYPE eError = OMX_ErrorNone;
 
-  OMX_ALGOAREASTYPE **meteringAreas;
+  CameraBuffer *bufferlist;
+  OMX_ALGOAREASTYPE *meteringAreas;
   OMX_TI_CONFIG_SHAREDBUFFER sharedBuffer;
   MemoryManager memMgr;
   int areasSize = 0;
 
   LOG_FUNCTION_NAME
 
-  Mutex::Autolock lock(mMeteringAreasLock);
+    ret = memMgr.initialize();
+    if ( ret != OK ) {
+        CAMHAL_LOGE("MemoryManager initialization failed, error: %d", ret);
+        return ret;
+    }
+
+    android::AutoMutex lock(mMeteringAreasLock);
 
   if ( OMX_StateInvalid == mComponentState )
     {
@@ -1505,7 +1629,8 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
     }
 
   areasSize = ((sizeof(OMX_ALGOAREASTYPE)+4095)/4096)*4096;
-  meteringAreas = (OMX_ALGOAREASTYPE**) memMgr.allocateBuffer(0, 0, NULL, areasSize, 1);
+  bufferlist = memMgr.allocateBufferList(0, 0, NULL, areasSize, 1);
+  meteringAreas = (OMX_ALGOAREASTYPE *)bufferlist[0].opaque;
 
   OMXCameraPortParameters * mPreviewData = NULL;
   mPreviewData = &mCameraAdapterParameters.mCameraPortParams[mCameraAdapterParameters.mPrevPortIndex];
@@ -1516,37 +1641,47 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
       return -ENOMEM;
       }
 
-  OMX_INIT_STRUCT_PTR (meteringAreas[0], OMX_ALGOAREASTYPE);
+  OMX_INIT_STRUCT_PTR (meteringAreas, OMX_ALGOAREASTYPE);
 
-  meteringAreas[0]->nPortIndex = OMX_ALL;
-  meteringAreas[0]->nNumAreas = mMeteringAreas.size();
-  meteringAreas[0]->nAlgoAreaPurpose = OMX_AlgoAreaExposure;
+  meteringAreas->nPortIndex = OMX_ALL;
+  meteringAreas->nNumAreas = mMeteringAreas.size();
+  meteringAreas->nAlgoAreaPurpose = OMX_AlgoAreaExposure;
 
   for ( unsigned int n = 0; n < mMeteringAreas.size(); n++)
       {
+        int widthDivisor = 1;
+        int heightDivisor = 1;
+
+        if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutTopBottom) {
+            heightDivisor = 2;
+        }
+        if (mPreviewData->mFrameLayoutType == OMX_TI_StereoFrameLayoutLeftRight) {
+            widthDivisor = 2;
+        }
+
       // transform the coordinates to 3A-type coordinates
-      mMeteringAreas.itemAt(n)->transfrom(mPreviewData->mWidth,
-                                      mPreviewData->mHeight,
-                                      meteringAreas[0]->tAlgoAreas[n].nTop,
-                                      meteringAreas[0]->tAlgoAreas[n].nLeft,
-                                      meteringAreas[0]->tAlgoAreas[n].nWidth,
-                                      meteringAreas[0]->tAlgoAreas[n].nHeight);
+      mMeteringAreas.itemAt(n)->transfrom((size_t)mPreviewData->mWidth/widthDivisor,
+                                      (size_t)mPreviewData->mHeight/heightDivisor,
+                                      (size_t&)meteringAreas->tAlgoAreas[n].nTop,
+                                      (size_t&)meteringAreas->tAlgoAreas[n].nLeft,
+                                      (size_t&)meteringAreas->tAlgoAreas[n].nWidth,
+                                      (size_t&)meteringAreas->tAlgoAreas[n].nHeight);
 
-      meteringAreas[0]->tAlgoAreas[n].nLeft =
-              ( meteringAreas[0]->tAlgoAreas[n].nLeft * METERING_AREAS_RANGE ) / mPreviewData->mWidth;
-      meteringAreas[0]->tAlgoAreas[n].nTop =
-              ( meteringAreas[0]->tAlgoAreas[n].nTop* METERING_AREAS_RANGE ) / mPreviewData->mHeight;
-      meteringAreas[0]->tAlgoAreas[n].nWidth =
-              ( meteringAreas[0]->tAlgoAreas[n].nWidth * METERING_AREAS_RANGE ) / mPreviewData->mWidth;
-      meteringAreas[0]->tAlgoAreas[n].nHeight =
-              ( meteringAreas[0]->tAlgoAreas[n].nHeight * METERING_AREAS_RANGE ) / mPreviewData->mHeight;
+      meteringAreas->tAlgoAreas[n].nLeft =
+              ( meteringAreas->tAlgoAreas[n].nLeft * METERING_AREAS_RANGE ) / mPreviewData->mWidth;
+      meteringAreas->tAlgoAreas[n].nTop =
+              ( meteringAreas->tAlgoAreas[n].nTop* METERING_AREAS_RANGE ) / mPreviewData->mHeight;
+      meteringAreas->tAlgoAreas[n].nWidth =
+              ( meteringAreas->tAlgoAreas[n].nWidth * METERING_AREAS_RANGE ) / mPreviewData->mWidth;
+      meteringAreas->tAlgoAreas[n].nHeight =
+              ( meteringAreas->tAlgoAreas[n].nHeight * METERING_AREAS_RANGE ) / mPreviewData->mHeight;
 
-      meteringAreas[0]->tAlgoAreas[n].nPriority = mMeteringAreas.itemAt(n)->getWeight();
+      meteringAreas->tAlgoAreas[n].nPriority = mMeteringAreas.itemAt(n)->getWeight();
 
       CAMHAL_LOGDB("Metering area %d : top = %d left = %d width = %d height = %d prio = %d",
-              n, (int)meteringAreas[0]->tAlgoAreas[n].nTop, (int)meteringAreas[0]->tAlgoAreas[n].nLeft,
-              (int)meteringAreas[0]->tAlgoAreas[n].nWidth, (int)meteringAreas[0]->tAlgoAreas[n].nHeight,
-              (int)meteringAreas[0]->tAlgoAreas[n].nPriority);
+              n, (int)meteringAreas->tAlgoAreas[n].nTop, (int)meteringAreas->tAlgoAreas[n].nLeft,
+              (int)meteringAreas->tAlgoAreas[n].nWidth, (int)meteringAreas->tAlgoAreas[n].nHeight,
+              (int)meteringAreas->tAlgoAreas[n].nPriority);
 
       }
 
@@ -1554,7 +1689,7 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
 
   sharedBuffer.nPortIndex = OMX_ALL;
   sharedBuffer.nSharedBuffSize = areasSize;
-  sharedBuffer.pSharedBuff = (OMX_U8 *) meteringAreas[0];
+  sharedBuffer.pSharedBuff = (OMX_U8 *)camera_buffer_get_omx_ptr (&bufferlist[0]);
 
   if ( NULL == sharedBuffer.pSharedBuff )
       {
@@ -1577,14 +1712,99 @@ status_t OMXCameraAdapter::setMeteringAreas(Gen3A_settings& Gen3A)
       }
 
  EXIT:
-  if (NULL != meteringAreas)
+  if (NULL != bufferlist)
       {
-      memMgr.freeBuffer((void*) meteringAreas);
-      meteringAreas = NULL;
+      memMgr.freeBufferList(bufferlist);
       }
 
   return ret;
 }
+
+//TI extensions for enable/disable algos
+status_t OMXCameraAdapter::setParameter3ABoolInvert(const OMX_INDEXTYPE omx_idx,
+                                                    const OMX_BOOL data, const char *msg)
+{
+    OMX_BOOL inv_data;
+
+    if (OMX_TRUE == data)
+        {
+        inv_data = OMX_FALSE;
+        }
+    else if (OMX_FALSE == data)
+        {
+        inv_data = OMX_TRUE;
+        }
+    else
+        {
+        return BAD_VALUE;
+        }
+    return setParameter3ABool(omx_idx, inv_data, msg);
+}
+
+status_t OMXCameraAdapter::setParameter3ABool(const OMX_INDEXTYPE omx_idx,
+                                              const OMX_BOOL data, const char *msg)
+{
+  OMX_ERRORTYPE eError = OMX_ErrorNone;
+  OMX_CONFIG_BOOLEANTYPE cfgdata;
+
+  LOG_FUNCTION_NAME
+
+  if ( OMX_StateInvalid == mComponentState )
+    {
+      CAMHAL_LOGEA("OMX component is in invalid state");
+      return NO_INIT;
+    }
+
+  OMX_INIT_STRUCT_PTR (&cfgdata, OMX_CONFIG_BOOLEANTYPE);
+  cfgdata.bEnabled = data;
+  eError = OMX_SetConfig( mCameraAdapterParameters.mHandleComp,
+                          omx_idx,
+                          &cfgdata);
+  if ( OMX_ErrorNone != eError )
+    {
+      CAMHAL_LOGEB("Error while configuring %s error = 0x%x", msg, eError);
+    }
+  else
+    {
+      CAMHAL_LOGDB("%s configured successfully %d ", msg, cfgdata.bEnabled);
+    }
+
+  LOG_FUNCTION_NAME_EXIT
+
+  return Utils::ErrorUtils::omxToAndroidError(eError);
+}
+
+#ifndef OMAP_TUNA
+status_t OMXCameraAdapter::setAlgoFixedGamma(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABool((OMX_INDEXTYPE) OMX_TI_IndexConfigFixedGamma, Gen3A.AlgoFixedGamma, "Fixed Gamma");
+}
+
+status_t OMXCameraAdapter::setAlgoNSF1(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableNSF1, Gen3A.AlgoNSF1, "NSF1");
+}
+
+status_t OMXCameraAdapter::setAlgoNSF2(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableNSF2, Gen3A.AlgoNSF2, "NSF2");
+}
+
+status_t OMXCameraAdapter::setAlgoSharpening(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableSharpening, Gen3A.AlgoSharpening, "Sharpening");
+}
+
+status_t OMXCameraAdapter::setAlgoThreeLinColorMap(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableThreeLinColorMap, Gen3A.AlgoThreeLinColorMap, "Color Conversion");
+}
+
+status_t OMXCameraAdapter::setAlgoGIC(Gen3A_settings& Gen3A)
+{
+    return setParameter3ABoolInvert((OMX_INDEXTYPE) OMX_TI_IndexConfigDisableGIC, Gen3A.AlgoGIC, "Green Inballance Correction");
+}
+#endif
 
 status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
 {
@@ -1594,7 +1814,7 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(m3ASettingsUpdateLock);
+    android::AutoMutex lock(m3ASettingsUpdateLock);
 
     /*
      * Scenes have a priority during the process
@@ -1692,6 +1912,11 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
                     break;
                     }
 
+                case SetManualExposure: {
+                    ret |= setManualExposureVal(Gen3A);
+                    break;
+                }
+
                 case SetFlash:
                     {
                     ret |= setFlashMode(Gen3A);
@@ -1714,6 +1939,46 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
                     ret |= setMeteringAreas(Gen3A);
                   }
                   break;
+
+#ifndef OMAP_TUNA
+                //TI extensions for enable/disable algos
+                case SetAlgoFixedGamma:
+                  {
+                    ret |= setAlgoFixedGamma(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoNSF1:
+                  {
+                    ret |= setAlgoNSF1(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoNSF2:
+                  {
+                    ret |= setAlgoNSF2(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoSharpening:
+                  {
+                    ret |= setAlgoSharpening(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoThreeLinColorMap:
+                  {
+                    ret |= setAlgoThreeLinColorMap(Gen3A);
+                  }
+                  break;
+
+                case SetAlgoGIC:
+                  {
+                    ret |= setAlgoGIC(Gen3A);
+                  }
+                  break;
+#endif
+
                 default:
                     CAMHAL_LOGEB("this setting (0x%x) is still not supported in CameraAdapter ",
                                  currSett);
@@ -1728,4 +1993,5 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
         return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

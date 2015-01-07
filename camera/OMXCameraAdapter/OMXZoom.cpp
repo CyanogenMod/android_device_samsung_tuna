@@ -21,14 +21,11 @@
 *
 */
 
-#undef LOG_TAG
-
-#define LOG_TAG "CameraHAL"
-
 #include "CameraHal.h"
 #include "OMXCameraAdapter.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 const int32_t OMXCameraAdapter::ZOOM_STEPS [ZOOM_STAGES] =  {
                                 65536, 68157, 70124, 72745,
@@ -49,20 +46,19 @@ const int32_t OMXCameraAdapter::ZOOM_STEPS [ZOOM_STAGES] =  {
                                 524288 };
 
 
-status_t OMXCameraAdapter::setParametersZoom(const CameraParameters &params,
+status_t OMXCameraAdapter::setParametersZoom(const android::CameraParameters &params,
                                              BaseCameraAdapter::AdapterState state)
 {
     status_t ret = NO_ERROR;
-    Mutex::Autolock lock(mZoomLock);
+    android::AutoMutex lock(mZoomLock);
 
     LOG_FUNCTION_NAME;
 
     //Immediate zoom should not be avaialable while smooth zoom is running
     if ( ( ZOOM_ACTIVE & state ) != ZOOM_ACTIVE )
         {
-        int zoom = params.getInt(CameraParameters::KEY_ZOOM);
-        if( ( zoom >= 0 ) && ( zoom < ZOOM_STAGES ) )
-            {
+        int zoom = params.getInt(android::CameraParameters::KEY_ZOOM);
+        if (( zoom >= 0 ) && ( zoom < mMaxZoomSupported )) {
             mTargetZoomIdx = zoom;
 
             //Immediate zoom should be applied instantly ( CTS requirement )
@@ -97,8 +93,7 @@ status_t OMXCameraAdapter::doZoom(int index)
         ret = -1;
         }
 
-    if (  ( 0 > index) || ( ( ZOOM_STAGES - 1 ) < index ) )
-        {
+    if (( 0 > index) || ((mMaxZoomSupported - 1 ) < index )) {
         CAMHAL_LOGEB("Zoom index %d out of range", index);
         ret = -EINVAL;
         }
@@ -139,7 +134,7 @@ status_t OMXCameraAdapter::advanceZoom()
 {
     status_t ret = NO_ERROR;
     AdapterState state;
-    Mutex::Autolock lock(mZoomLock);
+    android::AutoMutex lock(mZoomLock);
 
     BaseCameraAdapter::getState(state);
 
@@ -241,23 +236,20 @@ status_t OMXCameraAdapter::startSmoothZoom(int targetIdx)
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mZoomLock);
+    android::AutoMutex lock(mZoomLock);
 
     CAMHAL_LOGDB("Start smooth zoom target = %d, mCurrentIdx = %d",
                  targetIdx,
                  mCurrentZoomIdx);
 
-    if ( ( targetIdx >= 0 ) && ( targetIdx < ZOOM_STAGES ) )
-        {
+    if (( targetIdx >= 0 ) && ( targetIdx < mMaxZoomSupported )) {
         mTargetZoomIdx = targetIdx;
         mZoomParameterIdx = mCurrentZoomIdx;
         mReturnZoomStatus = false;
-        }
-    else
-        {
+    } else {
         CAMHAL_LOGEB("Smooth value out of range %d!", targetIdx);
         ret = -EINVAL;
-        }
+    }
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -267,7 +259,7 @@ status_t OMXCameraAdapter::startSmoothZoom(int targetIdx)
 status_t OMXCameraAdapter::stopSmoothZoom()
 {
     status_t ret = NO_ERROR;
-    Mutex::Autolock lock(mZoomLock);
+    android::AutoMutex lock(mZoomLock);
 
     LOG_FUNCTION_NAME;
 
@@ -293,4 +285,5 @@ status_t OMXCameraAdapter::stopSmoothZoom()
     return ret;
 }
 
-};
+} // namespace Camera
+} // namespace Ti

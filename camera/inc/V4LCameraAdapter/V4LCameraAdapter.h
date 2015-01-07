@@ -19,16 +19,40 @@
 #ifndef V4L_CAMERA_ADAPTER_H
 #define V4L_CAMERA_ADAPTER_H
 
+#include <linux/videodev2.h>
+
 #include "CameraHal.h"
 #include "BaseCameraAdapter.h"
 #include "DebugUtils.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 #define DEFAULT_PIXEL_FORMAT V4L2_PIX_FMT_YUYV
-#define NB_BUFFER 10
-#define DEVICE "/dev/video4"
 
+#define NB_BUFFER 10
+#define DEVICE "/dev/videoxx"
+#define DEVICE_PATH "/dev/"
+#define DEVICE_NAME "videoxx"
+
+typedef int V4L_HANDLETYPE;
+
+struct CapPixelformat {
+        uint32_t pixelformat;
+        const char *param;
+};
+
+struct CapResolution {
+        size_t width, height;
+        char param[10];
+};
+
+struct CapU32 {
+        uint32_t num;
+        const char *param;
+};
+
+typedef CapU32 CapFramerate;
 
 struct VideoInfo {
     struct v4l2_capability cap;
@@ -36,6 +60,7 @@ struct VideoInfo {
     struct v4l2_buffer buf;
     struct v4l2_requestbuffers rb;
     void *mem[NB_BUFFER];
+    void *CaptureBuffers[NB_BUFFER];
     bool isStreaming;
     int width;
     int height;
@@ -43,6 +68,16 @@ struct VideoInfo {
     int framesizeIn;
 };
 
+typedef struct V4L_TI_CAPTYPE {
+    uint16_t        ulPreviewFormatCount;   // supported preview pixelformat count
+    uint32_t        ePreviewFormats[32];
+    uint16_t        ulPreviewResCount;   // supported preview resolution sizes
+    CapResolution   tPreviewRes[32];
+    uint16_t        ulCaptureResCount;   // supported capture resolution sizes
+    CapResolution   tCaptureRes[32];
+    uint16_t        ulFrameRateCount;   // supported frame rate
+    uint16_t        ulFrameRates[32];
+}V4L_TI_CAPTYPE;
 
 /**
   * Class which completely abstracts the camera hardware interaction from camera hal
@@ -64,32 +99,35 @@ public:
 
 public:
 
-    V4LCameraAdapter();
+    V4LCameraAdapter(size_t sensor_index);
     ~V4LCameraAdapter();
 
 
     ///Initialzes the camera adapter creates any resources required
-    virtual status_t initialize(CameraProperties::Properties*, int sensor_index=0);
+    virtual status_t initialize(CameraProperties::Properties*);
 
     //APIs to configure Camera adapter and get the current parameter set
-    virtual status_t setParameters(const CameraParameters& params);
-    virtual void getParameters(CameraParameters& params);
+    virtual status_t setParameters(const android::CameraParameters& params);
+    virtual void getParameters(android::CameraParameters& params);
 
     // API
-    virtual status_t UseBuffersPreview(void* bufArr, int num);
+    virtual status_t UseBuffersPreview(CameraBuffer *bufArr, int num);
+    virtual status_t UseBuffersCapture(CameraBuffer *bufArr, int num);
 
-    //API to flush the buffers for preview
-    status_t flushBuffers();
+    static status_t getCaps(const int sensorId, CameraProperties::Properties* params, V4L_HANDLETYPE handle);
 
 protected:
 
 //----------Parent class method implementation------------------------------------
     virtual status_t startPreview();
     virtual status_t stopPreview();
-    virtual status_t useBuffers(CameraMode mode, void* bufArr, int num, size_t length, unsigned int queueable);
-    virtual status_t fillThisBuffer(void* frameBuf, CameraFrame::FrameType frameType);
+    virtual status_t takePicture();
+    virtual status_t stopImageCapture();
+    virtual status_t autoFocus();
+    virtual status_t useBuffers(CameraMode mode, CameraBuffer *bufArr, int num, size_t length, unsigned int queueable);
+    virtual status_t fillThisBuffer(CameraBuffer *frameBuf, CameraFrame::FrameType frameType);
     virtual status_t getFrameSize(size_t &width, size_t &height);
-    virtual status_t getPictureBufferSize(size_t &length, size_t bufferCount);
+    virtual status_t getPictureBufferSize(CameraFrame *frame, size_t bufferCount);
     virtual status_t getFrameDataSize(size_t &dataFrameSize, size_t bufferCount);
     virtual void onOrientationEvent(uint32_t orientation, uint32_t tilt);
 //-----------------------------------------------------------------------------
@@ -97,13 +135,13 @@ protected:
 
 private:
 
-    class PreviewThread : public Thread {
+    class PreviewThread : public android::Thread {
             V4LCameraAdapter* mAdapter;
         public:
             PreviewThread(V4LCameraAdapter* hw) :
                     Thread(false), mAdapter(hw) { }
             virtual void onFirstRef() {
-                run("CameraPreviewThread", PRIORITY_URGENT_DISPLAY);
+                run("CameraPreviewThread", android::PRIORITY_URGENT_DISPLAY);
             }
             virtual bool threadLoop() {
                 mAdapter->previewThread();
@@ -122,15 +160,56 @@ private:
 public:
 
 private:
-    int mPreviewBufferCount;
-    KeyedVector<int, int> mPreviewBufs;
-    mutable Mutex mPreviewBufsLock;
+    //capabilities data
+    static const CapPixelformat mPixelformats [];
+    static const CapResolution mPreviewRes [];
+    static const CapFramerate mFramerates [];
+    static const CapResolution mImageCapRes [];
 
-    CameraParameters mParams;
+    //camera defaults
+    static const char DEFAULT_PREVIEW_FORMAT[];
+    static const char DEFAULT_PREVIEW_SIZE[];
+    static const char DEFAULT_FRAMERATE[];
+    static const char DEFAULT_NUM_PREV_BUFS[];
+
+    static const char DEFAULT_PICTURE_FORMAT[];
+    static const char DEFAULT_PICTURE_SIZE[];
+    static const char DEFAULT_FOCUS_MODE[];
+    static const char * DEFAULT_VSTAB;
+    static const char * DEFAULT_VNF;
+
+    static status_t insertDefaults(CameraProperties::Properties*, V4L_TI_CAPTYPE&);
+    static status_t insertCapabilities(CameraProperties::Properties*, V4L_TI_CAPTYPE&);
+    static status_t insertPreviewFormats(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
+    static status_t insertPreviewSizes(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
+    static status_t insertImageSizes(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
+    static status_t insertFrameRates(CameraProperties::Properties* , V4L_TI_CAPTYPE&);
+    static status_t sortAscend(V4L_TI_CAPTYPE&, uint16_t ) ;
+
+    status_t v4lIoctl(int, int, void*);
+    status_t v4lInitMmap(int&);
+    status_t v4lInitUsrPtr(int&);
+    status_t v4lStartStreaming();
+    status_t v4lStopStreaming(int nBufferCount);
+    status_t v4lSetFormat(int, int, uint32_t);
+    status_t restartPreview();
+
+
+    int mPreviewBufferCount;
+    int mPreviewBufferCountQueueable;
+    int mCaptureBufferCount;
+    int mCaptureBufferCountQueueable;
+    android::KeyedVector<CameraBuffer *, int> mPreviewBufs;
+    android::KeyedVector<CameraBuffer *, int> mCaptureBufs;
+    mutable android::Mutex mPreviewBufsLock;
+    mutable android::Mutex mCaptureBufsLock;
+    mutable android::Mutex mStopPreviewLock;
+
+    android::CameraParameters mParams;
 
     bool mPreviewing;
     bool mCapturing;
-    Mutex mLock;
+    android::Mutex mLock;
 
     int mFrameCount;
     int mLastFrameCount;
@@ -142,17 +221,18 @@ private:
 
     int mSensorIndex;
 
-     // protected by mLock
-     sp<PreviewThread>   mPreviewThread;
+    // protected by mLock
+    android::sp<PreviewThread>   mPreviewThread;
 
-     struct VideoInfo *mVideoInfo;
-     int mCameraHandle;
-
+    struct VideoInfo *mVideoInfo;
+    int mCameraHandle;
 
     int nQueued;
     int nDequeued;
 
 };
-}; //// namespace
-#endif //V4L_CAMERA_ADAPTER_H
 
+} // namespace Camera
+} // namespace Ti
+
+#endif //V4L_CAMERA_ADAPTER_H

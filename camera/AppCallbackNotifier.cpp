@@ -14,12 +14,6 @@
  * limitations under the License.
  */
 
-
-
-
-#define LOG_TAG "CameraHAL"
-
-
 #include "CameraHal.h"
 #include "VideoMetadata.h"
 #include "Encoder_libjpeg.h"
@@ -27,11 +21,13 @@
 #include <ui/GraphicBuffer.h>
 #include <ui/GraphicBufferMapper.h>
 #include "NV12_resize.h"
+#include "TICameraParameters.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 const int AppCallbackNotifier::NOTIFIER_TIMEOUT = -1;
-KeyedVector<void*, sp<Encoder_libjpeg> > gEncoderQueue;
+android::KeyedVector<void*, android::sp<Encoder_libjpeg> > gEncoderQueue;
 
 void AppCallbackNotifierEncoderCallback(void* main_jpeg,
                                         void* thumb_jpeg,
@@ -39,11 +35,12 @@ void AppCallbackNotifierEncoderCallback(void* main_jpeg,
                                         void* cookie1,
                                         void* cookie2,
                                         void* cookie3,
+                                        void* cookie4,
                                         bool canceled)
 {
     if (cookie1 && !canceled) {
         AppCallbackNotifier* cb = (AppCallbackNotifier*) cookie1;
-        cb->EncoderDoneCb(main_jpeg, thumb_jpeg, type, cookie2, cookie3);
+        cb->EncoderDoneCb(main_jpeg, thumb_jpeg, type, cookie2, cookie3, cookie4);
     }
 
     if (main_jpeg) {
@@ -60,20 +57,21 @@ void AppCallbackNotifierEncoderCallback(void* main_jpeg,
 
 /*--------------------NotificationHandler Class STARTS here-----------------------------*/
 
-void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, CameraFrame::FrameType type, void* cookie1, void* cookie2)
+void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, CameraFrame::FrameType type, void* cookie1, void* cookie2, void *cookie3)
 {
     camera_memory_t* encoded_mem = NULL;
     Encoder_libjpeg::params *main_param = NULL, *thumb_param = NULL;
     size_t jpeg_size;
     uint8_t* src = NULL;
-    sp<Encoder_libjpeg> encoder = NULL;
+    CameraBuffer *camera_buffer;
+    android::sp<Encoder_libjpeg> encoder = NULL;
 
     LOG_FUNCTION_NAME;
 
     camera_memory_t* picture = NULL;
 
     {
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     if (!main_jpeg) {
         goto exit;
@@ -82,6 +80,7 @@ void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, Camer
     encoded_mem = (camera_memory_t*) cookie1;
     main_param = (Encoder_libjpeg::params *) main_jpeg;
     jpeg_size = main_param->jpeg_size;
+    camera_buffer = (CameraBuffer *)cookie3;
     src = main_param->src;
 
     if(encoded_mem && encoded_mem->data && (jpeg_size > 0)) {
@@ -126,11 +125,13 @@ void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, Camer
     if(picture && (mNotifierState==AppCallbackNotifier::NOTIFIER_STARTED) &&
                   (mCameraHal->msgTypeEnabled(CAMERA_MSG_COMPRESSED_IMAGE)))
     {
-        Mutex::Autolock lock(mBurstLock);
-#if 0 //TODO: enable burst mode later
+        android::AutoMutex lock(mBurstLock);
+
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
         if ( mBurst )
         {
-            `(CAMERA_MSG_BURST_IMAGE, JPEGPictureMemBase, mCallbackCookie);
+            mDataCb(CAMERA_MSG_COMPRESSED_BURST_IMAGE, picture, 0, NULL, mCallbackCookie);
+
         }
         else
 #endif
@@ -157,7 +158,7 @@ void AppCallbackNotifier::EncoderDoneCb(void* main_jpeg, void* thumb_jpeg, Camer
             gEncoderQueue.removeItem(src);
             encoder.clear();
         }
-        mFrameProvider->returnFrame(src, type);
+        mFrameProvider->returnFrame(camera_buffer, type);
     }
 
     LOG_FUNCTION_NAME_EXIT;
@@ -172,7 +173,11 @@ status_t AppCallbackNotifier::initialize()
 {
     LOG_FUNCTION_NAME;
 
+    mPreviewMemory = 0;
+
     mMeasurementEnabled = false;
+
+    mNotifierState = NOTIFIER_STOPPED;
 
     ///Create the app notifier thread
     mNotificationThread = new NotificationThread(this);
@@ -183,7 +188,7 @@ status_t AppCallbackNotifier::initialize()
         }
 
     ///Start the display thread
-    status_t ret = mNotificationThread->run("NotificationThread", PRIORITY_URGENT_DISPLAY);
+    status_t ret = mNotificationThread->run("NotificationThread", android::PRIORITY_URGENT_DISPLAY);
     if(ret!=NO_ERROR)
         {
         CAMHAL_LOGEA("Couldn't run NotificationThread");
@@ -193,6 +198,9 @@ status_t AppCallbackNotifier::initialize()
 
     mUseMetaDataBufferMode = true;
     mRawAvailable = false;
+
+    mRecording = false;
+    mPreviewing = false;
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -206,7 +214,7 @@ void AppCallbackNotifier::setCallbacks(CameraHal* cameraHal,
                                         camera_request_memory get_memory,
                                         void *user)
 {
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     LOG_FUNCTION_NAME;
 
@@ -222,7 +230,7 @@ void AppCallbackNotifier::setCallbacks(CameraHal* cameraHal,
 
 void AppCallbackNotifier::setMeasurements(bool enable)
 {
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     LOG_FUNCTION_NAME;
 
@@ -245,7 +253,9 @@ void AppCallbackNotifier::errorNotify(int error)
     CAMHAL_LOGEB("AppCallbackNotifier received error %d", error);
 
     // If it is a fatal error abort here!
-    if((error == CAMERA_ERROR_FATAL) || (error == CAMERA_ERROR_HARD)) {
+    // If TILER is Out of memory we notify Mediaserver so that Memory is cleared and we can restart usecase
+    if((error == CAMERA_ERROR_FATAL) || (error == CAMERA_ERROR_HARD) || (error == -ENOMEM))
+    {
         //We kill media server if we encounter these errors as there is
         //no point continuing and apps also don't handle errors other
         //than media server death always.
@@ -272,7 +282,7 @@ bool AppCallbackNotifier::notificationThread()
     LOG_FUNCTION_NAME;
 
     //CAMHAL_LOGDA("Notification Thread waiting for message");
-    ret = TIUTILS::MessageQueue::waitForMsg(&mNotificationThread->msgQ(),
+    ret = Utils::MessageQueue::waitForMsg(&mNotificationThread->msgQ(),
                                             &mEventQ,
                                             &mFrameQ,
                                             AppCallbackNotifier::NOTIFIER_TIMEOUT);
@@ -297,7 +307,7 @@ bool AppCallbackNotifier::notificationThread()
 
     if(mFrameQ.hasMsg()) {
        ///Received a frame from one of the frame providers
-       CAMHAL_LOGDA("Notification Thread received a frame from frame provider (CameraAdapter)");
+       //CAMHAL_LOGDA("Notification Thread received a frame from frame provider (CameraAdapter)");
        notifyFrame();
     }
 
@@ -308,21 +318,21 @@ bool AppCallbackNotifier::notificationThread()
 void AppCallbackNotifier::notifyEvent()
 {
     ///Receive and send the event notifications to app
-    TIUTILS::Message msg;
+    Utils::Message msg;
     LOG_FUNCTION_NAME;
     {
-        Mutex::Autolock lock(mLock);
-        if(!mEventQ.isEmpty()) {
-            mEventQ.get(&msg);
-        } else {
+        android::AutoMutex lock(mLock);
+        if ( !mEventQ.hasMsg() ) {
             return;
+        } else {
+            mEventQ.get(&msg);
         }
     }
     bool ret = true;
     CameraHalEvent *evt = NULL;
     CameraHalEvent::FocusEventData *focusEvtData;
     CameraHalEvent::ZoomEventData *zoomEvtData;
-    CameraHalEvent::FaceEventData faceEvtData;
+    CameraHalEvent::MetaEventData metaEvtData;
 
     if(mNotifierState != AppCallbackNotifier::NOTIFIER_STARTED)
     {
@@ -357,37 +367,39 @@ void AppCallbackNotifier::notifyEvent()
 
                 case CameraHalEvent::EVENT_FOCUS_LOCKED:
                 case CameraHalEvent::EVENT_FOCUS_ERROR:
-                    focusEvtData = &evt->mEventData->focusEvent;
-                    if ( ( focusEvtData->focusStatus == CameraHalEvent::FOCUS_STATUS_SUCCESS ) &&
-                         ( NULL != mCameraHal ) &&
-                         ( NULL != mNotifyCb ) &&
-                         ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS) ) )
-                        {
-                         mCameraHal->disableMsgType(CAMERA_MSG_FOCUS);
-                         mNotifyCb(CAMERA_MSG_FOCUS, true, 0, mCallbackCookie);
+                    if ( mCameraHal && mNotifyCb ) {
+                        focusEvtData = &evt->mEventData->focusEvent;
+
+                        switch ( focusEvtData->focusStatus ) {
+                        case CameraHalEvent::FOCUS_STATUS_SUCCESS:
+                            if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS) ) {
+                                mCameraHal->disableMsgType(CAMERA_MSG_FOCUS);
+                                mNotifyCb(CAMERA_MSG_FOCUS, true, 0, mCallbackCookie);
+                            }
+                            break;
+
+                        case CameraHalEvent::FOCUS_STATUS_FAIL:
+                            if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS) ) {
+                                mCameraHal->disableMsgType(CAMERA_MSG_FOCUS);
+                                mNotifyCb(CAMERA_MSG_FOCUS, false, 0, mCallbackCookie);
+                            }
+                            break;
+
+#ifdef ANDROID_API_JB_OR_LATER
+                        case CameraHalEvent::FOCUS_STATUS_PENDING:
+                            if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS_MOVE) ) {
+                                mNotifyCb(CAMERA_MSG_FOCUS_MOVE, true, 0, mCallbackCookie);
+                            }
+                            break;
+
+                        case CameraHalEvent::FOCUS_STATUS_DONE:
+                            if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS_MOVE) ) {
+                                mNotifyCb(CAMERA_MSG_FOCUS_MOVE, false, 0, mCallbackCookie);
+                            }
+                            break;
+#endif
                         }
-                    else if ( ( focusEvtData->focusStatus == CameraHalEvent::FOCUS_STATUS_FAIL ) &&
-                              ( NULL != mCameraHal ) &&
-                              ( NULL != mNotifyCb ) &&
-                              ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS) ) )
-                        {
-                         mCameraHal->disableMsgType(CAMERA_MSG_FOCUS);
-                         mNotifyCb(CAMERA_MSG_FOCUS, false, 0, mCallbackCookie);
-                        }
-                    else if ( ( focusEvtData->focusStatus == CameraHalEvent::FOCUS_STATUS_PENDING ) &&
-                              ( NULL != mCameraHal ) &&
-                              ( NULL != mNotifyCb ) &&
-                              ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS_MOVE) ) )
-                        {
-                         mNotifyCb(CAMERA_MSG_FOCUS_MOVE, true, 0, mCallbackCookie);
-                        }
-                    else if ( ( focusEvtData->focusStatus == CameraHalEvent::FOCUS_STATUS_DONE ) &&
-                              ( NULL != mCameraHal ) &&
-                              ( NULL != mNotifyCb ) &&
-                              ( mCameraHal->msgTypeEnabled(CAMERA_MSG_FOCUS_MOVE) ) )
-                        {
-                         mNotifyCb(CAMERA_MSG_FOCUS_MOVE, false, 0, mCallbackCookie);
-                        }
+                    }
 
                     break;
 
@@ -404,10 +416,9 @@ void AppCallbackNotifier::notifyEvent()
 
                     break;
 
-#ifndef OMAP_TUNA
-                case CameraHalEvent::EVENT_FACE:
+                case CameraHalEvent::EVENT_METADATA:
 
-                    faceEvtData = evt->mEventData->faceEvent;
+                    metaEvtData = evt->mEventData->metadataEvent;
 
                     if ( ( NULL != mCameraHal ) &&
                          ( NULL != mNotifyCb) &&
@@ -419,10 +430,10 @@ void AppCallbackNotifier::notifyEvent()
                         mDataCb(CAMERA_MSG_PREVIEW_METADATA,
                                 tmpBuffer,
                                 0,
-                                faceEvtData->getFaceResult(),
+                                metaEvtData->getMetadataResult(),
                                 mCallbackCookie);
 
-                        faceEvtData.clear();
+                        metaEvtData.clear();
 
                         if ( NULL != tmpBuffer ) {
                             tmpBuffer->release(tmpBuffer);
@@ -431,7 +442,6 @@ void AppCallbackNotifier::notifyEvent()
                         }
 
                     break;
-#endif
 
                 case CameraHalEvent::ALL_EVENTS:
                     break;
@@ -454,11 +464,11 @@ void AppCallbackNotifier::notifyEvent()
 
 static void alignYV12(int width,
                       int height,
-                      int &yStride,
-                      int &uvStride,
-                      int &ySize,
-                      int &uvSize,
-                      int &size)
+                      size_t &yStride,
+                      size_t &uvStride,
+                      size_t &ySize,
+                      size_t &uvSize,
+                      size_t &size)
 {
     yStride = ( width + 0xF ) & ~0xF;
     uvStride = ( yStride / 2 + 0xF ) & ~0xF;
@@ -485,10 +495,10 @@ static void copy2Dto1D(void *dst,
     unsigned int *y_uv = (unsigned int *)src;
 
     CAMHAL_LOGVB("copy2Dto1D() y= %p ; uv=%p.",y_uv[0], y_uv[1]);
-    CAMHAL_LOGVB("pixelFormat= %s; offset=%d", pixelFormat,offset);
+    CAMHAL_LOGVB("pixelFormat = %s; offset=%d",pixelFormat,offset);
 
     if (pixelFormat!=NULL) {
-        if (strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+        if (strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
             bytesPerPixel = 2;
             bufferSrc = ( unsigned char * ) y_uv[0] + offset;
             uint32_t xOff = offset % stride;
@@ -533,8 +543,8 @@ static void copy2Dto1D(void *dst,
             }
 
             return;
-        } else if (strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
-                   strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
+        } else if (strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ||
+                   strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
             bytesPerPixel = 1;
             bufferDst = ( unsigned char * ) dst;
             bufferDstEnd = ( unsigned char * ) dst + width*height*bytesPerPixel;
@@ -559,7 +569,7 @@ static void copy2Dto1D(void *dst,
 
             bufferSrc_UV = ( uint16_t * ) ((uint8_t*)y_uv[1] + (stride/2)*yOff + xOff);
 
-            if (strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
+            if (strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
                  uint16_t *bufferDst_UV;
 
                 // Step 2: UV plane: convert NV12 to NV21 by swapping U & V
@@ -607,7 +617,7 @@ static void copy2Dto1D(void *dst,
                     : "cc", "memory", "q0", "q1"
                     );
                 }
-            } else if (strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
+            } else if (strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
                  uint16_t *bufferDst_U;
                  uint16_t *bufferDst_V;
 
@@ -616,7 +626,7 @@ static void copy2Dto1D(void *dst,
                 //            camera adapter to support YV12. Need to address for
                 //            USBCamera
 
-                int yStride, uvStride, ySize, uvSize, size;
+                size_t yStride, uvStride, ySize, uvSize, size;
                 alignYV12(width, height, yStride, uvStride, ySize, uvSize, size);
 
                 bufferDst_V = (uint16_t *) (((uint8_t*)dst) + ySize);
@@ -673,7 +683,7 @@ static void copy2Dto1D(void *dst,
             }
             return ;
 
-        } else if(strcmp(pixelFormat, CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+        } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
             bytesPerPixel = 2;
         }
     }
@@ -695,8 +705,8 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
     void *dest = NULL, *src = NULL;
 
     // scope for lock
-    {
-        Mutex::Autolock lock(mLock);
+    if (mCameraHal->msgTypeEnabled(msgType)) {
+        android::AutoMutex lock(mLock);
 
         if(mNotifierState != AppCallbackNotifier::NOTIFIER_STARTED) {
             goto exit;
@@ -707,7 +717,7 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
         if (NULL != picture) {
             dest = picture->data;
             if (NULL != dest) {
-                src = (void *) ((unsigned int) frame->mBuffer + frame->mOffset);
+                src = (void *) ((unsigned int) frame->mBuffer->mapped + frame->mOffset);
                 memcpy(dest, src, frame->mLength);
             }
         }
@@ -728,11 +738,11 @@ void AppCallbackNotifier::copyAndSendPictureFrame(CameraFrame* frame, int32_t ms
 void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t msgType)
 {
     camera_memory_t* picture = NULL;
-    void* dest = NULL;
+    CameraBuffer * dest = NULL;
 
     // scope for lock
     {
-        Mutex::Autolock lock(mLock);
+        android::AutoMutex lock(mLock);
 
         if(mNotifierState != AppCallbackNotifier::NOTIFIER_STARTED) {
             goto exit;
@@ -743,39 +753,39 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
             goto exit;
         }
 
-
-        dest = (void*) mPreviewBufs[mPreviewBufCount];
+        dest = &mPreviewBuffers[mPreviewBufCount];
 
         CAMHAL_LOGVB("%d:copy2Dto1D(%p, %p, %d, %d, %d, %d, %d,%s)",
                      __LINE__,
                       dest,
                       frame->mBuffer,
-                      frame->mWidth,
-                      frame->mHeight,
-                      frame->mAlignment,
+                      mPreviewWidth,
+                      mPreviewHeight,
+                      mPreviewStride,
                       2,
                       frame->mLength,
                       mPreviewPixelFormat);
 
-        if ( NULL != dest ) {
+        /* FIXME map dest */
+        if ( NULL != dest && dest->mapped != NULL ) {
             // data sync frames don't need conversion
             if (CameraFrame::FRAME_DATA_SYNC == frame->mFrameType) {
                 if ( (mPreviewMemory->size / MAX_BUFFERS) >= frame->mLength ) {
-                    memcpy(dest, (void*) frame->mBuffer, frame->mLength);
+                    memcpy(dest->mapped, (void*) frame->mBuffer->mapped, frame->mLength);
                 } else {
-                    memset(dest, 0, (mPreviewMemory->size / MAX_BUFFERS));
+                    memset(dest->mapped, 0, (mPreviewMemory->size / MAX_BUFFERS));
                 }
             } else {
-              if ((0 == frame->mYuv[0]) || (0 == frame->mYuv[1])){ //NULL ==
+              if ((0 == frame->mYuv[0]) || (0 == frame->mYuv[1])){ //NULL == frame->mYuv
                 CAMHAL_LOGEA("Error! One of the YUV Pointer is 0"); //is NULL
                 goto exit;
               }
               else{
-                copy2Dto1D(dest,
+                copy2Dto1D(dest->mapped,
                            frame->mYuv,
-                           frame->mWidth,
-                           frame->mHeight,
-                           frame->mAlignment,
+                           mPreviewWidth,
+                           mPreviewHeight,
+                           mPreviewStride,
                            frame->mOffset,
                            2,
                            frame->mLength,
@@ -790,8 +800,10 @@ void AppCallbackNotifier::copyAndSendPreviewFrame(CameraFrame* frame, int32_t ms
 
     if((mNotifierState == AppCallbackNotifier::NOTIFIER_STARTED) &&
        mCameraHal->msgTypeEnabled(msgType) &&
-       (dest != NULL)) {
-        mDataCb(msgType, mPreviewMemory, mPreviewBufCount, NULL, mCallbackCookie);
+       (dest != NULL) && (dest->mapped != NULL)) {
+        android::AutoMutex locker(mLock);
+        if ( mPreviewMemory )
+            mDataCb(msgType, mPreviewMemory, mPreviewBufCount, NULL, mCallbackCookie);
     }
 
     // increment for next buffer
@@ -835,17 +847,17 @@ status_t AppCallbackNotifier::dummyRaw()
 void AppCallbackNotifier::notifyFrame()
 {
     ///Receive and send the frame notifications to app
-    TIUTILS::Message msg;
+    Utils::Message msg;
     CameraFrame *frame;
-    MemoryHeapBase *heap;
-    MemoryBase *buffer = NULL;
-    sp<MemoryBase> memBase;
+    android::MemoryHeapBase *heap;
+    android::MemoryBase *buffer = NULL;
+    android::sp<android::MemoryBase> memBase;
     void *buf = NULL;
 
     LOG_FUNCTION_NAME;
 
     {
-        Mutex::Autolock lock(mLock);
+        android::AutoMutex lock(mLock);
         if(!mFrameQ.isEmpty()) {
             mFrameQ.get(&msg);
         } else {
@@ -902,23 +914,24 @@ void AppCallbackNotifier::notifyFrame()
                     unsigned int current_snapshot = 0;
                     Encoder_libjpeg::params *main_jpeg = NULL, *tn_jpeg = NULL;
                     void* exif_data = NULL;
+                    const char *previewFormat = NULL;
                     camera_memory_t* raw_picture = mRequestMemory(-1, frame->mLength, 1, NULL);
 
                     if(raw_picture) {
                         buf = raw_picture->data;
                     }
 
-                    CameraParameters parameters;
+                    android::CameraParameters parameters;
                     char *params = mCameraHal->getParameters();
-                    const String8 strParams(params);
+                    const android::String8 strParams(params);
                     parameters.unflatten(strParams);
 
-                    encode_quality = parameters.getInt(CameraParameters::KEY_JPEG_QUALITY);
+                    encode_quality = parameters.getInt(android::CameraParameters::KEY_JPEG_QUALITY);
                     if (encode_quality < 0 || encode_quality > 100) {
                         encode_quality = 100;
                     }
 
-                    tn_quality = parameters.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY);
+                    tn_quality = parameters.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY);
                     if (tn_quality < 0 || tn_quality > 100) {
                         tn_quality = 100;
                     }
@@ -938,7 +951,7 @@ void AppCallbackNotifier::notifyFrame()
                     CAMHAL_LOGDB("Video snapshot offset = %d", frame->mOffset);
 
                     if (main_jpeg) {
-                        main_jpeg->src = (uint8_t*) frame->mBuffer;
+                        main_jpeg->src = (uint8_t *)frame->mBuffer->mapped;
                         main_jpeg->src_size = frame->mLength;
                         main_jpeg->dst = (uint8_t*) buf;
                         main_jpeg->dst_size = frame->mLength;
@@ -949,13 +962,19 @@ void AppCallbackNotifier::notifyFrame()
                         main_jpeg->out_height = frame->mHeight;
                         main_jpeg->right_crop = rightCrop;
                         main_jpeg->start_offset = frame->mOffset;
-                        main_jpeg->format = CameraParameters::PIXEL_FORMAT_YUV422I;
+                        if ( CameraFrame::FORMAT_YUV422I_UYVY & frame->mQuirks) {
+                            main_jpeg->format = TICameraParameters::PIXEL_FORMAT_YUV422I_UYVY;
+                        }
+                        else { //if ( CameraFrame::FORMAT_YUV422I_YUYV & frame->mQuirks)
+                            main_jpeg->format = android::CameraParameters::PIXEL_FORMAT_YUV422I;
+                        }
                     }
 
-                    tn_width = parameters.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
-                    tn_height = parameters.getInt(CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
+                    tn_width = parameters.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
+                    tn_height = parameters.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
+                    previewFormat = parameters.getPreviewFormat();
 
-                    if ((tn_width > 0) && (tn_height > 0)) {
+                    if ((tn_width > 0) && (tn_height > 0) && ( NULL != previewFormat )) {
                         tn_jpeg = (Encoder_libjpeg::params*)
                                       malloc(sizeof(Encoder_libjpeg::params));
                         // if malloc fails just keep going and encode main jpeg
@@ -968,10 +987,12 @@ void AppCallbackNotifier::notifyFrame()
                         int width, height;
                         parameters.getPreviewSize(&width,&height);
                         current_snapshot = (mPreviewBufCount + MAX_BUFFERS - 1) % MAX_BUFFERS;
-                        tn_jpeg->src = (uint8_t*) mPreviewBufs[current_snapshot];
+                        tn_jpeg->src = (uint8_t *)mPreviewBuffers[current_snapshot].mapped;
                         tn_jpeg->src_size = mPreviewMemory->size / MAX_BUFFERS;
-                        tn_jpeg->dst = (uint8_t*) malloc(tn_jpeg->src_size);
-                        tn_jpeg->dst_size = tn_jpeg->src_size;
+                        tn_jpeg->dst_size = calculateBufferSize(tn_width,
+                                                                tn_height,
+                                                                previewFormat);
+                        tn_jpeg->dst = (uint8_t*) malloc(tn_jpeg->dst_size);
                         tn_jpeg->quality = tn_quality;
                         tn_jpeg->in_width = width;
                         tn_jpeg->in_height = height;
@@ -979,17 +1000,17 @@ void AppCallbackNotifier::notifyFrame()
                         tn_jpeg->out_height = tn_height;
                         tn_jpeg->right_crop = 0;
                         tn_jpeg->start_offset = 0;
-                        tn_jpeg->format = CameraParameters::PIXEL_FORMAT_YUV420SP;;
+                        tn_jpeg->format = android::CameraParameters::PIXEL_FORMAT_YUV420SP;;
                     }
 
-                    sp<Encoder_libjpeg> encoder = new Encoder_libjpeg(main_jpeg,
+                    android::sp<Encoder_libjpeg> encoder = new Encoder_libjpeg(main_jpeg,
                                                       tn_jpeg,
                                                       AppCallbackNotifierEncoderCallback,
                                                       (CameraFrame::FrameType)frame->mFrameType,
                                                       this,
                                                       raw_picture,
-                                                      exif_data);
-                    gEncoderQueue.add(frame->mBuffer, encoder);
+                                                      exif_data, frame->mBuffer);
+                    gEncoderQueue.add(frame->mBuffer->mapped, encoder);
                     encoder->run();
                     encoder.clear();
                     if (params != NULL)
@@ -1006,7 +1027,7 @@ void AppCallbackNotifier::notifyFrame()
                     // who registers a raw callback should receive one
                     // as well. This is  not always the case with
                     // CameraAdapters though.
-                    if (!mRawAvailable) {
+                    if (!mCameraHal->msgTypeEnabled(CAMERA_MSG_RAW_IMAGE)) {
                         dummyRaw();
                     } else {
                         mRawAvailable = false;
@@ -1014,11 +1035,11 @@ void AppCallbackNotifier::notifyFrame()
 
 #ifdef COPY_IMAGE_BUFFER
                     {
-                        Mutex::Autolock lock(mBurstLock);
-#if 0 //TODO: enable burst mode later
+                        android::AutoMutex lock(mBurstLock);
+#ifdef OMAP_ENHANCEMENT_BURST_CAPTURE
                         if ( mBurst )
                         {
-                            `(CAMERA_MSG_BURST_IMAGE, JPEGPictureMemBase, mCallbackCookie);
+                            copyAndSendPictureFrame(frame, CAMERA_MSG_COMPRESSED_BURST_IMAGE);
                         }
                         else
 #endif
@@ -1035,13 +1056,13 @@ void AppCallbackNotifier::notifyFrame()
                              ( NULL != mDataCb) &&
                              ( mCameraHal->msgTypeEnabled(CAMERA_MSG_VIDEO_FRAME)  ) )
                     {
-                    mRecordingLock.lock();
+                    android::AutoMutex locker(mRecordingLock);
                     if(mRecording)
                         {
                         if(mUseMetaDataBufferMode)
                             {
                             camera_memory_t *videoMedatadaBufferMemory =
-                                             (camera_memory_t *) mVideoMetadataBufferMemoryMap.valueFor((uint32_t) frame->mBuffer);
+                                             mVideoMetadataBufferMemoryMap.valueFor(frame->mBuffer->opaque);
                             video_metadata_t *videoMetadataBuffer = (video_metadata_t *) videoMedatadaBufferMemory->data;
 
                             if( (NULL == videoMedatadaBufferMemory) || (NULL == videoMetadataBuffer) || (NULL == frame->mBuffer) )
@@ -1052,9 +1073,9 @@ void AppCallbackNotifier::notifyFrame()
 
                             if ( mUseVideoBuffers )
                               {
-                                int vBuf = mVideoMap.valueFor((uint32_t) frame->mBuffer);
-                                GraphicBufferMapper &mapper = GraphicBufferMapper::get();
-                                Rect bounds;
+                                CameraBuffer *vBuf = mVideoMap.valueFor(frame->mBuffer->opaque);
+                                android::GraphicBufferMapper &mapper = android::GraphicBufferMapper::get();
+                                android::Rect bounds;
                                 bounds.left = 0;
                                 bounds.top = 0;
                                 bounds.right = mVideoWidth;
@@ -1062,14 +1083,15 @@ void AppCallbackNotifier::notifyFrame()
 
                                 void *y_uv[2];
                                 mapper.lock((buffer_handle_t)vBuf, CAMHAL_GRALLOC_USAGE, bounds, y_uv);
+                                y_uv[1] = y_uv[0] + mVideoHeight*4096;
 
-                                structConvImage input =  {(int)frame->mWidth,
-                                                          (int)frame->mHeight,
+                                structConvImage input =  {frame->mWidth,
+                                                          frame->mHeight,
                                                           4096,
                                                           IC_FORMAT_YCbCr420_lp,
                                                           (mmByte *)frame->mYuv[0],
                                                           (mmByte *)frame->mYuv[1],
-                                                          (int)frame->mOffset};
+                                                          frame->mOffset};
 
                                 structConvImage output = {mVideoWidth,
                                                           mVideoHeight,
@@ -1080,20 +1102,21 @@ void AppCallbackNotifier::notifyFrame()
                                                           0};
 
                                 VT_resizeFrame_Video_opt2_lp(&input, &output, NULL, 0);
-                                mapper.unlock((buffer_handle_t)vBuf);
-                                videoMetadataBuffer->metadataBufferType = (int) kMetadataBufferTypeCameraSource;
-                                videoMetadataBuffer->handle = (void *)vBuf;
+                                mapper.unlock((buffer_handle_t)vBuf->opaque);
+                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeCameraSource;
+                                /* FIXME remove cast */
+                                videoMetadataBuffer->handle = (void *)vBuf->opaque;
                                 videoMetadataBuffer->offset = 0;
                               }
                             else
                               {
-                                videoMetadataBuffer->metadataBufferType = (int) kMetadataBufferTypeCameraSource;
-                                videoMetadataBuffer->handle = frame->mBuffer;
+                                videoMetadataBuffer->metadataBufferType = (int) android::kMetadataBufferTypeCameraSource;
+                                videoMetadataBuffer->handle = camera_buffer_get_omx_ptr(frame->mBuffer);
                                 videoMetadataBuffer->offset = frame->mOffset;
                               }
 
                             CAMHAL_LOGVB("mDataCbTimestamp : frame->mBuffer=0x%x, videoMetadataBuffer=0x%x, videoMedatadaBufferMemory=0x%x",
-                                            frame->mBuffer, videoMetadataBuffer, videoMedatadaBufferMemory);
+                                            frame->mBuffer->opaque, videoMetadataBuffer, videoMedatadaBufferMemory);
 
                             mDataCbTimestamp(frame->mTimestamp, CAMERA_MSG_VIDEO_FRAME,
                                                 videoMedatadaBufferMemory, 0, mCallbackCookie);
@@ -1108,13 +1131,11 @@ void AppCallbackNotifier::notifyFrame()
                                 break;
                                 }
 
-                            *reinterpret_cast<buffer_handle_t*>(fakebuf->data) = reinterpret_cast<buffer_handle_t>(frame->mBuffer);
+                            *reinterpret_cast<buffer_handle_t*>(fakebuf->data) = reinterpret_cast<buffer_handle_t>(frame->mBuffer->mapped);
                             mDataCbTimestamp(frame->mTimestamp, CAMERA_MSG_VIDEO_FRAME, fakebuf, 0, mCallbackCookie);
                             fakebuf->release(fakebuf);
                             }
                         }
-                    mRecordingLock.unlock();
-
                     }
                 else if(( CameraFrame::SNAPSHOT_FRAME == frame->mFrameType ) &&
                              ( NULL != mCameraHal ) &&
@@ -1180,7 +1201,7 @@ void AppCallbackNotifier::frameCallbackRelay(CameraFrame* caFrame)
 void AppCallbackNotifier::frameCallback(CameraFrame* caFrame)
 {
     ///Post the event to the event queue of AppCallbackNotifier
-    TIUTILS::Message msg;
+    Utils::Message msg;
     CameraFrame *frame;
 
     LOG_FUNCTION_NAME;
@@ -1207,10 +1228,12 @@ void AppCallbackNotifier::frameCallback(CameraFrame* caFrame)
 
 void AppCallbackNotifier::flushAndReturnFrames()
 {
-    TIUTILS::Message msg;
+    LOG_FUNCTION_NAME;
+
+    Utils::Message msg;
     CameraFrame *frame;
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
     while (!mFrameQ.isEmpty()) {
         mFrameQ.get(&msg);
         frame = (CameraFrame*) msg.arg1;
@@ -1235,7 +1258,7 @@ void AppCallbackNotifier::eventCallback(CameraHalEvent* chEvt)
 {
 
     ///Post the event to the event queue of AppCallbackNotifier
-    TIUTILS::Message msg;
+    Utils::Message msg;
     CameraHalEvent *event;
 
 
@@ -1250,7 +1273,7 @@ void AppCallbackNotifier::eventCallback(CameraHalEvent* chEvt)
             msg.command = AppCallbackNotifier::NOTIFIER_CMD_PROCESS_EVENT;
             msg.arg1 = event;
             {
-            Mutex::Autolock lock(mLock);
+            android::AutoMutex lock(mLock);
             mEventQ.put(&msg);
             }
             }
@@ -1269,7 +1292,7 @@ void AppCallbackNotifier::flushEventQueue()
 {
 
     {
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
     mEventQ.clear();
     }
 }
@@ -1278,7 +1301,7 @@ void AppCallbackNotifier::flushEventQueue()
 bool AppCallbackNotifier::processMessage()
 {
     ///Retrieve the command from the command queue and process it
-    TIUTILS::Message msg;
+    Utils::Message msg;
 
     LOG_FUNCTION_NAME;
 
@@ -1291,7 +1314,7 @@ bool AppCallbackNotifier::processMessage()
       {
         case NotificationThread::NOTIFIER_EXIT:
           {
-            CAMHAL_LOGDA("Received NOTIFIER_EXIT command from Camera HAL");
+            CAMHAL_LOGD("Received NOTIFIER_EXIT command from Camera HAL");
             mNotifierState = AppCallbackNotifier::NOTIFIER_EXITED;
             ret = false;
             break;
@@ -1329,7 +1352,7 @@ AppCallbackNotifier::~AppCallbackNotifier()
         mEventProvider->disableEventNotification(CameraHalEvent::ALL_EVENTS);
         }
 
-    TIUTILS::Message msg = {0,0,0,0,0,0};
+    Utils::Message msg = {0,0,0,0,0,0};
     msg.command = NotificationThread::NOTIFIER_EXIT;
 
     ///Post the message to display thread
@@ -1375,11 +1398,11 @@ void AppCallbackNotifier::releaseSharedVideoBuffers()
         camera_memory_t* videoMedatadaBufferMemory;
         for (unsigned int i = 0; i < mVideoMetadataBufferMemoryMap.size();  i++)
             {
-            videoMedatadaBufferMemory = (camera_memory_t*) mVideoMetadataBufferMemoryMap.valueAt(i);
+            videoMedatadaBufferMemory = mVideoMetadataBufferMemoryMap.valueAt(i);
             if(NULL != videoMedatadaBufferMemory)
                 {
                 videoMedatadaBufferMemory->release(videoMedatadaBufferMemory);
-                CAMHAL_LOGDB("Released  videoMedatadaBufferMemory=0x%x", videoMedatadaBufferMemory);
+                CAMHAL_LOGDB("Released  videoMedatadaBufferMemory=%p", videoMedatadaBufferMemory);
                 }
             }
 
@@ -1436,16 +1459,57 @@ void AppCallbackNotifier::setFrameProvider(FrameNotifier *frameNotifier)
     LOG_FUNCTION_NAME_EXIT;
 }
 
-status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, void *buffers, uint32_t *offsets, int fd, size_t length, size_t count)
+size_t AppCallbackNotifier::calculateBufferSize(size_t width, size_t height, const char *pixelFormat)
 {
-    sp<MemoryHeapBase> heap;
-    sp<MemoryBase> buffer;
+    size_t res = 0;
+
+    LOG_FUNCTION_NAME
+
+    if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+        res = width*height*2;
+    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0) {
+        res = (width*height*3)/2;
+    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+        res = width*height*2;
+    } else if (strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
+        size_t yStride, uvStride, ySize, uvSize;
+        alignYV12(width, height, yStride, uvStride, ySize, uvSize, res);
+        mPreviewPixelFormat = android::CameraParameters::PIXEL_FORMAT_YUV420P;
+    }
+
+    LOG_FUNCTION_NAME_EXIT;
+
+    return res;
+}
+
+const char* AppCallbackNotifier::getContstantForPixelFormat(const char *pixelFormat) {
+    if (!pixelFormat) {
+        // returning NV12 as default
+        return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
+    }
+
+    if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV422I) == 0) {
+        return android::CameraParameters::PIXEL_FORMAT_YUV422I;
+    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 ) {
+        return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
+    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_RGB565) == 0) {
+        return android::CameraParameters::PIXEL_FORMAT_RGB565;
+    } else if(strcmp(pixelFormat, android::CameraParameters::PIXEL_FORMAT_YUV420P) == 0) {
+        return android::CameraParameters::PIXEL_FORMAT_YUV420P;
+    } else {
+        // returning NV12 as default
+        return android::CameraParameters::PIXEL_FORMAT_YUV420SP;
+    }
+}
+
+status_t AppCallbackNotifier::startPreviewCallbacks(android::CameraParameters &params, CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count)
+{
     unsigned int *bufArr;
     int size = 0;
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     if ( NULL == mFrameProvider )
         {
@@ -1463,30 +1527,12 @@ status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, vo
     ///Get preview size
     params.getPreviewSize(&w, &h);
 
-    //Get the preview pixel format
-    mPreviewPixelFormat = params.getPreviewFormat();
-
-     if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV422I) == 0)
-        {
-        size = w*h*2;
-        mPreviewPixelFormat = CameraParameters::PIXEL_FORMAT_YUV422I;
-        }
-    else if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420SP) == 0 )
-        {
-        size = (w*h*3)/2;
-        mPreviewPixelFormat = CameraParameters::PIXEL_FORMAT_YUV420SP;
-        }
-    else if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_RGB565) == 0)
-        {
-        size = w*h*2;
-        mPreviewPixelFormat = CameraParameters::PIXEL_FORMAT_RGB565;
-        }
-    else if(strcmp(mPreviewPixelFormat, (const char *) CameraParameters::PIXEL_FORMAT_YUV420P) == 0)
-        {
-        int yStride, uvStride, ySize, uvSize;
-        alignYV12(w, h, yStride, uvStride, ySize, uvSize, size);
-        mPreviewPixelFormat = CameraParameters::PIXEL_FORMAT_YUV420P;
-        }
+    // save preview pixel format, size and stride
+    mPreviewWidth = w;
+    mPreviewHeight = h;
+    mPreviewStride = 4096;
+    mPreviewPixelFormat = getContstantForPixelFormat(params.getPreviewFormat());
+    size = calculateBufferSize(w, h, mPreviewPixelFormat);
 
     mPreviewMemory = mRequestMemory(-1, size, AppCallbackNotifier::MAX_BUFFERS, NULL);
     if (!mPreviewMemory) {
@@ -1494,18 +1540,24 @@ status_t AppCallbackNotifier::startPreviewCallbacks(CameraParameters &params, vo
     }
 
     for (int i=0; i < AppCallbackNotifier::MAX_BUFFERS; i++) {
-        mPreviewBufs[i] = (unsigned char*) mPreviewMemory->data + (i*size);
+        mPreviewBuffers[i].type = CAMERA_BUFFER_MEMORY;
+        mPreviewBuffers[i].opaque = (unsigned char*) mPreviewMemory->data + (i*size);
+        mPreviewBuffers[i].mapped = mPreviewBuffers[i].opaque;
     }
 
     if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_PREVIEW_FRAME ) ) {
          mFrameProvider->enableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
     }
 
+    if ( mCameraHal->msgTypeEnabled(CAMERA_MSG_POSTVIEW_FRAME) ) {
+         mFrameProvider->enableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
+    }
+
     mPreviewBufCount = 0;
 
     mPreviewing = true;
 
-    LOG_FUNCTION_NAME;
+    LOG_FUNCTION_NAME_EXIT;
 
     return NO_ERROR;
 }
@@ -1514,7 +1566,7 @@ void AppCallbackNotifier::setBurst(bool burst)
 {
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mBurstLock);
+    android::AutoMutex lock(mBurstLock);
 
     mBurst = burst;
 
@@ -1547,9 +1599,6 @@ void AppCallbackNotifier::setVideoRes(int width, int height)
 
 status_t AppCallbackNotifier::stopPreviewCallbacks()
 {
-    sp<MemoryHeapBase> heap;
-    sp<MemoryBase> buffer;
-
     LOG_FUNCTION_NAME;
 
     if ( NULL == mFrameProvider )
@@ -1564,10 +1613,12 @@ status_t AppCallbackNotifier::stopPreviewCallbacks()
         }
 
     mFrameProvider->disableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
+    mFrameProvider->disableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
 
     {
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
     mPreviewMemory->release(mPreviewMemory);
+    mPreviewMemory = 0;
     }
 
     mPreviewing = false;
@@ -1592,7 +1643,7 @@ status_t AppCallbackNotifier::startRecording()
 
     LOG_FUNCTION_NAME;
 
-   Mutex::Autolock lock(mRecordingLock);
+    android::AutoMutex lock(mRecordingLock);
 
     if ( NULL == mFrameProvider )
         {
@@ -1618,14 +1669,13 @@ status_t AppCallbackNotifier::startRecording()
 }
 
 //Allocate metadata buffers for video recording
-status_t AppCallbackNotifier::initSharedVideoBuffers(void *buffers, uint32_t *offsets, int fd, size_t length, size_t count, void *vidBufs)
+status_t AppCallbackNotifier::initSharedVideoBuffers(CameraBuffer *buffers, uint32_t *offsets, int fd, size_t length, size_t count, CameraBuffer *vidBufs)
 {
     status_t ret = NO_ERROR;
     LOG_FUNCTION_NAME;
 
     if(mUseMetaDataBufferMode)
         {
-        uint32_t *bufArr = NULL;
         camera_memory_t* videoMedatadaBufferMemory = NULL;
 
         if(NULL == buffers)
@@ -1633,7 +1683,6 @@ status_t AppCallbackNotifier::initSharedVideoBuffers(void *buffers, uint32_t *of
             CAMHAL_LOGEA("Error! Video buffers are NULL");
             return BAD_VALUE;
             }
-        bufArr = (uint32_t *) buffers;
 
         for (uint32_t i = 0; i < count; i++)
             {
@@ -1644,16 +1693,18 @@ status_t AppCallbackNotifier::initSharedVideoBuffers(void *buffers, uint32_t *of
                 return NO_MEMORY;
                 }
 
-            mVideoMetadataBufferMemoryMap.add(bufArr[i], (uint32_t)(videoMedatadaBufferMemory));
-            mVideoMetadataBufferReverseMap.add((uint32_t)(videoMedatadaBufferMemory->data), bufArr[i]);
-            CAMHAL_LOGDB("bufArr[%d]=0x%x, videoMedatadaBufferMemory=0x%x, videoMedatadaBufferMemory->data=0x%x",
-                    i, bufArr[i], videoMedatadaBufferMemory, videoMedatadaBufferMemory->data);
+            // FIXME remove cast
+            mVideoMetadataBufferMemoryMap.add((void *)buffers[i].opaque, videoMedatadaBufferMemory);
+            mVideoMetadataBufferReverseMap.add(videoMedatadaBufferMemory->data, &buffers[i]);
+            CAMHAL_LOGDB("buffers[%d]=%p, videoMedatadaBufferMemory=%p, videoMedatadaBufferMemory->data=%p",
+                    i, &buffers[i], videoMedatadaBufferMemory, videoMedatadaBufferMemory->data);
 
             if (vidBufs != NULL)
               {
-                uint32_t *vBufArr = (uint32_t *) vidBufs;
-                mVideoMap.add(bufArr[i], vBufArr[i]);
-                CAMHAL_LOGVB("bufArr[%d]=0x%x, vBuffArr[%d]=0x%x", i, bufArr[i], i, vBufArr[i]);
+                //ASSERT(buffers[i].type == CAMERA_BUFFER_GRALLOC);
+                // FIXME remove cast
+                mVideoMap.add((void *)buffers[i].opaque, &vidBufs[i]);
+                CAMHAL_LOGVB("buffers[%d]=%p, vBuffArr[%d]=%p", i, &buffers[i], i, &vidBufs[i]);
               }
             }
         }
@@ -1670,7 +1721,7 @@ status_t AppCallbackNotifier::stopRecording()
 
     LOG_FUNCTION_NAME;
 
-    Mutex::Autolock lock(mRecordingLock);
+    android::AutoMutex lock(mRecordingLock);
 
     if ( NULL == mFrameProvider )
         {
@@ -1701,7 +1752,7 @@ status_t AppCallbackNotifier::stopRecording()
 status_t AppCallbackNotifier::releaseRecordingFrame(const void* mem)
 {
     status_t ret = NO_ERROR;
-    void *frame = NULL;
+    CameraBuffer *frame = NULL;
 
     LOG_FUNCTION_NAME;
     if ( NULL == mFrameProvider )
@@ -1724,13 +1775,15 @@ status_t AppCallbackNotifier::releaseRecordingFrame(const void* mem)
     if(mUseMetaDataBufferMode)
         {
         video_metadata_t *videoMetadataBuffer = (video_metadata_t *) mem ;
-        frame = (void*) mVideoMetadataBufferReverseMap.valueFor((uint32_t) videoMetadataBuffer);
+        /* FIXME remove cast */
+        frame = mVideoMetadataBufferReverseMap.valueFor(videoMetadataBuffer);
         CAMHAL_LOGVB("Releasing frame with videoMetadataBuffer=0x%x, videoMetadataBuffer->handle=0x%x & frame handle=0x%x\n",
                        videoMetadataBuffer, videoMetadataBuffer->handle, frame);
         }
     else
         {
-        frame = (void*)(*((uint32_t *)mem));
+        /* FIXME this won't work */
+        frame = (CameraBuffer *)(void*)(*((uint32_t *)mem));
         }
 
     if ( NO_ERROR == ret )
@@ -1745,8 +1798,16 @@ status_t AppCallbackNotifier::releaseRecordingFrame(const void* mem)
 
 status_t AppCallbackNotifier::enableMsgType(int32_t msgType)
 {
-    if( msgType & (CAMERA_MSG_POSTVIEW_FRAME | CAMERA_MSG_PREVIEW_FRAME) ) {
+    if( msgType & CAMERA_MSG_PREVIEW_FRAME ) {
         mFrameProvider->enableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
+    }
+
+    if( msgType & CAMERA_MSG_POSTVIEW_FRAME ) {
+        mFrameProvider->enableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
+    }
+
+    if(msgType & CAMERA_MSG_RAW_IMAGE) {
+        mFrameProvider->enableFrameNotification(CameraFrame::RAW_FRAME);
     }
 
     return NO_ERROR;
@@ -1754,8 +1815,16 @@ status_t AppCallbackNotifier::enableMsgType(int32_t msgType)
 
 status_t AppCallbackNotifier::disableMsgType(int32_t msgType)
 {
-    if( msgType & (CAMERA_MSG_PREVIEW_FRAME | CAMERA_MSG_POSTVIEW_FRAME) ) {
+    if( msgType & CAMERA_MSG_PREVIEW_FRAME ) {
         mFrameProvider->disableFrameNotification(CameraFrame::PREVIEW_FRAME_SYNC);
+    }
+
+    if( msgType & CAMERA_MSG_POSTVIEW_FRAME ) {
+        mFrameProvider->disableFrameNotification(CameraFrame::SNAPSHOT_FRAME);
+    }
+
+    if(msgType & CAMERA_MSG_RAW_IMAGE) {
+        mFrameProvider->disableFrameNotification(CameraFrame::RAW_FRAME);
     }
 
     return NO_ERROR;
@@ -1814,14 +1883,14 @@ status_t AppCallbackNotifier::stop()
         return ALREADY_EXISTS;
         }
     {
-    Mutex::Autolock lock(mLock);
+    android::AutoMutex lock(mLock);
 
     mNotifierState = AppCallbackNotifier::NOTIFIER_STOPPED;
     CAMHAL_LOGDA(" --> AppCallbackNotifier NOTIFIER_STOPPED \n");
     }
 
     while(!gEncoderQueue.isEmpty()) {
-        sp<Encoder_libjpeg> encoder = gEncoderQueue.valueAt(0);
+        android::sp<Encoder_libjpeg> encoder = gEncoderQueue.valueAt(0);
         camera_memory_t* encoded_mem = NULL;
         ExifElementsTable* exif = NULL;
 
@@ -1850,4 +1919,5 @@ status_t AppCallbackNotifier::stop()
 
 
 
-};
+} // namespace Camera
+} // namespace Ti

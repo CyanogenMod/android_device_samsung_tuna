@@ -20,10 +20,8 @@
 #include <ui/GraphicBufferMapper.h>
 #include <hal_public.h>
 
-//temporarily define format here
-#define HAL_PIXEL_FORMAT_TI_NV12 0x100
-
-namespace android {
+namespace Ti {
+namespace Camera {
 
 /**
  * Display handler class - This class basically handles the buffer posting to display
@@ -35,7 +33,7 @@ public:
 
     typedef struct
         {
-        void *mBuffer;
+        CameraBuffer *mBuffer;
         void *mUser;
         int mOffset;
         int mWidth;
@@ -65,7 +63,7 @@ public:
     virtual int setPreviewWindow(struct preview_stream_ops *window);
     virtual int setFrameProvider(FrameNotifier *frameProvider);
     virtual int setErrorHandler(ErrorNotifier *errorNotifier);
-    virtual int enableDisplay(int width, int height, struct timeval *refTime = NULL, S3DParameters *s3dParams = NULL);
+    virtual int enableDisplay(int width, int height, struct timeval *refTime = NULL);
     virtual int disableDisplay(bool cancel_buffer = true);
     virtual status_t pauseDisplay(bool pause);
 
@@ -76,16 +74,17 @@ public:
 
 #endif
 
-    virtual int useBuffers(void* bufArr, int num);
     virtual bool supportsExternalBuffering();
 
     //Implementation of inherited interfaces
-    virtual void* allocateBuffer(int width, int height, const char* format, int &bytes, int numBufs);
+    virtual CameraBuffer * allocateBufferList(int width, int height, const char* format, int &bytes, int numBufs);
+    virtual CameraBuffer *getBufferList(int *numBufs);
     virtual uint32_t * getOffsets() ;
     virtual int getFd() ;
-    virtual int freeBuffer(void* buf);
+    virtual int freeBufferList(CameraBuffer * buflist);
 
-    virtual int maxQueueableBuffers(unsigned int& queueable);
+    virtual status_t maxQueueableBuffers(unsigned int& queueable);
+    virtual status_t minUndequeueableBuffers(int& unqueueable);
 
     ///Class specific functions
     static void frameCallbackRelay(CameraFrame* caFrame);
@@ -105,17 +104,17 @@ public:
     static const int DISPLAY_TIMEOUT;
     static const int FAILED_DQS_TO_SUSPEND;
 
-    class DisplayThread : public Thread
+    class DisplayThread : public android::Thread
         {
         ANativeWindowDisplayAdapter* mDisplayAdapter;
-        TIUTILS::MessageQueue mDisplayThreadQ;
+        Utils::MessageQueue mDisplayThreadQ;
 
         public:
             DisplayThread(ANativeWindowDisplayAdapter* da)
             : Thread(false), mDisplayAdapter(da) { }
 
         ///Returns a reference to the display message Q for display adapter to post messages
-            TIUTILS::MessageQueue& msgQ()
+            Utils::MessageQueue& msgQ()
                 {
                 return mDisplayThreadQ;
                 }
@@ -147,20 +146,22 @@ private:
     int mFailedDQs;
     bool mPaused; //Pause state
     preview_stream_ops_t*  mANativeWindow;
-    sp<DisplayThread> mDisplayThread;
+    android::sp<DisplayThread> mDisplayThread;
     FrameProvider *mFrameProvider; ///Pointer to the frame provider interface
-    TIUTILS::MessageQueue mDisplayQ;
+    Utils::MessageQueue mDisplayQ;
     unsigned int mDisplayState;
     ///@todo Have a common class for these members
-    mutable Mutex mLock;
+    mutable android::Mutex mLock;
     bool mDisplayEnabled;
     int mBufferCount;
-    buffer_handle_t** mBufferHandleMap;
-    IMG_native_handle_t** mGrallocHandleMap;
-    uint32_t* mOffsetsMap;
+    CameraBuffer *mBuffers;
+    //buffer_handle_t** mBufferHandleMap; // -> frames[i].BufferHandle
+    //IMG_native_handle_t** mGrallocHandleMap; // -> frames[i].GrallocHandle
+    uint32_t* mOffsetsMap; // -> frames[i].Offset
     int mFD;
-    KeyedVector<int, int> mFramesWithCameraAdapterMap;
-    sp<ErrorNotifier> mErrorNotifier;
+    android::KeyedVector<buffer_handle_t *, int> mFramesWithCameraAdapterMap;
+    android::KeyedVector<int, int> mFramesType;
+    android::sp<ErrorNotifier> mErrorNotifier;
 
     uint32_t mFrameWidth;
     uint32_t mFrameHeight;
@@ -184,5 +185,5 @@ private:
 
 };
 
-};
-
+} // namespace Camera
+} // namespace Ti

@@ -21,12 +21,10 @@
 *
 */
 
-#define LOG_TAG "CameraHAL"
-
-
 #include "CameraHal.h"
 
-namespace android {
+namespace Ti {
+namespace Camera {
 
 /*--------------------FrameProvider Class STARTS here-----------------------------*/
 
@@ -59,7 +57,7 @@ int FrameProvider::disableFrameNotification(int32_t frameTypes)
     return ret;
 }
 
-int FrameProvider::returnFrame(void *frameBuf, CameraFrame::FrameType frameType)
+int FrameProvider::returnFrame(CameraBuffer *frameBuf, CameraFrame::FrameType frameType)
 {
     status_t ret = NO_ERROR;
 
@@ -68,7 +66,7 @@ int FrameProvider::returnFrame(void *frameBuf, CameraFrame::FrameType frameType)
     return ret;
 }
 
-void FrameProvider::addFramePointers(void *frameBuf, void *buf)
+void FrameProvider::addFramePointers(CameraBuffer *frameBuf, void *buf)
 {
   mFrameNotifier->addFramePointers(frameBuf, buf);
   return;
@@ -105,7 +103,7 @@ int EventProvider::disableEventNotification(int32_t frameTypes)
     LOG_FUNCTION_NAME;
     status_t ret = NO_ERROR;
 
-    mEventNotifier->disableMsgType(frameTypes<<MessageNotifier::FRAME_BIT_FIELD_POSITION
+    mEventNotifier->disableMsgType(frameTypes<<MessageNotifier::EVENT_BIT_FIELD_POSITION
                                     , mCookie
                                     );
 
@@ -117,15 +115,15 @@ int EventProvider::disableEventNotification(int32_t frameTypes)
 
 /*--------------------CameraArea Class STARTS here-----------------------------*/
 
-status_t CameraArea::transfrom(uint32_t width,
-                               uint32_t height,
-                               int32_t &top,
-                               int32_t &left,
-                               uint32_t &areaWidth,
-                               uint32_t &areaHeight)
+status_t CameraArea::transfrom(size_t width,
+                               size_t height,
+                               size_t &top,
+                               size_t &left,
+                               size_t &areaWidth,
+                               size_t &areaHeight)
 {
     status_t ret = NO_ERROR;
-    uint32_t hRange, vRange;
+    size_t hRange, vRange;
     double hScale, vScale;
 
     LOG_FUNCTION_NAME
@@ -147,11 +145,11 @@ status_t CameraArea::transfrom(uint32_t width,
     return ret;
 }
 
-status_t CameraArea::checkArea(int32_t top,
-                               int32_t left,
-                               int32_t bottom,
-                               int32_t right,
-                               int32_t weight)
+status_t CameraArea::checkArea(ssize_t top,
+                               ssize_t left,
+                               ssize_t bottom,
+                               ssize_t right,
+                               ssize_t weight)
 {
 
     //Handles the invalid regin corner case.
@@ -198,8 +196,8 @@ status_t CameraArea::checkArea(int32_t top,
 }
 
 status_t CameraArea::parseAreas(const char *area,
-                                uint32_t areaLength,
-                                Vector< sp<CameraArea> > &areas)
+                                size_t areaLength,
+                                android::Vector<android::sp<CameraArea> > &areas)
 {
     status_t ret = NO_ERROR;
     char *ctx;
@@ -209,9 +207,9 @@ status_t CameraArea::parseAreas(const char *area,
     const char *startToken = "(";
     const char endToken = ')';
     const char sep = ',';
-    int32_t top, left, bottom, right, weight;
+    ssize_t top, left, bottom, right, weight;
     char *tmpBuffer = NULL;
-    sp<CameraArea> currentArea;
+    android::sp<CameraArea> currentArea;
 
     LOG_FUNCTION_NAME
 
@@ -243,7 +241,7 @@ status_t CameraArea::parseAreas(const char *area,
             }
         else
             {
-            left = static_cast<int32_t>(strtol(pStart, &pEnd, 10));
+            left = static_cast<ssize_t>(strtol(pStart, &pEnd, 10));
             }
 
         if ( sep != *pEnd )
@@ -254,7 +252,7 @@ status_t CameraArea::parseAreas(const char *area,
             }
         else
             {
-            top = static_cast<int32_t>(strtol(pEnd+1, &pEnd, 10));
+            top = static_cast<ssize_t>(strtol(pEnd+1, &pEnd, 10));
             }
 
         if ( sep != *pEnd )
@@ -265,7 +263,7 @@ status_t CameraArea::parseAreas(const char *area,
             }
         else
             {
-            right = static_cast<int32_t>(strtol(pEnd+1, &pEnd, 10));
+            right = static_cast<ssize_t>(strtol(pEnd+1, &pEnd, 10));
             }
 
         if ( sep != *pEnd )
@@ -276,7 +274,7 @@ status_t CameraArea::parseAreas(const char *area,
             }
         else
             {
-            bottom = static_cast<int32_t>(strtol(pEnd+1, &pEnd, 10));
+            bottom = static_cast<ssize_t>(strtol(pEnd+1, &pEnd, 10));
             }
 
         if ( sep != *pEnd )
@@ -287,7 +285,7 @@ status_t CameraArea::parseAreas(const char *area,
             }
         else
             {
-            weight = static_cast<int32_t>(strtol(pEnd+1, &pEnd, 10));
+            weight = static_cast<ssize_t>(strtol(pEnd+1, &pEnd, 10));
             }
 
         if ( endToken != *pEnd )
@@ -334,8 +332,8 @@ status_t CameraArea::parseAreas(const char *area,
     return ret;
 }
 
-bool CameraArea::areAreasDifferent(Vector< sp<CameraArea> > &area1,
-                                    Vector< sp<CameraArea> > &area2) {
+bool CameraArea::areAreasDifferent(android::Vector< android::sp<CameraArea> > &area1,
+                                    android::Vector< android::sp<CameraArea> > &area2) {
     if (area1.size() != area2.size()) {
         return true;
     }
@@ -350,7 +348,7 @@ bool CameraArea::areAreasDifferent(Vector< sp<CameraArea> > &area1,
     return false;
 }
 
-bool CameraArea::compare(const sp<CameraArea> &area) {
+bool CameraArea::compare(const android::sp<CameraArea> &area) {
     return ((mTop == area->mTop) && (mLeft == area->mLeft) &&
             (mBottom == area->mBottom) && (mRight == area->mRight) &&
             (mWeight == area->mWeight));
@@ -359,4 +357,5 @@ bool CameraArea::compare(const sp<CameraArea> &area) {
 
 /*--------------------CameraArea Class ENDS here-----------------------------*/
 
-};
+} // namespace Camera
+} // namespace Ti
