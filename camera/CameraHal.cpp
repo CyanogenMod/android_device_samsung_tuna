@@ -4157,12 +4157,21 @@ void CameraHal::initDefaultParameters()
 
     // TI extensions for enable/disable algos
     // Hadcoded for now
+#ifdef OMAP_TUNA
+    p.set(TICameraParameters::KEY_ALGO_FIXED_GAMMA, android::CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_NSF1, android::CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_NSF2, android::CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_SHARPENING, android::CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_THREELINCOLORMAP, android::CameraParameters::FALSE);
+    p.set(TICameraParameters::KEY_ALGO_GIC, android::CameraParameters::FALSE);
+#else
     p.set(TICameraParameters::KEY_ALGO_FIXED_GAMMA, android::CameraParameters::TRUE);
     p.set(TICameraParameters::KEY_ALGO_NSF1, android::CameraParameters::TRUE);
     p.set(TICameraParameters::KEY_ALGO_NSF2, android::CameraParameters::TRUE);
     p.set(TICameraParameters::KEY_ALGO_SHARPENING, android::CameraParameters::TRUE);
     p.set(TICameraParameters::KEY_ALGO_THREELINCOLORMAP, android::CameraParameters::TRUE);
     p.set(TICameraParameters::KEY_ALGO_GIC, android::CameraParameters::TRUE);
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 }
