@@ -63,8 +63,13 @@
 
 #define MIN_WIDTH           640
 #define MIN_HEIGHT          480
+#ifdef OMAP_TUNA
+#define PICTURE_WIDTH   2592 /* 5mp - 2560. 8mp - 3280 */ /* Make sure it is a multiple of 16. */
+#define PICTURE_HEIGHT  1944 /* 5mp - 2048. 8mp - 2464 */ /* Make sure it is a multiple of 16. */
+#else
 #define PICTURE_WIDTH   3264 /* 5mp - 2560. 8mp - 3280 */ /* Make sure it is a multiple of 16. */
 #define PICTURE_HEIGHT  2448 /* 5mp - 2048. 8mp - 2464 */ /* Make sure it is a multiple of 16. */
+#endif
 #define PREVIEW_WIDTH 176
 #define PREVIEW_HEIGHT 144
 #define PIXEL_FORMAT           V4L2_PIX_FMT_UYVY

@@ -191,9 +191,14 @@ const CapPixelformat OMXCameraAdapter::mPixelformats [] = {
     { OMX_COLOR_FormatCbYCrY, android::CameraParameters::PIXEL_FORMAT_YUV422I },
     { OMX_COLOR_FormatYUV420SemiPlanar, android::CameraParameters::PIXEL_FORMAT_YUV420SP },
     { OMX_COLOR_Format16bitRGB565, android::CameraParameters::PIXEL_FORMAT_RGB565 },
+#if 0 /*def OMAP_TUNA*/
+    { OMX_COLOR_FormatRawBayer10bit, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB },
+    { OMX_COLOR_FormatYUV420SemiPlanar, android::CameraParameters::PIXEL_FORMAT_YUV420P },
+#else
     { OMX_COLOR_FormatYUV420SemiPlanar, android::CameraParameters::PIXEL_FORMAT_YUV420P },
     { OMX_COLOR_FormatUnused, TICameraParameters::PIXEL_FORMAT_UNUSED },
     { OMX_COLOR_FormatRawBayer10bit, android::CameraParameters::PIXEL_FORMAT_BAYER_RGGB },
+#endif
 };
 
 const userToOMX_LUT OMXCameraAdapter::mFrameLayout [] = {
@@ -969,6 +974,11 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
 #endif
 
     if ( NO_ERROR == ret ) {
+#ifdef OMAP_TUNA
+        //jpeg is not supported in (our) OMX capabilies
+        strncat(supported, PARAM_SEP, MAX_PROP_VALUE_LENGTH - 1);
+        strncat(supported, android::CameraParameters::PIXEL_FORMAT_JPEG, MAX_PROP_VALUE_LENGTH - 1);
+#endif
         params->set(CameraProperties::SUPPORTED_PICTURE_FORMATS, supported);
     }
 
@@ -1595,13 +1605,17 @@ status_t OMXCameraAdapter::insertRaw(CameraProperties::Properties* params, OMX_T
     LOG_FUNCTION_NAME;
 
     memset(supported, '\0', sizeof(supported));
-#ifndef OMAP_TUNA
+#ifdef OMAP_TUNA
+    sprintf(supported,"%d",int(caps.tImageResRange.nWidthMax));
+#else
     sprintf(supported,"%d",int(caps.uSenNativeResWidth));
 #endif
     params->set(CameraProperties::RAW_WIDTH, supported);
 
     memset(supported, '\0', sizeof(supported));
-#ifndef OMAP_TUNA
+#ifdef OMAP_TUNA
+    sprintf(supported,"%d",int(caps.tImageResRange.nHeightMax));
+#else
     if (caps.bMechanicalMisalignmentSupported) {
         sprintf(supported,"%d",int(caps.uSenNativeResHeight) * 2);
     } else {
