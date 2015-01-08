@@ -47,7 +47,7 @@ const char OMXCameraAdapter::DEFAULT_THUMBNAIL_QUALITY[] = "60";
 const char OMXCameraAdapter::DEFAULT_THUMBNAIL_SIZE[] = "160x120";
 const char OMXCameraAdapter::DEFAULT_PICTURE_FORMAT[] = "jpeg";
 const char OMXCameraAdapter::DEFAULT_S3D_PICTURE_LAYOUT[] = "tb-full";
-#ifdef OMAP_TUNA
+#if 0 /*def OMAP_TUNA*/
 const char OMXCameraAdapter::DEFAULT_PICTURE_SIZE[] = "2592x1944";
 #else
 const char OMXCameraAdapter::DEFAULT_PICTURE_SIZE[] = "320x240";
