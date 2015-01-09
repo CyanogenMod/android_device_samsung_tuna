@@ -4066,7 +4066,7 @@ OMX_OTHER_EXTRADATATYPE *OMXCameraAdapter::getExtradata(const OMX_PTR ptrPrivate
     if ( NULL != ptrPrivate ) {
         const OMX_TI_PLATFORMPRIVATE *platformPrivate = (const OMX_TI_PLATFORMPRIVATE *) ptrPrivate;
 
-        CAMHAL_LOGVB("Size = %d, sizeof = %d, pAuxBuf = 0x%x, pAuxBufSize= %d, pMetaDataBufer = 0x%x, nMetaDataSize = %d",
+        CAMHAL_LOGSVB("Size = %d, sizeof = %d, pAuxBuf = 0x%x, pAuxBufSize= %d, pMetaDataBufer = 0x%x, nMetaDataSize = %d",
                       platformPrivate->nSize,
                       sizeof(OMX_TI_PLATFORMPRIVATE),
                       platformPrivate->pAuxBuf1,

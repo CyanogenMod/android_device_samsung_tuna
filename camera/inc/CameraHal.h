@@ -94,7 +94,9 @@
                              GRALLOC_USAGE_SW_WRITE_NEVER
 
 //Enables Absolute PPM measurements in logcat
+#ifdef CAMERAHAL_SUPERVERBOSE
 #define PPM_INSTRUMENTATION_ABS 1
+#endif
 
 #define LOCK_BUFFER_TRIES 5
 #define HAL_PIXEL_FORMAT_NV12 0x100
