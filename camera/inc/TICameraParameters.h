@@ -198,11 +198,13 @@ static const char EFFECT_VIVID[];
 static const char EFFECT_COLOR_SWAP[];
 static const char EFFECT_BLACKWHITE[];
 
+#ifndef OMAP_TUNA
 //TI extensions for stereo frame layouts
 static const char KEY_S3D_PRV_FRAME_LAYOUT[];
 static const char KEY_S3D_PRV_FRAME_LAYOUT_VALUES[];
 static const char KEY_S3D_CAP_FRAME_LAYOUT[];
 static const char KEY_S3D_CAP_FRAME_LAYOUT_VALUES[];
+#endif
 
 //TI extensions for stereo frame layouts
 static const char S3D_NONE[];

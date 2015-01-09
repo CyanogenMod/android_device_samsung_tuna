@@ -287,7 +287,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
 
     varint = params.getInt(android::CameraParameters::KEY_JPEG_QUALITY);
     if ( varint >= MIN_JPEG_QUALITY && varint <= MAX_JPEG_QUALITY ) {
-        if (varint != mPictureQuality) {
+        if ((unsigned int)varint != mPictureQuality) {
             mPendingCaptureSettings |= SetQuality;
             mPictureQuality = varint;
         }
@@ -302,7 +302,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
 
     varint = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_WIDTH);
     if ( varint >= 0 ) {
-        if (varint != mThumbWidth) {
+        if ((unsigned int)varint != mThumbWidth) {
             mPendingCaptureSettings |= SetThumb;
             mThumbWidth = varint;
         }
@@ -317,7 +317,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
 
     varint = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_HEIGHT);
     if ( varint >= 0 ) {
-        if (varint != mThumbHeight) {
+        if ((unsigned int)varint != mThumbHeight) {
             mPendingCaptureSettings |= SetThumb;
             mThumbHeight = varint;
         }
@@ -332,7 +332,7 @@ status_t OMXCameraAdapter::setParametersCapture(const android::CameraParameters 
 
     varint = params.getInt(android::CameraParameters::KEY_JPEG_THUMBNAIL_QUALITY);
     if ( varint >= MIN_JPEG_QUALITY && varint <= MAX_JPEG_QUALITY ) {
-        if (varint != mThumbQuality) {
+        if ((unsigned int)varint != mThumbQuality) {
             mPendingCaptureSettings |= SetThumb;
             mThumbQuality = varint;
         }

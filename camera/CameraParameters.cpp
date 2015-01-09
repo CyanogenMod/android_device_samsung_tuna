@@ -95,10 +95,12 @@ const char CameraProperties::GBCE[] = "prop-gbce-default";
 const char CameraProperties::SUPPORTED_GBCE[] = "prop-gbce-supported";
 const char CameraProperties::GLBCE[] = "prop-glbce-default";
 const char CameraProperties::SUPPORTED_GLBCE[] = "prop-glbce-supported";
+#ifndef OMAP_TUNA
 const char CameraProperties::S3D_PRV_FRAME_LAYOUT[] = "prop-s3d-prv-frame-layout";
 const char CameraProperties::S3D_PRV_FRAME_LAYOUT_VALUES[] = "prop-s3d-prv-frame-layout-values";
 const char CameraProperties::S3D_CAP_FRAME_LAYOUT[] = "prop-s3d-cap-frame-layout";
 const char CameraProperties::S3D_CAP_FRAME_LAYOUT_VALUES[] = "prop-s3d-cap-frame-layout-values";
+#endif
 const char CameraProperties::AUTOCONVERGENCE_MODE[] = "prop-auto-convergence-mode";
 const char CameraProperties::AUTOCONVERGENCE_MODE_VALUES[] = "prop-auto-convergence-mode-values";
 const char CameraProperties::MANUAL_CONVERGENCE[] = "prop-manual-convergence";
