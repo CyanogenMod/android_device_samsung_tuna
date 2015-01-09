@@ -226,7 +226,7 @@ status_t OMXCameraAdapter::createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHead
                                  (OMX_EXTRADATATYPE)OMX_FaceDetection);
 
         if ( NULL != extraData ) {
-            CAMHAL_LOGVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",
+            CAMHAL_LOGSVB("Size = %d, sizeof = %d, eType = 0x%x, nDataSize= %d, nPortIndex = 0x%x, nVersion = 0x%x",
                          extraData->nSize,
                          sizeof(OMX_OTHER_EXTRADATATYPE),
                          extraData->eType,
@@ -241,7 +241,7 @@ status_t OMXCameraAdapter::createPreviewMetadata(OMX_BUFFERHEADERTYPE* pBuffHead
         faceData = ( OMX_FACEDETECTIONTYPE * ) extraData->data;
         if ( NULL != faceData ) {
             if ( sizeof(OMX_FACEDETECTIONTYPE) == faceData->nSize ) {
-                CAMHAL_LOGVB("Faces detected %d",
+                CAMHAL_LOGSVB("Faces detected %d",
                              faceData->ulFaceCount,
                              faceData->nSize,
                              sizeof(OMX_FACEDETECTIONTYPE),
