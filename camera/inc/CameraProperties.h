@@ -69,16 +69,20 @@ public:
     static const char ORIENTATION_INDEX[];
     static const char FACING_INDEX[];
     static const char SUPPORTED_PREVIEW_SIZES[];
+#ifndef OMAP_TUNA
     static const char SUPPORTED_PREVIEW_SUBSAMPLED_SIZES[];
     static const char SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[];
     static const char SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[];
+#endif
     static const char SUPPORTED_PREVIEW_FORMATS[];
     static const char SUPPORTED_PREVIEW_FRAME_RATES[];
     static const char SUPPORTED_PREVIEW_FRAME_RATES_EXT[];
     static const char SUPPORTED_PICTURE_SIZES[];
+#ifndef OMAP_TUNA
     static const char SUPPORTED_PICTURE_SUBSAMPLED_SIZES[];
     static const char SUPPORTED_PICTURE_TOPBOTTOM_SIZES[];
     static const char SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[];
+#endif
     static const char SUPPORTED_PICTURE_FORMATS[];
     static const char SUPPORTED_THUMBNAIL_SIZES[];
     static const char SUPPORTED_WHITE_BALANCE[];
@@ -184,8 +188,10 @@ public:
     static const char VIDEO_SIZE[];
     static const char SUPPORTED_VIDEO_SIZES[];
 
+#ifndef OMAP_TUNA
     static const char MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED[];
     static const char MECHANICAL_MISALIGNMENT_CORRECTION[];
+#endif
 
     static const char RAW_WIDTH[];
     static const char RAW_HEIGHT[];

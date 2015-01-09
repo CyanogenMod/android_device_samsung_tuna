@@ -4362,10 +4362,10 @@ public:
 
     status_t switchToState(OMX_STATETYPE state)
     {
-        CAMHAL_LOGD(".");
+        CAMHAL_LOGSV(".");
         android::AutoMutex locker(mLock);
         CAMHAL_UNUSED(locker);
-        CAMHAL_LOGD(".");
+        CAMHAL_LOGSV(".");
 
         mState = state;
         mIsOk = false;

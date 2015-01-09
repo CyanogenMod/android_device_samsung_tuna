@@ -528,9 +528,12 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             }
 
         if ( (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIZES)))
+#ifndef OMAP_TUNA
                 && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES)))
                 && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES)))
-                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES))) ) {
+                && (!isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES)))
+#endif
+                                                                                                                           ) {
             CAMHAL_LOGEB("Invalid preview resolution %d x %d", w, h);
             return BAD_VALUE;
         }
@@ -584,9 +587,12 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 
         params.getPictureSize(&w, &h);
         if ( (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIZES)))
+#ifndef OMAP_TUNA
                 || (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES)))
                 || (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES)))
-                || (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES))) ) {
+                || (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES)))
+#endif
+                                                                                                                           ) {
             mParameters.setPictureSize(w, h);
         } else {
             CAMHAL_LOGEB("ERROR: Invalid picture resolution %d x %d", w, h);
@@ -726,6 +732,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
             }
         }
 
+#ifndef OMAP_TUNA
         if((valstr = params.get(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION)) != NULL) {
             if ( strcmp(mCameraProperties->get(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED),
                     android::CameraParameters::TRUE) == 0 ) {
@@ -735,6 +742,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 mParameters.remove(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION);
             }
         }
+#endif
 
         if ((valstr = params.get(TICameraParameters::KEY_EXPOSURE_MODE)) != NULL) {
             if (isParameterValid(valstr, mCameraProperties->get(CameraProperties::SUPPORTED_EXPOSURE_MODES))) {
@@ -4005,12 +4013,14 @@ void CameraHal::insertSupportedParams()
     p.set(android::CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_FORMATS));
     p.set(android::CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIZES));
     p.set(android::CameraParameters::KEY_SUPPORTED_PREVIEW_FORMATS, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FORMATS));
+#ifndef OMAP_TUNA
     p.set(TICameraParameters::KEY_SUPPORTED_PICTURE_SUBSAMPLED_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES));
     p.set(TICameraParameters::KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
+#endif
     p.set(android::CameraParameters::KEY_SUPPORTED_PREVIEW_FRAME_RATES, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES));
     p.set(TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED, mCameraProperties->get(CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES_EXT));
     p.set(android::CameraParameters::KEY_SUPPORTED_PREVIEW_FPS_RANGE, mCameraProperties->get(CameraProperties::FRAMERATE_RANGE_SUPPORTED));
@@ -4051,7 +4061,9 @@ void CameraHal::insertSupportedParams()
     p.set(android::CameraParameters::KEY_AUTO_EXPOSURE_LOCK_SUPPORTED, mCameraProperties->get(CameraProperties::AUTO_EXPOSURE_LOCK_SUPPORTED));
     p.set(android::CameraParameters::KEY_AUTO_WHITEBALANCE_LOCK_SUPPORTED, mCameraProperties->get(CameraProperties::AUTO_WHITEBALANCE_LOCK_SUPPORTED));
     p.set(android::CameraParameters::KEY_VIDEO_SNAPSHOT_SUPPORTED, mCameraProperties->get(CameraProperties::VIDEO_SNAPSHOT_SUPPORTED));
+#ifndef OMAP_TUNA
     p.set(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED, mCameraProperties->get(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED));
+#endif
     p.set(TICameraParameters::KEY_CAP_MODE_VALUES, mCameraProperties->get(CameraProperties::CAP_MODE_VALUES));
 
     LOG_FUNCTION_NAME_EXIT;
@@ -4155,7 +4167,9 @@ void CameraHal::initDefaultParameters()
     p.set(android::CameraParameters::KEY_VIDEO_FRAME_FORMAT, "OMX_TI_COLOR_FormatYUV420PackedSemiPlanar");
     p.set(android::CameraParameters::KEY_MAX_NUM_DETECTED_FACES_HW, mCameraProperties->get(CameraProperties::MAX_FD_HW_FACES));
     p.set(android::CameraParameters::KEY_MAX_NUM_DETECTED_FACES_SW, mCameraProperties->get(CameraProperties::MAX_FD_SW_FACES));
+#ifndef OMAP_TUNA
     p.set(TICameraParameters::KEY_MECHANICAL_MISALIGNMENT_CORRECTION, mCameraProperties->get(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION));
+#endif
     // Only one area a.k.a Touch AF for now.
     // TODO: Add support for multiple focus areas.
     p.set(android::CameraParameters::KEY_MAX_NUM_FOCUS_AREAS, mCameraProperties->get(CameraProperties::MAX_FOCUS_AREAS));
@@ -4165,16 +4179,9 @@ void CameraHal::initDefaultParameters()
     p.set(TICameraParameters::RAW_WIDTH, mCameraProperties->get(CameraProperties::RAW_WIDTH));
     p.set(TICameraParameters::RAW_HEIGHT,mCameraProperties->get(CameraProperties::RAW_HEIGHT));
 
+#ifndef OMAP_TUNA
     // TI extensions for enable/disable algos
     // Hadcoded for now
-#ifdef OMAP_TUNA
-    p.set(TICameraParameters::KEY_ALGO_FIXED_GAMMA, android::CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_NSF1, android::CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_NSF2, android::CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_SHARPENING, android::CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_THREELINCOLORMAP, android::CameraParameters::FALSE);
-    p.set(TICameraParameters::KEY_ALGO_GIC, android::CameraParameters::FALSE);
-#else
     p.set(TICameraParameters::KEY_ALGO_FIXED_GAMMA, android::CameraParameters::TRUE);
     p.set(TICameraParameters::KEY_ALGO_NSF1, android::CameraParameters::TRUE);
     p.set(TICameraParameters::KEY_ALGO_NSF2, android::CameraParameters::TRUE);

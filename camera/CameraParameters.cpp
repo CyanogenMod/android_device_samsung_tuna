@@ -33,16 +33,20 @@ const char CameraProperties::CAMERA_SENSOR_ID[] = "prop-sensor-id";
 const char CameraProperties::ORIENTATION_INDEX[]="prop-orientation";
 const char CameraProperties::FACING_INDEX[]="prop-facing";
 const char CameraProperties::SUPPORTED_PREVIEW_SIZES[] = "prop-preview-size-values";
+#ifndef OMAP_TUNA
 const char CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES[] = "prop-preview-subsampled-size-values";
 const char CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[] = "prop-preview-topbottom-size-values";
 const char CameraProperties::SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[] = "prop-preview-sidebyside-size-values";
+#endif
 const char CameraProperties::SUPPORTED_PREVIEW_FORMATS[] = "prop-preview-format-values";
 const char CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES[] = "prop-preview-frame-rate-values";
 const char CameraProperties::SUPPORTED_PREVIEW_FRAME_RATES_EXT[] = "prop-preview-frame-rate-ext-values";
 const char CameraProperties::SUPPORTED_PICTURE_SIZES[] = "prop-picture-size-values";
+#ifndef OMAP_TUNA
 const char CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES[] = "prop-picture-subsampled-size-values";
 const char CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES[] = "prop-picture-topbottom-size-values";
 const char CameraProperties::SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[] = "prop-picture-sidebyside-size-values";
+#endif
 const char CameraProperties::SUPPORTED_PICTURE_FORMATS[] = "prop-picture-format-values";
 const char CameraProperties::SUPPORTED_THUMBNAIL_SIZES[] = "prop-jpeg-thumbnail-size-values";
 const char CameraProperties::SUPPORTED_WHITE_BALANCE[] = "prop-whitebalance-values";
@@ -135,8 +139,10 @@ const char CameraProperties::METERING_AREAS[] = "prop-metering-areas";
 const char CameraProperties::VIDEO_SNAPSHOT_SUPPORTED[] = "prop-video-snapshot-supported";
 const char CameraProperties::VIDEO_SIZE[] = "video-size";
 const char CameraProperties::SUPPORTED_VIDEO_SIZES[] = "video-size-values";
+#ifndef OMAP_TUNA
 const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED[] = "prop-mechanical-misalignment-correction-supported";
 const char CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION[] = "prop-mechanical-misalignment-correction";
+#endif
 const char CameraProperties::CAP_MODE_VALUES[] = "prop-mode-values";
 const char CameraProperties::RAW_WIDTH[] = "prop-raw-width-values";
 const char CameraProperties::RAW_HEIGHT[] = "prop-raw-height-values";

@@ -669,11 +669,13 @@ private:
                                          size_t,
                                          char*,
                                          size_t);
+#ifndef OMAP_TUNA
     static status_t encodeSizeCap3D(OMX_TI_CAPRESTYPE&,
                                     const CapResolution*,
                                     size_t ,
                                     char * ,
                                     size_t);
+#endif
     static status_t insertImageSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertPreviewSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertThumbSizes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
@@ -902,16 +904,22 @@ private:
 
     //OMX Capabilities data
     static const CapResolution mImageCapRes [];
+#ifndef OMAP_TUNA
     static const CapResolution mImageCapResSS [];
     static const CapResolution mImageCapResTB [];
+#endif
     static const CapResolution mPreviewRes [];
+#ifndef OMAP_TUNA
     static const CapResolution mPreviewResSS [];
     static const CapResolution mPreviewResTB [];
+#endif
     static const CapResolution mPreviewPortraitRes [];
     static const CapResolution mThumbRes [];
     static const CapPixelformat mPixelformats [];
+#ifndef OMAP_TUNA
     static const userToOMX_LUT mFrameLayout [];
     static const LUTtype mLayoutLUT;
+#endif
     static const CapCodingFormat mImageCodingFormat[];
     static const CapFramerate mFramerates [];
     static const CapU32 mSensorNames[] ;
@@ -950,16 +958,24 @@ private:
     static const char DEFAULT_THUMBNAIL_QUALITY[];
     static const char DEFAULT_THUMBNAIL_SIZE[];
     static const char DEFAULT_PICTURE_FORMAT[];
+#ifndef OMAP_TUNA
     static const char DEFAULT_S3D_PICTURE_LAYOUT[];
+#endif
     static const char DEFAULT_PICTURE_SIZE[];
+#ifndef OMAP_TUNA
     static const char DEFAULT_PICTURE_SS_SIZE[];
     static const char DEFAULT_PICTURE_TB_SIZE[];
+#endif
     static const char DEFAULT_PREVIEW_FORMAT[];
     static const char DEFAULT_FRAMERATE[];
+#ifndef OMAP_TUNA
     static const char DEFAULT_S3D_PREVIEW_LAYOUT[];
+#endif
     static const char DEFAULT_PREVIEW_SIZE[];
+#ifndef OMAP_TUNA
     static const char DEFAULT_PREVIEW_SS_SIZE[];
     static const char DEFAULT_PREVIEW_TB_SIZE[];
+#endif
     static const char DEFAULT_NUM_PREV_BUFS[];
     static const char DEFAULT_NUM_PIC_BUFS[];
     static const char DEFAULT_SATURATION[];
@@ -983,7 +999,9 @@ private:
     static const char DEFAULT_SENSOR_ORIENTATION[];
     static const char DEFAULT_AUTOCONVERGENCE_MODE[];
     static const char DEFAULT_MANUAL_CONVERGENCE[];
+#ifndef OMAP_TUNA
     static const char * DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE;
+#endif
     static const char DEFAULT_EXIF_MODEL[];
     static const char DEFAULT_EXIF_MAKE[];
 

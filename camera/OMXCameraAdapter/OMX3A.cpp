@@ -505,6 +505,7 @@ status_t OMXCameraAdapter::setExposureMode(Gen3A_settings& Gen3A)
     return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
+#ifndef OMAP_TUNA
 static bool isFlashDisabled() {
 #if (PROPERTY_VALUE_MAX < 5)
 #error "PROPERTY_VALUE_MAX must be at least 5"
@@ -526,6 +527,7 @@ static bool isFlashDisabled() {
 
     return false;
 }
+#endif
 
 status_t OMXCameraAdapter::setManualExposureVal(Gen3A_settings& Gen3A) {
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -611,11 +613,15 @@ status_t OMXCameraAdapter::setFlashMode(Gen3A_settings& Gen3A)
     OMX_INIT_STRUCT_PTR (&flash, OMX_IMAGE_PARAM_FLASHCONTROLTYPE);
     flash.nPortIndex = OMX_ALL;
 
+#ifndef OMAP_TUNA
     if (isFlashDisabled()) {
         flash.eFlashControl = ( OMX_IMAGE_FLASHCONTROLTYPE ) OMX_IMAGE_FlashControlOff;
     } else {
+#endif
         flash.eFlashControl = ( OMX_IMAGE_FLASHCONTROLTYPE ) Gen3A.FlashMode;
+#ifndef OMAP_TUNA
     }
+#endif
 
     CAMHAL_LOGDB("Configuring flash mode 0x%x", flash.eFlashControl);
     eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
