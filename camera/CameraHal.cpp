@@ -442,6 +442,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
 #endif
             }
 
+#ifndef OMAP_TUNA
         if ( (valstr = params.get(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT)) != NULL )
             {
             if (strcmp(valstr, mParameters.get(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT)))
@@ -451,6 +452,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 restartPreviewRequired = true;
                 }
             }
+#endif
 
 #ifdef OMAP_ENHANCEMENT
         int orientation =0;
@@ -572,11 +574,13 @@ int CameraHal::setParameters(const android::CameraParameters& params)
         }
 #endif
 
+#ifndef OMAP_TUNA
         if ( (valstr = params.get(TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT)) != NULL )
             {
             CAMHAL_LOGDB("Stereo 3D capture image layout is %s", valstr);
             mParameters.set(TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT, valstr);
             }
+#endif
 
         params.getPictureSize(&w, &h);
         if ( (isResolutionValid(w, h, mCameraProperties->get(CameraProperties::SUPPORTED_PICTURE_SIZES)))
@@ -652,7 +656,7 @@ int CameraHal::setParameters(const android::CameraParameters& params)
                 mParameters.set(android::CameraParameters::KEY_PREVIEW_FPS_RANGE, valstr);
                 CAMHAL_LOGDB("FPS Range = %s", valstr);
                 if ( curMaxFPS == (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) &&
-                     maxFPS < (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) ) {
+                     (unsigned int)maxFPS < (FRAME_RATE_HIGH_HD * CameraHal::VFR_SCALE) ) {
                     restartPreviewRequired = true;
                 }
             }
@@ -3222,6 +3226,7 @@ char* CameraHal::getParameters()
         mCameraAdapter->getParameters(mParameters);
     }
 
+#ifndef OMAP_TUNA
     if ( (valstr = mParameters.get(TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT)) != NULL ) {
         if (!strcmp(TICameraParameters::S3D_TB_FULL, valstr)) {
             mParameters.set(android::CameraParameters::KEY_SUPPORTED_PICTURE_SIZES, mParameters.get(TICameraParameters::KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
@@ -3243,6 +3248,7 @@ char* CameraHal::getParameters()
             mParameters.set(android::CameraParameters::KEY_SUPPORTED_PREVIEW_SIZES, mParameters.get(TICameraParameters::KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES));
         }
     }
+#endif
 
     android::CameraParameters mParams = mParameters;
 
@@ -4032,8 +4038,10 @@ void CameraHal::insertSupportedParams()
     p.set(android::CameraParameters::KEY_ZOOM_SUPPORTED, mCameraProperties->get(CameraProperties::ZOOM_SUPPORTED));
     p.set(android::CameraParameters::KEY_SMOOTH_ZOOM_SUPPORTED, mCameraProperties->get(CameraProperties::SMOOTH_ZOOM_SUPPORTED));
     p.set(TICameraParameters::KEY_SUPPORTED_IPP, mCameraProperties->get(CameraProperties::SUPPORTED_IPP_MODES));
+#ifndef OMAP_TUNA
     p.set(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT_VALUES, mCameraProperties->get(CameraProperties::S3D_PRV_FRAME_LAYOUT_VALUES));
     p.set(TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT_VALUES, mCameraProperties->get(CameraProperties::S3D_CAP_FRAME_LAYOUT_VALUES));
+#endif
     p.set(TICameraParameters::KEY_AUTOCONVERGENCE_MODE_VALUES, mCameraProperties->get(CameraProperties::AUTOCONVERGENCE_MODE_VALUES));
     p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_MIN, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MIN));
     p.set(TICameraParameters::KEY_SUPPORTED_MANUAL_CONVERGENCE_MAX, mCameraProperties->get(CameraProperties::SUPPORTED_MANUAL_CONVERGENCE_MAX));
@@ -4129,8 +4137,10 @@ void CameraHal::initDefaultParameters()
     p.set(TICameraParameters::KEY_GBCE_SUPPORTED, mCameraProperties->get(CameraProperties::SUPPORTED_GBCE));
     p.set(TICameraParameters::KEY_GLBCE, mCameraProperties->get(CameraProperties::GLBCE));
     p.set(TICameraParameters::KEY_GLBCE_SUPPORTED, mCameraProperties->get(CameraProperties::SUPPORTED_GLBCE));
+#ifndef OMAP_TUNA
     p.set(TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT, mCameraProperties->get(CameraProperties::S3D_PRV_FRAME_LAYOUT));
     p.set(TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT, mCameraProperties->get(CameraProperties::S3D_CAP_FRAME_LAYOUT));
+#endif
     p.set(TICameraParameters::KEY_AUTOCONVERGENCE_MODE, mCameraProperties->get(CameraProperties::AUTOCONVERGENCE_MODE));
     p.set(TICameraParameters::KEY_MANUAL_CONVERGENCE, mCameraProperties->get(CameraProperties::MANUAL_CONVERGENCE));
     p.set(android::CameraParameters::KEY_VIDEO_STABILIZATION, mCameraProperties->get(CameraProperties::VSTAB));

@@ -80,9 +80,11 @@ status_t OMXCameraAdapter::setParametersAlgo(const android::CameraParameters &pa
         mCapabilitiesOpMode = MODE_HIGH_QUALITY;
     }
 
+#ifndef OMAP_TUNA
     if ( mSensorIndex == 2 ) {
        mCapabilitiesOpMode = MODE_STEREO;
     }
+#endif
 
     if ( mCapMode != capMode ) {
         mCapMode = capMode;

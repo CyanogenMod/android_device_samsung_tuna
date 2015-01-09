@@ -4471,6 +4471,7 @@ public:
         }
 
         status_t err = NO_ERROR;
+#ifndef OMAP_TUNA
         if ( sensorId == 2 ) {
             CAMHAL_LOGD("Camera mode: STEREO");
             properties->setMode(MODE_STEREO);
@@ -4478,6 +4479,7 @@ public:
                                           sensorId,
                                           properties);
         } else {
+#endif
             CAMHAL_LOGD("Camera MONO");
 
             CAMHAL_LOGD("Camera mode: HQ ");
@@ -4522,12 +4524,12 @@ public:
             err = fetchCapabiltiesForMode(OMX_TI_CPCam,
                                           sensorId,
                                           properties);
-#endif
             if ( NO_ERROR != err ) {
                 return err;
             }
 
         }
+#endif
 
         return err;
     }

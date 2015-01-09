@@ -238,7 +238,7 @@ status_t OMXCameraAdapter::setupEXIF()
     struct tm *pTime;
     OMXCameraPortParameters * capData = NULL;
     MemoryManager memMgr;
-    CameraBuffer *memmgr_buf_array;
+    CameraBuffer *memmgr_buf_array = NULL;
     int buf_size = 0;
 
     LOG_FUNCTION_NAME;
@@ -567,13 +567,13 @@ status_t OMXCameraAdapter::setupEXIF_libjpeg(ExifElementsTable* exifTable,
 
     if ((NO_ERROR == ret)) {
         char temp_value[5];
-        snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%lu", capData->mWidth);
+        snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%u", capData->mWidth);
         ret = exifTable->insertElement(TAG_IMAGE_WIDTH, temp_value);
      }
 
     if ((NO_ERROR == ret)) {
         char temp_value[5];
-        snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%lu", capData->mHeight);
+        snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%u", capData->mHeight);
         ret = exifTable->insertElement(TAG_IMAGE_LENGTH, temp_value);
      }
 

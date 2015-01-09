@@ -50,7 +50,7 @@ static int camera_get_number_of_cameras(void);
 static int camera_get_camera_info(int camera_id, struct camera_info *info);
 
 static struct hw_module_methods_t camera_module_methods = {
-        open: camera_device_open
+        .open = camera_device_open
 };
 
 } // namespace Camera
@@ -58,19 +58,23 @@ static struct hw_module_methods_t camera_module_methods = {
 
 
 camera_module_t HAL_MODULE_INFO_SYM = {
-    common: {
-         tag: HARDWARE_MODULE_TAG,
-         version_major: 1,
-         version_minor: 0,
-         id: CAMERA_HARDWARE_MODULE_ID,
-         name: "TI OMAP CameraHal Module",
-         author: "TI",
-         methods: &Ti::Camera::camera_module_methods,
-         dso: NULL, /* remove compilation warnings */
-         reserved: {0}, /* remove compilation warnings */
+    .common = {
+         .tag = HARDWARE_MODULE_TAG,
+         .version_major = 1,
+         .version_minor = 0,
+         .id = CAMERA_HARDWARE_MODULE_ID,
+         .name = "TI OMAP CameraHal Module",
+         .author = "TI",
+         .methods = &Ti::Camera::camera_module_methods,
+         .dso = NULL, /* remove compilation warnings */
+         .reserved = {0}, /* remove compilation warnings */
     },
-    get_number_of_cameras: Ti::Camera::camera_get_number_of_cameras,
-    get_camera_info: Ti::Camera::camera_get_camera_info,
+    .get_number_of_cameras = Ti::Camera::camera_get_number_of_cameras,
+    .get_camera_info = Ti::Camera::camera_get_camera_info,
+    .set_callbacks = NULL, /* remove compilation warnings */
+    .get_vendor_tag_ops = NULL, /* remove compilation warnings */
+    .open_legacy = NULL, /* remove compilation warnings */
+    .reserved = {0}, /* remove compilation warnings */
 };
 
 
@@ -748,7 +752,7 @@ int camera_get_number_of_cameras(void)
     if(gCameraProperties.initialize() != NO_ERROR)
     {
         CAMHAL_LOGEA("Unable to create or initialize CameraProperties");
-        return NULL;
+        return 0;
     }
 
     num_cameras = gCameraProperties.camerasSupported();

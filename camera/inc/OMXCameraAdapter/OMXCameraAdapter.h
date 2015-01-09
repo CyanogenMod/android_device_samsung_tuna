@@ -707,7 +707,9 @@ private:
 #endif
     static status_t insertAutoConvergenceModes(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertManualConvergenceRange(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+#ifndef OMAP_TUNA
     static status_t insertLayout(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
+#endif
     static status_t insertVideoSnapshotSupported(CameraProperties::Properties*, OMX_TI_CAPTYPE&);
     static status_t insertVNFSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps);
     static status_t insertVSTABSupported(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps);

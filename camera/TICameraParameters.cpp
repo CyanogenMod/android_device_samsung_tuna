@@ -88,11 +88,13 @@ const char TICameraParameters::KEY_FRAMERATES_EXT_SUPPORTED[] = "preview-fps-ext
 const char TICameraParameters::RAW_WIDTH[] = "raw-width";
 const char TICameraParameters::RAW_HEIGHT[] = "raw-height";
 
+#ifndef OMAP_TUNA
 // TI extensions for Stereo Mode
 const char TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT[] = "s3d-prv-frame-layout";
 const char TICameraParameters::KEY_S3D_PRV_FRAME_LAYOUT_VALUES[] = "s3d-prv-frame-layout-values";
 const char TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT[] = "s3d-cap-frame-layout";
 const char TICameraParameters::KEY_S3D_CAP_FRAME_LAYOUT_VALUES[] = "s3d-cap-frame-layout-values";
+#endif
 
 //TI extentions fo 3D resolutions
 const char TICameraParameters::KEY_SUPPORTED_PICTURE_SUBSAMPLED_SIZES[] = "supported-picture-subsampled-size-values";
