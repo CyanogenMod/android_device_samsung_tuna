@@ -206,13 +206,16 @@ static const char KEY_S3D_CAP_FRAME_LAYOUT[];
 static const char KEY_S3D_CAP_FRAME_LAYOUT_VALUES[];
 #endif
 
+#ifndef OMAP_TUNA
 //TI extensions for stereo frame layouts
 static const char S3D_NONE[];
 static const char S3D_TB_FULL[];
 static const char S3D_SS_FULL[];
 static const char S3D_TB_SUBSAMPLED[];
 static const char S3D_SS_SUBSAMPLED[];
+#endif
 
+#ifndef OMAP_TUNA
 //TI extentions fo 3D resolutions
 static const char KEY_SUPPORTED_PICTURE_SUBSAMPLED_SIZES[];
 static const char KEY_SUPPORTED_PICTURE_TOPBOTTOM_SIZES[];
@@ -220,6 +223,7 @@ static const char KEY_SUPPORTED_PICTURE_SIDEBYSIDE_SIZES[];
 static const char KEY_SUPPORTED_PREVIEW_SUBSAMPLED_SIZES[];
 static const char KEY_SUPPORTED_PREVIEW_TOPBOTTOM_SIZES[];
 static const char KEY_SUPPORTED_PREVIEW_SIDEBYSIDE_SIZES[];
+#endif
 
 //  TI extensions to add values for AutoConvergence settings.
 static const char AUTOCONVERGENCE_MODE_DISABLE[];
@@ -242,9 +246,12 @@ static const char ORIENTATION_SENSOR_270[];
 static const char FACING_FRONT[];
 static const char FACING_BACK[];
 
+#ifndef OMAP_TUNA
 static const char KEY_MECHANICAL_MISALIGNMENT_CORRECTION_SUPPORTED[];
 static const char KEY_MECHANICAL_MISALIGNMENT_CORRECTION[];
+#endif
 
+#ifndef OMAP_TUNA
 //TI extensions for enable/disable algos
 static const char KEY_ALGO_FIXED_GAMMA[];
 static const char KEY_ALGO_NSF1[];
@@ -252,6 +259,7 @@ static const char KEY_ALGO_NSF2[];
 static const char KEY_ALGO_SHARPENING[];
 static const char KEY_ALGO_THREELINCOLORMAP[];
 static const char KEY_ALGO_GIC[];
+#endif
 
 };
 

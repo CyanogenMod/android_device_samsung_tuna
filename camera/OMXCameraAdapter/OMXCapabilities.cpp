@@ -86,6 +86,7 @@ const CapResolution OMXCameraAdapter::mImageCapRes [] = {
     {  320,  240, "320x240" },
 };
 
+#ifndef OMAP_TUNA
 const CapResolution OMXCameraAdapter::mImageCapResSS [] = {
    { 4032*2, 3024, "8064x3024" },
    { 3648*2, 2736, "7296x2736" },
@@ -111,6 +112,7 @@ const CapResolution OMXCameraAdapter::mImageCapResTB [] = {
    {  640,  480*2, "640x960" },
    {  320,  240*2, "320x480" },
 };
+#endif
 
 const CapResolution OMXCameraAdapter::mPreviewRes [] = {
     { 1920, 1080, "1920x1080" },
@@ -146,6 +148,7 @@ const CapResolution OMXCameraAdapter::mPreviewPortraitRes [] = {
     { 96, 128, "96x128" }
 };
 
+#ifndef OMAP_TUNA
 const CapResolution OMXCameraAdapter::mPreviewResSS [] = {
    { 1920*2, 1080, "3840x1080" },
    { 1280*2,  720, "2560x720" },
@@ -175,6 +178,7 @@ const CapResolution OMXCameraAdapter::mPreviewResTB [] = {
    {  176,  144*2, "176x288" },
    {  128,   96*2, "128x192" },
 };
+#endif
 
 const CapResolution OMXCameraAdapter::mThumbRes [] = {
     { 640, 480, "640x480" },
@@ -201,6 +205,7 @@ const CapPixelformat OMXCameraAdapter::mPixelformats [] = {
 #endif
 };
 
+#ifndef OMAP_TUNA
 const userToOMX_LUT OMXCameraAdapter::mFrameLayout [] = {
    { TICameraParameters::S3D_NONE,          OMX_TI_StereoFrameLayout2D },
    { TICameraParameters::S3D_TB_FULL,       OMX_TI_StereoFrameLayoutTopBottom },
@@ -215,6 +220,7 @@ const LUTtype OMXCameraAdapter::mLayoutLUT = {
    ARRAY_SIZE(mFrameLayout),
    mFrameLayout
 };
+#endif
 
 const CapCodingFormat OMXCameraAdapter::mImageCodingFormat [] = {
       { OMX_IMAGE_CodingJPEG, android::CameraParameters::PIXEL_FORMAT_JPEG },
@@ -569,6 +575,7 @@ status_t OMXCameraAdapter::encodeSizeCap(OMX_TI_CAPRESTYPE &res,
     return ret;
 }
 
+#ifndef OMAP_TUNA
 status_t OMXCameraAdapter::encodeSizeCap3D(OMX_TI_CAPRESTYPE &res,
                       const CapResolution *cap,
                       size_t capCount,
@@ -604,14 +611,17 @@ status_t OMXCameraAdapter::encodeSizeCap3D(OMX_TI_CAPRESTYPE &res,
 
    return ret;
 }
+#endif
 
 status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
+#ifndef OMAP_TUNA
     int s3d_detected = 0;
     int s3d_ss_detected = 0;
     int s3d_tb_detected = 0;
+#endif
 
     LOG_FUNCTION_NAME;
 
@@ -635,9 +645,11 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
 
+#ifndef OMAP_TUNA
     // Check if we are in 2d mode
     if (!s3d_ss_detected && !s3d_tb_detected && !s3d_detected)
     {
+#endif
         ret = encodeSizeCap(caps.tImageResRange,
                         mImageCapRes,
                         ARRAY_SIZE(mImageCapRes),
@@ -651,6 +663,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
         }
         params->set(CameraProperties::MAX_PICTURE_WIDTH, caps.tImageResRange.nWidthMax);
         params->set(CameraProperties::MAX_PICTURE_HEIGHT, caps.tImageResRange.nHeightMax);
+#ifndef OMAP_TUNA
     }
     else // 3d mode
     {
@@ -713,6 +726,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
             params->set(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES, supported);
         }
     }
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -723,9 +737,11 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
 {
     status_t ret = NO_ERROR;
     char supported[MAX_PROP_VALUE_LENGTH];
+#ifndef OMAP_TUNA
     int s3d_detected = 0;
     int s3d_ss_detected = 0;
     int s3d_tb_detected = 0;
+#endif
 
     LOG_FUNCTION_NAME;
 
@@ -749,9 +765,11 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
 
+#ifndef OMAP_TUNA
     // Check if we are in 2d mode
     if (!s3d_ss_detected && !s3d_tb_detected && !s3d_detected)
     {
+#endif
         ret = encodeSizeCap(caps.tPreviewResRange,
                         mPreviewRes,
                         ARRAY_SIZE(mPreviewRes),
@@ -777,6 +795,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
         } else {
             params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
         }
+#ifndef OMAP_TUNA
     }
     else // 3d mode
     {
@@ -842,6 +861,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
             params->set(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES, supported);
         }
      }
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -1960,6 +1980,7 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::S3D_PRV_FRAME_LAYOUT, temp);
 #endif
 
+#ifndef OMAP_TUNA
     if (!strcmp(TICameraParameters::S3D_TB_FULL, temp)) {
         params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, params->get(CameraProperties::SUPPORTED_PREVIEW_TOPBOTTOM_SIZES));
     } else if (!strcmp(TICameraParameters::S3D_SS_FULL, temp)) {
@@ -1968,6 +1989,7 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
               || (!strcmp(TICameraParameters::S3D_SS_SUBSAMPLED, temp))) {
         params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, params->get(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES));
     }
+#endif
 
 #ifndef OMAP_TUNA
     /* If default is supported - set it, else - set first supported */
@@ -1983,6 +2005,7 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::S3D_CAP_FRAME_LAYOUT, temp);
 #endif
 
+#ifndef OMAP_TUNA
     if (!strcmp(TICameraParameters::S3D_TB_FULL, temp)) {
         params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, params->get(CameraProperties::SUPPORTED_PICTURE_TOPBOTTOM_SIZES));
     } else if (!strcmp(TICameraParameters::S3D_SS_FULL, temp)) {
@@ -1991,6 +2014,7 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
               || (!strcmp(TICameraParameters::S3D_SS_SUBSAMPLED, temp))) {
         params->set(CameraProperties::SUPPORTED_PICTURE_SIZES, params->get(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES));
     }
+#endif
 
     params->set(CameraProperties::ANTIBANDING, DEFAULT_ANTIBANDING);
     params->set(CameraProperties::BRIGHTNESS, DEFAULT_BRIGHTNESS);
@@ -2026,9 +2050,13 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
                 TICameraParameters::S3D_SS_FULL)) {
         params->set(CameraProperties::PICTURE_SIZE, DEFAULT_PICTURE_SS_SIZE);
     } else {
+#endif
         params->set(CameraProperties::PICTURE_SIZE, DEFAULT_PICTURE_SIZE);
+#ifndef OMAP_TUNA
     }
+#endif
 
+#ifndef OMAP_TUNA
     if (!strcmp(params->get(CameraProperties::S3D_PRV_FRAME_LAYOUT),
                 TICameraParameters::S3D_TB_FULL)) {
         params->set(CameraProperties::PREVIEW_SIZE, DEFAULT_PREVIEW_TB_SIZE);
@@ -2036,7 +2064,9 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
                 TICameraParameters::S3D_SS_FULL)) {
         params->set(CameraProperties::PREVIEW_SIZE, DEFAULT_PREVIEW_SS_SIZE);
     } else {
+#endif
         params->set(CameraProperties::PREVIEW_SIZE, DEFAULT_PREVIEW_SIZE);
+#ifndef OMAP_TUNA
     }
 #endif
 
@@ -2090,7 +2120,9 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::SENSOR_ORIENTATION, DEFAULT_SENSOR_ORIENTATION);
     params->set(CameraProperties::AUTOCONVERGENCE_MODE, DEFAULT_AUTOCONVERGENCE_MODE);
     params->set(CameraProperties::MANUAL_CONVERGENCE, DEFAULT_MANUAL_CONVERGENCE);
+#ifndef OMAP_TUNA
     params->set(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION, DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE);
+#endif
 
     char property[PROPERTY_VALUE_MAX];
     property_get("ro.product.manufacturer",

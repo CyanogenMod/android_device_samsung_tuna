@@ -46,20 +46,24 @@ const char OMXCameraAdapter::DEFAULT_JPEG_QUALITY[] = "95";
 const char OMXCameraAdapter::DEFAULT_THUMBNAIL_QUALITY[] = "60";
 const char OMXCameraAdapter::DEFAULT_THUMBNAIL_SIZE[] = "160x120";
 const char OMXCameraAdapter::DEFAULT_PICTURE_FORMAT[] = "jpeg";
+#ifndef OMAP_TUNA
 const char OMXCameraAdapter::DEFAULT_S3D_PICTURE_LAYOUT[] = "tb-full";
-#if 0 /*def OMAP_TUNA*/
-const char OMXCameraAdapter::DEFAULT_PICTURE_SIZE[] = "2592x1944";
-#else
-const char OMXCameraAdapter::DEFAULT_PICTURE_SIZE[] = "320x240";
 #endif
+const char OMXCameraAdapter::DEFAULT_PICTURE_SIZE[] = "320x240";
+#ifndef OMAP_TUNA
 const char OMXCameraAdapter::DEFAULT_PICTURE_SS_SIZE[] = "640x240";
 const char OMXCameraAdapter::DEFAULT_PICTURE_TB_SIZE[] = "320x480";
+#endif
 const char OMXCameraAdapter::DEFAULT_PREVIEW_FORMAT[] = "yuv420sp";
 const char OMXCameraAdapter::DEFAULT_FRAMERATE[] = "30";
+#ifndef OMAP_TUNA
 const char OMXCameraAdapter::DEFAULT_S3D_PREVIEW_LAYOUT[] = "tb-subsampled";
+#endif
 const char OMXCameraAdapter::DEFAULT_PREVIEW_SIZE[] = "640x480";
+#ifndef OMAP_TUNA
 const char OMXCameraAdapter::DEFAULT_PREVIEW_SS_SIZE[] = "1280x480";
 const char OMXCameraAdapter::DEFAULT_PREVIEW_TB_SIZE[] = "640x960";
+#endif
 const char OMXCameraAdapter::DEFAULT_NUM_PREV_BUFS[] = "6";
 const char OMXCameraAdapter::DEFAULT_NUM_PIC_BUFS[] = "1";
 const char OMXCameraAdapter::DEFAULT_SATURATION[] = "100";
@@ -83,9 +87,7 @@ const char OMXCameraAdapter::DEFAULT_VIDEO_SIZE[] = "1920x1080";
 const char OMXCameraAdapter::DEFAULT_SENSOR_ORIENTATION[] = "0";
 const char OMXCameraAdapter::DEFAULT_AUTOCONVERGENCE_MODE[] = "frame";
 const char OMXCameraAdapter::DEFAULT_MANUAL_CONVERGENCE[] = "0";
-#ifdef OMAP_TUNA
-const char * OMXCameraAdapter::DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE = android::CameraParameters::FALSE;
-#else
+#ifndef OMAP_TUNA
 const char * OMXCameraAdapter::DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE = android::CameraParameters::TRUE;
 #endif
 const char OMXCameraAdapter::DEFAULT_EXIF_MAKE[] = "default_make";
