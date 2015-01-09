@@ -976,7 +976,9 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
     if ( NO_ERROR == ret ) {
 #ifdef OMAP_TUNA
         //jpeg is not supported in (our) OMX capabilies
-        strncat(supported, PARAM_SEP, MAX_PROP_VALUE_LENGTH - 1);
+        if (supported[0] != '\0') {
+            strncat(supported, PARAM_SEP, 1);
+        }
         strncat(supported, android::CameraParameters::PIXEL_FORMAT_JPEG, MAX_PROP_VALUE_LENGTH - 1);
 #endif
         params->set(CameraProperties::SUPPORTED_PICTURE_FORMATS, supported);
@@ -1010,11 +1012,14 @@ status_t OMXCameraAdapter::insertPreviewFormats(CameraProperties::Properties* pa
 
     if ( NO_ERROR == ret ) {
         // need to advertise we support YV12 format
+        // tuna advertises this already though
+#ifndef OMAP_TUNA
         // We will program preview port with NV21 when we see application set YV12
         if (supported[0] != '\0') {
             strncat(supported, PARAM_SEP, 1);
         }
         strncat(supported, android::CameraParameters::PIXEL_FORMAT_YUV420P, MAX_PROP_VALUE_LENGTH - 1);
+#endif
         params->set(CameraProperties::SUPPORTED_PREVIEW_FORMATS, supported);
     }
 
