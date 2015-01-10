@@ -244,6 +244,11 @@
     <bool name="config_dozeAfterScreenOff">true</bool>
 
 
+    <!--  Maximum number of supported users -->
+    <integer name="config_multiuserMaximumUsers">4</integer>
+    <!-- Whether UI for multi user should be shown -->
+    <bool name="config_enableMultiUserUI">true</bool>
+
     <!-- CM customizations from now on -->
 
     <!-- Does the notification LED support multiple colors?
