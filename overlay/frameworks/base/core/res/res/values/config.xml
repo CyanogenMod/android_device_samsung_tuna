@@ -253,6 +253,11 @@
          Below will adj 6 minfree buckets (in MB) to: 32, 40, 48, 56, 64, 80 -->
     <integer name="config_lowMemoryKillerMinFreeKbytesAbsolute">81920</integer>
 
+    <!--  Maximum number of supported users -->
+    <integer name="config_multiuserMaximumUsers">4</integer>
+    <!-- Whether UI for multi user should be shown -->
+    <bool name="config_enableMultiUserUI">true</bool>
+
     <!-- CM customizations from now on -->
 
     <!-- Does the notification LED support multiple colors?
