@@ -40,4 +40,8 @@ void dumpstate_board()
     dump_file("tiler 2x1 map", "/d/tiler/map/2x1");
     dump_file("wlan", "/sys/module/bcmdhd/parameters/info_string");
     dump_file("bluetooth", "/d/bt");
+    dump_file("mmc0 name", "/sys/devices/platform/omap/omap_hsmmc.0/mmc_host/mmc0/mmc0:0001/name");
+    dump_file("mmc0 cid", "/sys/devices/platform/omap/omap_hsmmc.0/mmc_host/mmc0/mmc0:0001/cid");
+    dump_file("mmc0 csd", "/sys/devices/platform/omap/omap_hsmmc.0/mmc_host/mmc0/mmc0:0001/csd");
+    dump_file("mmc0 ext_csd", "/d/mmc0/mmc0:0001/ext_csd");
 };
