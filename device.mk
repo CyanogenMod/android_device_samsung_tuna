@@ -205,8 +205,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 # Use awesome player for now
 PRODUCT_PROPERTY_OVERRIDES += \
-	persist.sys.media.use-awesome=true \
-	media.stagefright.use-awesome=true
+	persist.sys.media.use-awesome=true
 
 PRODUCT_CHARACTERISTICS := nosdcard
 
