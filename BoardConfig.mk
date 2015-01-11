@@ -72,7 +72,6 @@ BOARD_USE_TI_CUSTOM_DOMX := true
 TARGET_SPECIFIC_HEADER_PATH += $(DEVICE_FOLDER)/domx/omx_core/inc
 COMMON_GLOBAL_CFLAGS += -DOMAP_TUNA
 OMAP_TUNA := true
-TI_CUSTOM_DOMX_PATH := $(DEVICE_FOLDER)/domx
 DOMX_PATH := $(DEVICE_FOLDER)/domx
 
 # Include HDCP keys
@@ -96,9 +95,6 @@ BOARD_FLASH_BLOCK_SIZE := 4096
 
 # Enable dex-preoptimization to speed up first boot sequence
 WITH_DEXPREOPT := true
-
-# No sync framework for this device...
-TARGET_RUNNING_WITHOUT_SYNC_FRAMEWORK := true
 
 # Needed for RIL
 TARGET_NEEDS_BIONIC_MD5 := true
