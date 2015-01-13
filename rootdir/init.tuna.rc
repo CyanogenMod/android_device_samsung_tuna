@@ -33,9 +33,6 @@ on post-fs-data
         chown drmrpc drmrpc /data/smc/storage.bin
         chown drmrpc drmrpc /data/smc/system.bin
 
-	# symlink egl.cfg
-    symlink /sys/egl/egl.cfg /system/lib/egl/egl.cfg
-
 	# camera calibration
 	mkdir /data/misc/camera 0770 media media
 	mkdir /data/misc/camera/R5_MVEN003_LD2_ND0_IR0_SH0_FL1_SVEN003_DCCID1044 0770 media media
