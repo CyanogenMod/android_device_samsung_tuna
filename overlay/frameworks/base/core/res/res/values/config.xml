@@ -250,8 +250,8 @@
          thrashing if set too low. Directly added to the default value chosen by
          ActivityManager based on screen size and total memory for the largest lowmemorykiller
          bucket, and scaled proportionally to the smaller buckets. 0 keeps the default.
-         Below will adj 6 minfree buckets (in MB) to: 32, 40, 48, 56, 64, 80 -->
-    <integer name="config_lowMemoryKillerMinFreeKbytesAbsolute">81920</integer>
+         Below will adj 6 minfree buckets (in MB) to: 36, 45, 54, 63, 110, 160 -->
+    <integer name="config_lowMemoryKillerMinFreeKbytesAbsolute">163840</integer>
 
     <!--  Maximum number of supported users -->
     <integer name="config_multiuserMaximumUsers">4</integer>
