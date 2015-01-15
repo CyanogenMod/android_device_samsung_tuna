@@ -268,6 +268,10 @@ service battery_charger /sbin/healthd -c
 	critical
 	seclabel u:r:healthd:s0
 
+# Allow writing to the kernel trace log. Enabling tracing still requires root.
+on property:ro.debuggable=1
+	chmod 0222 /sys/kernel/debug/tracing/trace_marker
+
 # CyanogenMod Performance Profiles
 # Powersave
 on property:sys.perf.profile=0
