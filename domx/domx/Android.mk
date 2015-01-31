@@ -19,7 +19,8 @@ LOCAL_C_INCLUDES += \
 	$(DEVICE_FOLDER)/hwc/ \
 	$(DEVICE_FOLDER)/libion_ti/ \
 	system/core/include/cutils \
-	hardware/libhardware/include
+	hardware/libhardware/include \
+    frameworks/native/include/media/openmax
 
 LOCAL_CFLAGS += -D_Android -DENABLE_GRALLOC_BUFFERS -DANDROID_QUIRK_LOCK_BUFFER -DUSE_ENHANCED_PORTRECONFIG -DUSE_ION
 
