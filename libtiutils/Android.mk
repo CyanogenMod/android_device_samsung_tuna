@@ -18,7 +18,8 @@ LOCAL_SHARED_LIBRARIES:= \
     libcutils
 
 LOCAL_C_INCLUDES += \
-    frameworks/native/include
+    frameworks/native/include \
+    frameworks/native/include/media/openmax
 
 LOCAL_C_INCLUDES += \
     bionic/libc/include 

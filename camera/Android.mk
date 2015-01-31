@@ -54,7 +54,10 @@ TI_CAMERAHAL_COMMON_INCLUDES := \
     $(LOCAL_PATH)/../libtiutils \
     $(LOCAL_PATH)/inc \
     frameworks/native/include/media/hardware \
-    system/media/camera/include
+    system/media/camera/include \
+    $(DOMX_PATH)/mm_osal/inc \
+    $(DOMX_PATH)/omx_core/inc \
+    frameworks/native/include/media/openmax
 
 TI_CAMERAHAL_COMMON_SRC := \
     CameraHal_Module.cpp \
@@ -130,8 +133,6 @@ LOCAL_SRC_FILES:= \
 
 LOCAL_C_INCLUDES += \
     $(TI_CAMERAHAL_COMMON_INCLUDES) \
-    $(DOMX_PATH)/omx_core/inc \
-    $(DOMX_PATH)/mm_osal/inc \
     $(LOCAL_PATH)/inc/OMXCameraAdapter
 
 LOCAL_SHARED_LIBRARIES:= \
@@ -202,8 +203,6 @@ LOCAL_SRC_FILES:= \
 
 LOCAL_C_INCLUDES += \
     $(TI_CAMERAHAL_COMMON_INCLUDES) \
-    $(DOMX_PATH)/omx_core/inc \
-    $(DOMX_PATH)/mm_osal/inc \
     $(LOCAL_PATH)/inc/OMXCameraAdapter \
     $(LOCAL_PATH)/inc/V4LCameraAdapter
 

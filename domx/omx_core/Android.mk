@@ -8,7 +8,8 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/inc \
-	$(LOCAL_PATH)/../mm_osal/inc
+	$(LOCAL_PATH)/../mm_osal/inc \
+    frameworks/native/include/media/openmax
 
 LOCAL_SHARED_LIBRARIES := \
 	libdl \
