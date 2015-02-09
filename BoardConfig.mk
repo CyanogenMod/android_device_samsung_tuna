@@ -51,6 +51,9 @@ BOARD_KERNEL_BASE := 0x80000000
 TARGET_KERNEL_CONFIG := cyanogenmod_tuna_defconfig
 TARGET_KERNEL_SOURCE := kernel/samsung/tuna
 
+# Use dlmalloc
+MALLOC_IMPL := dlmalloc
+
 # EGL
 USE_OPENGL_RENDERER := true
 
