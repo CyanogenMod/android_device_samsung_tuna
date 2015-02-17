@@ -19,3 +19,6 @@
 
 # USB storage device
 /devices/platform/omap/musb-omap2430/musb-hdrc          auto                auto      defaults                                              voldmanaged=usbdisk:auto
+
+# zRAM
+/dev/block/zram0                                        none                swap      defaults                                              zramsize=67108864
