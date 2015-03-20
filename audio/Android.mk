@@ -27,5 +27,7 @@ LOCAL_C_INCLUDES += \
 LOCAL_SHARED_LIBRARIES := liblog libcutils libtinyalsa libaudioutils libdl libsecril-client
 LOCAL_MODULE_TAGS := optional
 
+LOCAL_CFLAGS += -DFORCE_OUT_SAMPLING_RATE=44100
+
 include $(BUILD_SHARED_LIBRARY)
 
