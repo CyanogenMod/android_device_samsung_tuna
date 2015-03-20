@@ -171,25 +171,6 @@
 /* default number of channels for HDMI multichannel output */
 #define HDMI_MULTI_DEFAULT_CHANNEL_COUNT 6
 
-/* Number of pseudo periods for low latency playback.
- * These are called "pseudo" periods in that they are not known as periods by ALSA.
- * Formerly, ALSA was configured in MMAP mode with 2 large periods, and this
- * number was set to 4 (2 didn't work).
- * The short periods size and count were only known by the audio HAL.
- * Now for low latency, we are using non-MMAP mode and can set this to 2.
- */
-#ifdef PLAYBACK_MMAP
-#define PLAYBACK_SHORT_PERIOD_COUNT 4
-/* If sample rate converter is required, then use triple-buffering to
- * help mask the variance in cycle times.  Otherwise use double-buffering.
- */
-#elif DEFAULT_OUT_SAMPLING_RATE != MM_FULL_POWER_SAMPLING_RATE
-#define PLAYBACK_SHORT_PERIOD_COUNT 3
-#define OUT_RESAMPLER
-#else
-#define PLAYBACK_SHORT_PERIOD_COUNT 2
-#endif
-
 /* write function */
 #ifdef PLAYBACK_MMAP
 #define PCM_WRITE pcm_mmap_write
@@ -241,6 +222,25 @@
 #define VX_NB_SAMPLING_RATE 8000
 /* sampling rate when using VX port for wide band */
 #define VX_WB_SAMPLING_RATE 16000
+
+/* Number of pseudo periods for low latency playback.
+ * These are called "pseudo" periods in that they are not known as periods by ALSA.
+ * Formerly, ALSA was configured in MMAP mode with 2 large periods, and this
+ * number was set to 4 (2 didn't work).
+ * The short periods size and count were only known by the audio HAL.
+ * Now for low latency, we are using non-MMAP mode and can set this to 2.
+ */
+#ifdef PLAYBACK_MMAP
+#define PLAYBACK_SHORT_PERIOD_COUNT 4
+/* If sample rate converter is required, then use triple-buffering to
+ * help mask the variance in cycle times.  Otherwise use double-buffering.
+ */
+#elif DEFAULT_OUT_SAMPLING_RATE != MM_FULL_POWER_SAMPLING_RATE
+#define PLAYBACK_SHORT_PERIOD_COUNT 3
+#define OUT_RESAMPLER
+#else
+#define PLAYBACK_SHORT_PERIOD_COUNT 2
+#endif
 
 /* conversions from dB to ABE and codec gains */
 #define DB_TO_ABE_GAIN(x) ((x) + MIXER_ABE_GAIN_0DB)
