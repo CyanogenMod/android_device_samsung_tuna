@@ -218,6 +218,11 @@
 #define MM_FULL_POWER_SAMPLING_RATE 48000   // affects MULTIPLIER_FACTOR
 #endif
 
+/* sampling rate when using MM-UL */
+#ifndef MM_UL_SAMPLING_RATE
+#define MM_UL_SAMPLING_RATE 48000
+#endif
+
 /* sampling rate when using VX port for narrow band */
 #define VX_NB_SAMPLING_RATE 8000
 /* sampling rate when using VX port for wide band */
@@ -356,7 +361,7 @@ struct pcm_config pcm_config_hdmi_multi = {
 
 struct pcm_config pcm_config_mm_ul = {
     .channels = 2,
-    .rate = MM_FULL_POWER_SAMPLING_RATE,
+    .rate = MM_UL_SAMPLING_RATE,
     .period_size = CAPTURE_PERIOD_SIZE,
     .period_count = CAPTURE_PERIOD_COUNT,
     .format = PCM_FORMAT_S16_LE,
