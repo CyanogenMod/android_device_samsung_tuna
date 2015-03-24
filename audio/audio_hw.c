@@ -703,8 +703,8 @@ struct tuna_stream_out {
 #ifdef OUT_RESAMPLER
     struct resampler_itfe *resampler;
     char *buffer;
-#endif
     size_t buffer_frames;
+#endif
     int standby;
     struct echo_reference_itfe *echo_reference;
     int write_threshold;
@@ -1478,8 +1478,8 @@ static int start_output_stream_low_latency(struct tuna_stream_out *out)
     }
 
     if (success) {
-        out->buffer_frames = pcm_config_tones.period_size * 2;
 #ifdef OUT_RESAMPLER
+        out->buffer_frames = pcm_config_tones.period_size * 2;
         if (out->buffer == NULL)
             out->buffer = malloc(out->buffer_frames * audio_stream_out_frame_size(&out->stream));
 #endif
@@ -1530,8 +1530,8 @@ static int start_output_stream_deep_buffer(struct tuna_stream_out *out)
         out->pcm[PCM_NORMAL] = NULL;
         return -ENOMEM;
     }
-    out->buffer_frames = DEEP_BUFFER_SHORT_PERIOD_SIZE * 2;
 #ifdef OUT_RESAMPLER
+    out->buffer_frames = DEEP_BUFFER_SHORT_PERIOD_SIZE * 2;
     if (out->buffer == NULL)
         out->buffer = malloc(out->buffer_frames * audio_stream_out_frame_size(&out->stream));
 #endif
