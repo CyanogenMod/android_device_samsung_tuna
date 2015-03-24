@@ -240,9 +240,11 @@
 /* If sample rate converter is required, then use triple-buffering to
  * help mask the variance in cycle times.  Otherwise use double-buffering.
  */
+/* TODO: Figure out a better check for this
 #elif DEFAULT_OUT_SAMPLING_RATE != MM_FULL_POWER_SAMPLING_RATE
 #define PLAYBACK_SHORT_PERIOD_COUNT 3
 #define OUT_RESAMPLER
+*/
 #else
 #define PLAYBACK_SHORT_PERIOD_COUNT 2
 #endif
@@ -325,7 +327,7 @@ enum tty_modes {
 /* deep buffer */
 struct pcm_config pcm_config_mm = {
     .channels = 2,
-    .rate = MM_FULL_POWER_SAMPLING_RATE,
+    .rate = MM_FULL_POWER_SAMPLING_RATE, /* changed based on audio policy setting */
     .period_size = DEEP_BUFFER_LONG_PERIOD_SIZE,
     .period_count = PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT,
     .format = PCM_FORMAT_S16_LE,
@@ -336,7 +338,7 @@ struct pcm_config pcm_config_mm = {
 /* low latency */
 struct pcm_config pcm_config_tones = {
     .channels = 2,
-    .rate = MM_FULL_POWER_SAMPLING_RATE,
+    .rate = MM_FULL_POWER_SAMPLING_RATE, /* changed based on audio policy setting */
     .period_size = SHORT_PERIOD_SIZE,
     .period_count = PLAYBACK_SHORT_PERIOD_COUNT,
     .format = PCM_FORMAT_S16_LE,
@@ -716,6 +718,10 @@ struct tuna_stream_out {
     bool muted;
 
     struct tuna_audio_device *dev;
+
+#ifdef USE_VARIABLE_SAMPLING_RATE
+    unsigned int sample_rate;
+#endif
 };
 
 #define MAX_PREPROCESSORS 3 /* maximum one AGC + one NS + one AEC per input stream */
@@ -1424,7 +1430,14 @@ static int start_output_stream_low_latency(struct tuna_stream_out *out)
     if (adev->out_device & ~(AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET | AUDIO_DEVICE_OUT_AUX_DIGITAL)) {
         /* Something not a dock in use */
         out->config[PCM_NORMAL] = pcm_config_tones;
+#ifndef USE_VARIABLE_SAMPLING_RATE
         out->config[PCM_NORMAL].rate = MM_FULL_POWER_SAMPLING_RATE;
+#else
+        if (out->sample_rate % 48 == 0)
+            out->config[PCM_NORMAL].rate = MM_FULL_POWER_SAMPLING_RATE;
+        else
+            out->config[PCM_NORMAL].rate = MM_LOW_POWER_SAMPLING_RATE;
+#endif
         out->pcm[PCM_NORMAL] = pcm_open(CARD_TUNA_DEFAULT, PORT_TONES,
                                             flags, &out->config[PCM_NORMAL]);
     }
@@ -1432,7 +1445,14 @@ static int start_output_stream_low_latency(struct tuna_stream_out *out)
     if (adev->out_device & AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET) {
         /* SPDIF output in use */
         out->config[PCM_SPDIF] = pcm_config_tones;
+#ifndef USE_VARIABLE_SAMPLING_RATE
         out->config[PCM_SPDIF].rate = MM_FULL_POWER_SAMPLING_RATE;
+#else
+        if (out->sample_rate % 48 == 0)
+            out->config[PCM_SPDIF].rate = MM_FULL_POWER_SAMPLING_RATE;
+        else
+            out->config[PCM_SPDIF].rate = MM_LOW_POWER_SAMPLING_RATE;
+#endif
         out->pcm[PCM_SPDIF] = pcm_open(CARD_TUNA_DEFAULT, PORT_SPDIF,
                                            flags, &out->config[PCM_SPDIF]);
     }
@@ -1489,7 +1509,14 @@ static int start_output_stream_deep_buffer(struct tuna_stream_out *out)
     out->use_long_periods = true;
 
     out->config[PCM_NORMAL] = pcm_config_mm;
+#ifndef USE_VARIABLE_SAMPLING_RATE
     out->config[PCM_NORMAL].rate = MM_FULL_POWER_SAMPLING_RATE;
+#else
+    if (out->sample_rate % 48 == 0)
+        out->config[PCM_NORMAL].rate = MM_FULL_POWER_SAMPLING_RATE;
+    else
+        out->config[PCM_NORMAL].rate = MM_LOW_POWER_SAMPLING_RATE;
+#endif
     out->pcm[PCM_NORMAL] = pcm_open(CARD_TUNA_DEFAULT, PORT_MM,
                                         PCM_OUT | PCM_MMAP | PCM_NOIRQ, &out->config[PCM_NORMAL]);
     if (out->pcm[PCM_NORMAL] && !pcm_is_ready(out->pcm[PCM_NORMAL])) {
@@ -1664,15 +1691,26 @@ static int get_playback_delay(struct tuna_stream_out *out,
     /* adjust render time stamp with delay added by current driver buffer.
      * Add the duration of current frame as we want the render time of the last
      * sample being written. */
+#ifndef USE_VARIABLE_SAMPLING_RATE
     buffer->delay_ns = (long)(((int64_t)(kernel_frames + frames)* 1000000000)/
                             MM_FULL_POWER_SAMPLING_RATE);
+#else
+    buffer->delay_ns = (long)(((int64_t)(kernel_frames + frames)* 1000000000)/
+                            out->sample_rate); // ?
+#endif
 
     return 0;
 }
 
 static uint32_t out_get_sample_rate(const struct audio_stream *stream __unused)
 {
+#ifdef USE_VARIABLE_SAMPLING_RATE
+    struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
+
+    return out->sample_rate; // TODO: out->config[PCM_*].rate?
+#else
     return DEFAULT_OUT_SAMPLING_RATE;
+#endif
 }
 
 static uint32_t out_get_sample_rate_hdmi(const struct audio_stream *stream)
@@ -1695,7 +1733,11 @@ static size_t out_get_buffer_size_low_latency(const struct audio_stream *stream)
     multiple of 16 frames, as audioflinger expects audio buffers to
     be a multiple of 16 frames. Note: we use the default rate here
     from pcm_config_tones.rate. */
+#ifndef USE_VARIABLE_SAMPLING_RATE
     size_t size = (SHORT_PERIOD_SIZE * DEFAULT_OUT_SAMPLING_RATE) / pcm_config_tones.rate;
+#else
+    size_t size = SHORT_PERIOD_SIZE; //?
+#endif
     size = ((size + 15) / 16) * 16;
     return size * audio_stream_out_frame_size((const struct audio_stream_out *)stream);
 }
@@ -1708,8 +1750,12 @@ static size_t out_get_buffer_size_deep_buffer(const struct audio_stream *stream)
     multiple of 16 frames, as audioflinger expects audio buffers to
     be a multiple of 16 frames. Note: we use the default rate here
     from pcm_config_mm.rate. */
+#ifndef USE_VARIABLE_SAMPLING_RATE
     size_t size = (DEEP_BUFFER_SHORT_PERIOD_SIZE * DEFAULT_OUT_SAMPLING_RATE) /
                         pcm_config_mm.rate;
+#else
+    size_t size = DEEP_BUFFER_SHORT_PERIOD_SIZE; //?
+#endif
     size = ((size + 15) / 16) * 16;
     return size * audio_stream_out_frame_size((const struct audio_stream_out *)stream);
 }
@@ -1922,7 +1968,11 @@ static uint32_t out_get_latency_low_latency(const struct audio_stream_out *strea
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
     /*  Note: we use the default rate here from pcm_config_mm.rate */
+#ifndef USE_VARIABLE_SAMPLING_RATE
     return (SHORT_PERIOD_SIZE * PLAYBACK_SHORT_PERIOD_COUNT * 1000) / pcm_config_tones.rate;
+#else
+    return (SHORT_PERIOD_SIZE * PLAYBACK_SHORT_PERIOD_COUNT * 1000) / out->sample_rate; // ?
+#endif
 }
 
 static uint32_t out_get_latency_deep_buffer(const struct audio_stream_out *stream)
@@ -1930,8 +1980,13 @@ static uint32_t out_get_latency_deep_buffer(const struct audio_stream_out *strea
     struct tuna_stream_out *out = (struct tuna_stream_out *)stream;
 
     /*  Note: we use the default rate here from pcm_config_mm.rate */
+#ifndef USE_VARIABLE_SAMPLING_RATE
     return (DEEP_BUFFER_LONG_PERIOD_SIZE * PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT * 1000) /
                     pcm_config_mm.rate;
+#else
+    return (DEEP_BUFFER_LONG_PERIOD_SIZE * PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT * 1000) /
+                    out->sample_rate; // ?
+#endif
 }
 
 static uint32_t out_get_latency_hdmi(const struct audio_stream_out *stream)
@@ -2129,9 +2184,15 @@ static ssize_t out_write_deep_buffer(struct audio_stream_out *stream, const void
         kernel_frames = pcm_get_buffer_size(out->pcm[PCM_NORMAL]) - kernel_frames;
 
         if (kernel_frames > out->write_threshold) {
+#ifndef USE_VARIABLE_SAMPLING_RATE
             unsigned long time = (unsigned long)
                     (((int64_t)(kernel_frames - out->write_threshold) * 1000000) /
                             MM_FULL_POWER_SAMPLING_RATE);
+#else
+            unsigned long time = (unsigned long)
+                    (((int64_t)(kernel_frames - out->write_threshold) * 1000000) /
+                            out->sample_rate); // ?
+#endif
             if (time < MIN_WRITE_SLEEP_US)
                 time = MIN_WRITE_SLEEP_US;
             usleep(time);
@@ -3277,9 +3338,17 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     out = (struct tuna_stream_out *)calloc(1, sizeof(struct tuna_stream_out));
     if (!out)
         return -ENOMEM;
+    ALOGV("%s: enter: sample_rate(%d) channel_mask(%#x) devices(%#x) flags(%#x)",
+           __func__, config->sample_rate, config->channel_mask, devices, flags);
 
     out->sup_channel_masks[0] = AUDIO_CHANNEL_OUT_STEREO;
     out->channel_mask = AUDIO_CHANNEL_OUT_STEREO;
+#ifdef USE_VARIABLE_SAMPLING_RATE
+    if (config->sample_rate == 0) {
+        config->sample_rate = MM_LOW_POWER_SAMPLING_RATE;
+    }
+    out->sample_rate = config->sample_rate;
+#endif
 
     if (flags & AUDIO_OUTPUT_FLAG_DIRECT &&
                    devices == AUDIO_DEVICE_OUT_AUX_DIGITAL) {
@@ -3313,6 +3382,8 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
             ret = -ENOSYS;
             goto err_open;
         }
+        /* NOTE: This gets called with the highest (or last?)
+         *       sampling rate listed in the audio policy */
         output_type = OUTPUT_DEEP_BUF;
         out->channel_mask = AUDIO_CHANNEL_OUT_STEREO;
         out->stream.common.get_buffer_size = out_get_buffer_size_deep_buffer;
@@ -3326,6 +3397,8 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
             ret = -ENOSYS;
             goto err_open;
         }
+        /* NOTE: This gets called with the highest (or last?)
+         *       sampling rate listed in the audio policy */
         output_type = OUTPUT_LOW_LATENCY;
         out->stream.common.get_buffer_size = out_get_buffer_size_low_latency;
         out->stream.common.get_sample_rate = out_get_sample_rate;
