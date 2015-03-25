@@ -155,6 +155,11 @@
 /* number of periods for deep buffer playback (screen on) */
 #define PLAYBACK_DEEP_BUFFER_SHORT_PERIOD_COUNT 4
 
+#define DEEP_BUFFER_SHORT_PERIOD_WRITE_THRES \
+                            (DEEP_BUFFER_SHORT_PERIOD_SIZE * PLAYBACK_DEEP_BUFFER_SHORT_PERIOD_COUNT)
+#define DEEP_BUFFER_SHORT_PERIOD_START_THRES \
+                            ((DEEP_BUFFER_SHORT_PERIOD_SIZE * PLAYBACK_DEEP_BUFFER_SHORT_PERIOD_COUNT) / 2)
+
 /* number of short deep buffer periods in a long period */
 #define DEEP_BUFFER_LONG_PERIOD_MULTIPLIER \
                             (DEEP_BUFFER_LONG_PERIOD_MS / DEEP_BUFFER_SHORT_PERIOD_MS)
@@ -163,6 +168,11 @@
                             (DEEP_BUFFER_SHORT_PERIOD_SIZE * DEEP_BUFFER_LONG_PERIOD_MULTIPLIER)
 /* number of periods for deep buffer playback (screen off) */
 #define PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT 2
+
+#define DEEP_BUFFER_LONG_PERIOD_WRITE_THRES \
+                            (DEEP_BUFFER_LONG_PERIOD_SIZE * PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT)
+#define DEEP_BUFFER_LONG_PERIOD_START_THRES \
+                            ((DEEP_BUFFER_LONG_PERIOD_SIZE * PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT) / 2)
 
 /* number of frames per period for HDMI multichannel output */
 #define HDMI_MULTI_PERIOD_SIZE  1024
@@ -331,8 +341,10 @@ struct pcm_config pcm_config_mm = {
     .period_size = DEEP_BUFFER_LONG_PERIOD_SIZE,
     .period_count = PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT,
     .format = PCM_FORMAT_S16_LE,
-    .start_threshold = DEEP_BUFFER_SHORT_PERIOD_SIZE * 2,
-    .avail_min = DEEP_BUFFER_LONG_PERIOD_SIZE,
+    .start_threshold = DEEP_BUFFER_SHORT_PERIOD_START_THRES,
+#if 0
+    .avail_min = DEEP_BUFFER_LONG_PERIOD_SIZE, /* taken care of on stream open now */
+#endif
 };
 
 /* low latency */
@@ -1505,14 +1517,6 @@ static int start_output_stream_deep_buffer(struct tuna_stream_out *out)
         select_output_device(adev);
     }
 
-    out->use_long_periods = adev->screen_off && !adev->active_input;
-    /* TODO: Do we need a pcm_set_avail_min here somehow? */
-    if (out->use_long_periods) {
-        out->write_threshold = PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT * DEEP_BUFFER_LONG_PERIOD_SIZE;
-    } else {
-        out->write_threshold = PLAYBACK_DEEP_BUFFER_SHORT_PERIOD_COUNT * DEEP_BUFFER_SHORT_PERIOD_SIZE;
-    }
-
     out->config[PCM_NORMAL] = pcm_config_mm;
 #ifndef USE_VARIABLE_SAMPLING_RATE
     out->config[PCM_NORMAL].rate = MM_FULL_POWER_SAMPLING_RATE;
@@ -1522,6 +1526,7 @@ static int start_output_stream_deep_buffer(struct tuna_stream_out *out)
     else
         out->config[PCM_NORMAL].rate = MM_LOW_POWER_SAMPLING_RATE;
 #endif
+
     out->pcm[PCM_NORMAL] = pcm_open(CARD_TUNA_DEFAULT, PORT_MM,
                                         PCM_OUT | PCM_MMAP | PCM_NOIRQ, &out->config[PCM_NORMAL]);
     if (out->pcm[PCM_NORMAL] && !pcm_is_ready(out->pcm[PCM_NORMAL])) {
@@ -1530,6 +1535,16 @@ static int start_output_stream_deep_buffer(struct tuna_stream_out *out)
         out->pcm[PCM_NORMAL] = NULL;
         return -ENOMEM;
     }
+
+    out->use_long_periods = adev->screen_off && !adev->active_input;
+    if (out->use_long_periods) {
+        pcm_set_avail_min(out->pcm[PCM_NORMAL], DEEP_BUFFER_LONG_PERIOD_SIZE);
+        out->write_threshold = DEEP_BUFFER_LONG_PERIOD_WRITE_THRES;
+    } else {
+        pcm_set_avail_min(out->pcm[PCM_NORMAL], DEEP_BUFFER_SHORT_PERIOD_SIZE);
+        out->write_threshold = DEEP_BUFFER_SHORT_PERIOD_WRITE_THRES;
+    }
+
 #ifdef OUT_RESAMPLER
     out->buffer_frames = DEEP_BUFFER_SHORT_PERIOD_SIZE * 2;
     if (out->buffer == NULL)
@@ -2146,18 +2161,13 @@ static ssize_t out_write_deep_buffer(struct audio_stream_out *stream, const void
     pthread_mutex_unlock(&adev->lock);
 
     if (use_long_periods != out->use_long_periods) {
-        size_t period_size;
-        size_t period_count;
-
         if (use_long_periods) {
-            period_size = DEEP_BUFFER_LONG_PERIOD_SIZE;
-            period_count = PLAYBACK_DEEP_BUFFER_LONG_PERIOD_COUNT;
+            pcm_set_avail_min(out->pcm[PCM_NORMAL], DEEP_BUFFER_LONG_PERIOD_SIZE);
+            out->write_threshold = DEEP_BUFFER_LONG_PERIOD_WRITE_THRES;
         } else {
-            period_size = DEEP_BUFFER_SHORT_PERIOD_SIZE;
-            period_count = PLAYBACK_DEEP_BUFFER_SHORT_PERIOD_COUNT;
+            pcm_set_avail_min(out->pcm[PCM_NORMAL], DEEP_BUFFER_SHORT_PERIOD_SIZE);
+            out->write_threshold = DEEP_BUFFER_SHORT_PERIOD_WRITE_THRES;
         }
-        out->write_threshold = period_size * period_count;
-        pcm_set_avail_min(out->pcm[PCM_NORMAL], period_size);
         out->use_long_periods = use_long_periods;
     }
 
