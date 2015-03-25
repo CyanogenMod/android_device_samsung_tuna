@@ -151,7 +151,10 @@
 /* number of base blocks in a short deep buffer period (screen on) */
 #define DEEP_BUFFER_SHORT_PERIOD_MULTIPLIER (DEEP_BUFFER_SHORT_PERIOD_MS * MULTIPLIER_FACTOR)
 /* number of frames per short deep buffer period (screen on) */
-#define DEEP_BUFFER_SHORT_PERIOD_SIZE (ABE_BASE_FRAME_COUNT * DEEP_BUFFER_SHORT_PERIOD_MULTIPLIER)
+/* previously, this was (ABE_BASE_FRAME_COUNT * DEEP_BUFFER_SHORT_PERIOD_MULTIPLIER), but with the transition to
+ * 44.1kHz streams it seems that our ABE_BASE_FRAME_COUNT is actually now 22.05, but we need a whole number here.
+ * Easiest way to do so, 22.05 * 40 = 882. So just set this to 882. */
+#define DEEP_BUFFER_SHORT_PERIOD_SIZE 882
 /* number of periods for deep buffer playback (screen on) */
 #define PLAYBACK_DEEP_BUFFER_SHORT_PERIOD_COUNT 4
 
