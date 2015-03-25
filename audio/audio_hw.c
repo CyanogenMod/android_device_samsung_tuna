@@ -161,8 +161,10 @@
                             ((DEEP_BUFFER_SHORT_PERIOD_SIZE * PLAYBACK_DEEP_BUFFER_SHORT_PERIOD_COUNT) / 2)
 
 /* number of short deep buffer periods in a long period */
-#define DEEP_BUFFER_LONG_PERIOD_MULTIPLIER \
-                            (DEEP_BUFFER_LONG_PERIOD_MS / DEEP_BUFFER_SHORT_PERIOD_MS)
+/* previously, this was (DEEP_BUFFER_LONG_PERIOD_MS / DEEP_BUFFER_SHORT_PERIOD_MS), but that caused a buffer underrun
+ * during the transition from short to long periods. A MULTIPLIER_FACTOR of 7 is the sweet-spot to stop those underruns. */
+#define DEEP_BUFFER_LONG_PERIOD_MULTIPLIER 7
+
 /* number of frames per long deep buffer period (screen off) */
 #define DEEP_BUFFER_LONG_PERIOD_SIZE \
                             (DEEP_BUFFER_SHORT_PERIOD_SIZE * DEEP_BUFFER_LONG_PERIOD_MULTIPLIER)
