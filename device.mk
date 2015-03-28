@@ -21,6 +21,8 @@
 
 DEVICE_FOLDER := device/samsung/tuna
 
+$(call inherit-product-if-exists, hardware/ti/omap4/omap4.mk)
+
 DEVICE_PACKAGE_OVERLAYS := $(DEVICE_FOLDER)/overlay
 
 # This device is xhdpi.  However the platform doesn't
@@ -33,7 +35,7 @@ PRODUCT_AAPT_PREF_CONFIG := xhdpi
 # HALs
 PRODUCT_PACKAGES += \
 	hwcomposer.tuna \
-	camera.tuna \
+	camera.omap4 \
 	lights.tuna \
 	nfc.tuna \
 	power.tuna \
@@ -212,32 +214,6 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
 	e2fsck \
 	setup_fs
-
-# TI OMAP4
-PRODUCT_PACKAGES += \
-	libion_ti \
-	smc_pa_ctrl \
-	tf_daemon \
-	libtf_crypto_sst \
-	pvrsrvinit \
-	libPVRScopeServices.so
-
-PRODUCT_PACKAGES += \
-	libdomx \
-	libOMX_Core \
-	libOMX.TI.DUCATI1.VIDEO.H264E \
-	libOMX.TI.DUCATI1.VIDEO.MPEG4E \
-	libOMX.TI.DUCATI1.VIDEO.DECODER \
-	libOMX.TI.DUCATI1.VIDEO.DECODER.secure \
-	libOMX.TI.DUCATI1.VIDEO.CAMERA \
-	libOMX.TI.DUCATI1.MISC.SAMPLE \
-	libstagefrighthw \
-	libI420colorconvert \
-	libtiutils_$(TARGET_BOOTLOADER_BOARD_NAME)
-
-# Needed for gralloc
-PRODUCT_PACKAGES += \
-    libcorkscrew
 
 # DCC
 PRODUCT_PACKAGES += \

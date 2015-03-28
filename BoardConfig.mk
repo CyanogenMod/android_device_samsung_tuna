@@ -16,15 +16,13 @@
 
 DEVICE_FOLDER := device/samsung/tuna
 
+# inherit from omap4
+-include hardware/ti/omap4/BoardConfigCommon.mk
+
+PRODUCT_VENDOR_KERNEL_HEADERS += $(DEVICE_FOLDER)/kernel-headers
+
 # CMHW
 BOARD_HARDWARE_CLASS := $(DEVICE_FOLDER)/cmhw
-
-PRODUCT_VENDOR_KERNEL_HEADERS := $(DEVICE_FOLDER)/kernel-headers
-
-TARGET_SPECIFIC_HEADER_PATH := $(DEVICE_FOLDER)/include
-
-# Setup custom omap4xxx defines
-BOARD_USE_CUSTOM_LIBION := true
 
 # Use the non-open-source parts, if they're present
 -include vendor/samsung/tuna/BoardConfigVendor.mk
@@ -32,18 +30,11 @@ BOARD_USE_CUSTOM_LIBION := true
 TARGET_NO_BOOTLOADER := true
 TARGET_NO_RADIOIMAGE := true
 
-TARGET_BOARD_PLATFORM := omap4
 TARGET_BOARD_INFO_FILE := $(DEVICE_FOLDER)/board-info.txt
 TARGET_BOOTLOADER_BOARD_NAME := tuna
 
 # Processor
 TARGET_BOARD_OMAP_CPU := 4460
-TARGET_CPU_ABI := armeabi-v7a
-TARGET_CPU_ABI2 := armeabi
-TARGET_CPU_SMP := true
-TARGET_CPU_VARIANT := cortex-a9
-TARGET_ARCH := arm
-TARGET_ARCH_VARIANT := armv7-a-neon
 
 # Kernel
 BOARD_KERNEL_BASE := 0x80000000
@@ -54,34 +45,24 @@ TARGET_KERNEL_SOURCE := kernel/samsung/tuna
 # Use dlmalloc
 MALLOC_IMPL := dlmalloc
 
-# EGL
-USE_OPENGL_RENDERER := true
-
 # External SGX Module
 SGX_MODULES:
-	make clean -C $(DEVICE_FOLDER)/pvr-source/eurasiacon/build/linux2/omap4430_android
+	make clean -C $(HARDWARE_TI_OMAP4_BASE)/pvr-source/eurasiacon/build/linux2/omap4430_android
 	cp $(TARGET_KERNEL_SOURCE)/drivers/video/omap2/omapfb/omapfb.h $(KERNEL_OUT)/drivers/video/omap2/omapfb/omapfb.h
-	make -j8 -C $(DEVICE_FOLDER)/pvr-source/eurasiacon/build/linux2/omap4430_android ARCH=arm KERNEL_CROSS_COMPILE=arm-eabi- CROSS_COMPILE=arm-eabi- KERNELDIR=$(KERNEL_OUT) TARGET_PRODUCT="blaze_tablet" BUILD=release TARGET_SGX=540 PLATFORM_VERSION=4.0
+	make -j8 -C $(HARDWARE_TI_OMAP4_BASE)/pvr-source/eurasiacon/build/linux2/omap4430_android ARCH=arm KERNEL_CROSS_COMPILE=arm-eabi- CROSS_COMPILE=arm-eabi- KERNELDIR=$(KERNEL_OUT) TARGET_PRODUCT="blaze_tablet" BUILD=release TARGET_SGX=540 PLATFORM_VERSION=4.0
 	mv $(KERNEL_OUT)/../../target/kbuild/pvrsrvkm_sgx540_120.ko $(KERNEL_MODULES_OUT)
 	$(ARM_EABI_TOOLCHAIN)/arm-eabi-strip --strip-unneeded $(KERNEL_MODULES_OUT)/pvrsrvkm_sgx540_120.ko
 
 TARGET_KERNEL_MODULES += SGX_MODULES
 
-TARGET_TI_HWC_HDMI_DISABLED := true
-
-# DOMX
-BOARD_USE_TI_DUCATI_H264_PROFILE := true
-BOARD_USE_TI_CUSTOM_DOMX := true
-TARGET_SPECIFIC_HEADER_PATH += $(DEVICE_FOLDER)/domx/omx_core/inc
-COMMON_GLOBAL_CFLAGS += -DOMAP_TUNA
-OMAP_TUNA := true
-DOMX_PATH := $(DEVICE_FOLDER)/domx
+TI_CAMERAHAL_USES_LEGACY_DOMX_DCC := true
+DOMX_TUNA := true
+COMMON_GLOBAL_CFLAGS += -DDOMX_TUNA
+TI_CAMERAHAL_MAX_CAMERAS_SUPPORTED := 2
+TI_CAMERAHAL_DEBUG_ENABLED := true
 
 # Include HDCP keys
 BOARD_CREATE_TUNA_HDCP_KEYS_SYMLINK := true
-
-# Force the screenshot path to CPU consumer
-COMMON_GLOBAL_CFLAGS += -DFORCE_SCREENSHOT_CPU_PATH
 
 # set if the target supports FBIO_WAITFORVSYNC
 TARGET_HAS_WAITFORVSYNC := true
@@ -125,9 +106,6 @@ BOARD_HAVE_BLUETOOTH_BCM := true
 BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := $(DEVICE_FOLDER)/bluetooth
 
 BOARD_HAL_STATIC_LIBRARIES := libdumpstate.tuna
-
-# Security
-BOARD_USES_SECURE_SERVICES := true
 
 # SELinux
 BOARD_SEPOLICY_DIRS += \
