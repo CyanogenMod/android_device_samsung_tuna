@@ -263,11 +263,6 @@
          Used to decide if the user can change the colors -->
     <bool name="config_multiColorBatteryLed">true</bool>
 
-    <!-- Enable the option to check proximity sensor when deciding whether to turn the screen on
-         NOTE ! - Enable for devices that have a fast response proximity sensor (ideally < 300ms) -->
-    <bool name="config_proximityCheckOnWake">true</bool>
-    <integer name="config_proximityCheckTimeout">500</integer>
-
     <!-- CyanogenMod Performance profiles -->
     <string name="config_perf_profile_prop">sys.perf.profile</string>
     <string name="config_perf_profile_default_entry">1</string>
