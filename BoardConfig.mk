@@ -21,8 +21,9 @@ DEVICE_FOLDER := device/samsung/tuna
 
 PRODUCT_VENDOR_KERNEL_HEADERS += $(DEVICE_FOLDER)/kernel-headers
 
-# CMHW
+# CM
 BOARD_HARDWARE_CLASS := $(DEVICE_FOLDER)/cmhw
+BACKLIGHT_PATH := "/sys/class/backlight/s6e8aa0/brightness"
 
 # Use the non-open-source parts, if they're present
 -include vendor/samsung/tuna/BoardConfigVendor.mk
