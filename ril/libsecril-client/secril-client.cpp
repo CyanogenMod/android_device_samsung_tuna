@@ -61,6 +61,7 @@ namespace android {
 #define REQ_SET_CALL_VT_CTRL        107
 #define REQ_SET_TWO_MIC_CTRL        108
 #define REQ_SET_DHA_CTRL        109
+#define REQ_GET_WB_AMR              109
 #define REQ_SET_LOOPBACK            110
 
 // OEM request function ID
@@ -78,6 +79,7 @@ namespace android {
 #define OEM_SND_GET_MUTE        0x0C
 #define OEM_SND_SET_TWO_MIC_CTL     0x0D
 #define OEM_SND_SET_DHA_CTL     0x0E
+#define OEM_SND_GET_WB_AMR      0x0E
 
 #define OEM_SND_TYPE_VOICE          0x01 // Receiver(0x00) + Voice(0x01)
 #define OEM_SND_TYPE_SPEAKER        0x11 // SpeakerPhone(0x10) + Voice(0x01)
@@ -914,6 +916,45 @@ int GetMute(HRilClient client, RilOnComplete handler) {
     ret = SendOemRequestHookRaw(client, REQ_GET_CALL_MUTE, data, sizeof(data));
     if (ret != RIL_CLIENT_ERR_SUCCESS) {
         RegisterRequestCompleteHandler(client, REQ_GET_CALL_MUTE, NULL);
+    }
+
+    return ret;
+}
+
+/**
+ * Check AMR-WB support
+ */
+extern "C"
+int GetWB_AMR(HRilClient client, RilOnComplete handler) {
+    RilClientPrv *client_prv;
+    int ret;
+    char data[4] = {0,};
+
+    if (client == NULL || client->prv == NULL) {
+        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        return RIL_CLIENT_ERR_INVAL;
+    }
+
+    client_prv = (RilClientPrv *)(client->prv);
+
+    if (client_prv->sock < 0 ) {
+        ALOGE("%s: Not connected.", __FUNCTION__);
+        return RIL_CLIENT_ERR_CONNECT;
+    }
+
+    client_prv->b_del_handler = 1;
+
+    // Make raw data
+    data[0] = OEM_FUNC_SOUND; // 0x08
+    data[1] = OEM_SND_GET_WB_AMR;
+    data[2] = 0x00; // data length
+    data[3] = 0x04; // data length
+
+    RegisterRequestCompleteHandler(client, REQ_GET_WB_AMR, handler);
+
+    ret = SendOemRequestHookRaw(client, REQ_GET_WB_AMR, data, sizeof(data));
+    if (ret != RIL_CLIENT_ERR_SUCCESS) {
+        RegisterRequestCompleteHandler(client, REQ_GET_WB_AMR, NULL);
     }
 
     return ret;

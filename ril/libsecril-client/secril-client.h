@@ -258,6 +258,7 @@ int SetMute(HRilClient client, MuteCondition condition);
  */
 int GetMute(HRilClient client, RilOnComplete handler);
 
+int GetWB_AMR(HRilClient client, RilOnComplete handler);
 int SetTwoMicControl(HRilClient client, TwoMicSolDevice device, TwoMicSolReport report);
 
 /**
