@@ -10,7 +10,6 @@
 #define __SECRIL_CLIENT_H__
 
 #include <sys/types.h>
-//#include "SecProductFeature_RIL.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,19 +68,6 @@ int CloseClient_RILD(HRilClient client);
  */
 int Connect_RILD(HRilClient client);
 
-/**
- * Connect to QRIL deamon. One client task starts.
- * Return is 0 or error code.
- */
-int Connect_QRILD(HRilClient client);
-
-#if defined(SEC_PRODUCT_FEATURE_RIL_CALL_DUALMODE_CDMAGSM)
-/**
- * Connect to RIL deamon. One client task starts.
- * Return is 0 or error code.
- */
-int Connect_RILD_Second(HRilClient client);
-#endif
 /**
  * check whether RILD is connected
  * Returns 0 or 1
@@ -192,22 +178,6 @@ typedef enum __TwoMicSolReport {
 } TwoMicSolReport;
 
 /**
- * DHA Mode
- */
-typedef enum __DhaSolMode {
-    DHA_MODE_OFF,
-    DHA_MODE_ON
-} DhaSolMode;
-
-/**
- * DHA Select
- */
-typedef enum __DhaSolSelect {
-    DHA_SEL_LEFT,
-    DHA_SEL_RIGHT
-} DhaSolSelect;
-
-/**
  * LoopbackTest parameters.
  */
 typedef enum __LoopbackMode {
@@ -215,13 +185,6 @@ typedef enum __LoopbackMode {
     LOOPBACK_ON_PCM,
     LOOPBACK_ON_PACKET
 } LoopbackMode;
-
-typedef enum __LoopbackPath {
-    RECEIVER,
-    EARPHONE,
-    LOUDSPEAKER
-} LoopbackPath;
-
 
 /**
  * Set in-call volume.
@@ -259,12 +222,8 @@ int SetMute(HRilClient client, MuteCondition condition);
 int GetMute(HRilClient client, RilOnComplete handler);
 
 int GetWB_AMR(HRilClient client, RilOnComplete handler);
-int SetTwoMicControl(HRilClient client, TwoMicSolDevice device, TwoMicSolReport report);
 
-/**
- * DHA Solution Set
- */
-int SetDhaSolution(HRilClient client, DhaSolMode mode, DhaSolSelect select, char *parameter);
+int SetTwoMicControl(HRilClient client, TwoMicSolDevice device, TwoMicSolReport report);
 
 /**
  * Set Loopback Test Mode and Path

@@ -7,7 +7,6 @@
  */
 
 #define LOG_TAG "RILClient"
-#define LOG_NDEBUG 0
 
 #include <binder/Parcel.h>
 #include <telephony/ril.h>
@@ -34,12 +33,7 @@ namespace android {
 // Defines
 //---------------------------------------------------------------------------
 #define DBG 1
-#define RILD_PORT               7777
 #define MULTI_CLIENT_SOCKET_NAME "Multiclient"
-#define MULTI_CLIENT_Q_SOCKET_NAME "QMulticlient"
-#if defined(SEC_PRODUCT_FEATURE_RIL_CALL_DUALMODE_CDMAGSM)
-#define MULTI_CLIENT_SOCKET_NAME_2 "Multiclient2"
-#endif
 
 #define MAX_COMMAND_BYTES       (8 * 1024)
 #define REQ_POOL_SIZE           32
@@ -60,7 +54,6 @@ namespace android {
 #define REQ_GET_CALL_MUTE           106
 #define REQ_SET_CALL_VT_CTRL        107
 #define REQ_SET_TWO_MIC_CTRL        108
-#define REQ_SET_DHA_CTRL        109
 #define REQ_GET_WB_AMR              109
 #define REQ_SET_LOOPBACK            110
 
@@ -78,7 +71,6 @@ namespace android {
 #define OEM_SND_SET_MUTE        0x0B
 #define OEM_SND_GET_MUTE        0x0C
 #define OEM_SND_SET_TWO_MIC_CTL     0x0D
-#define OEM_SND_SET_DHA_CTL     0x0E
 #define OEM_SND_GET_WB_AMR      0x0E
 
 #define OEM_SND_TYPE_VOICE          0x01 // Receiver(0x00) + Voice(0x01)
@@ -86,20 +78,6 @@ namespace android {
 #define OEM_SND_TYPE_HEADSET        0x31 // Headset(0x30) + Voice(0x01)
 #define OEM_SND_TYPE_BTVOICE        0x41 // BT(0x40) + Voice(0x01)
 
-#ifdef MODEM_TYPE_XMM7260
-#define OEM_SND_AUDIO_PATH_HANDSET            0x01
-#define OEM_SND_AUDIO_PATH_HEADSET            0x02
-#define OEM_SND_AUDIO_PATH_HFK                0x06
-#define OEM_SND_AUDIO_PATH_BLUETOOTH          0x04
-#define OEM_SND_AUDIO_PATH_STEREO_BLUETOOTH   0x05
-#define OEM_SND_AUDIO_PATH_SPEAKER            0x07
-#define OEM_SND_AUDIO_PATH_HEADPHONE          0x08
-#define OEM_SND_AUDIO_PATH_BT_NSEC_OFF        0x09
-#define OEM_SND_AUDIO_PATH_MIC1               0x0A
-#define OEM_SND_AUDIO_PATH_MIC2               0x0B
-#define OEM_SND_AUDIO_PATH_BT_WB              0x0C
-#define OEM_SND_AUDIO_PATH_BT_WB_NSEC_OFF     0x0D
-#else
 #define OEM_SND_AUDIO_PATH_HANDSET      0x01
 #define OEM_SND_AUDIO_PATH_HEADSET      0x02
 #define OEM_SND_AUDIO_PATH_HFK                0x03
@@ -112,7 +90,6 @@ namespace android {
 #define OEM_SND_AUDIO_PATH_MIC2 0x0A
 #define OEM_SND_AUDIO_PATH_BT_WB  0x0B
 #define OEM_SND_AUDIO_PATH_BT_WB_NSEC_OFF  0x0C
-#endif
 
 //---------------------------------------------------------------------------
 // Type definitions
@@ -159,7 +136,6 @@ static int processRxBuffer(RilClientPrv *prv, void *buffer, size_t buflen);
 static uint32_t AllocateToken(uint32_t *token_pool);
 static void FreeToken(uint32_t *token_pool, uint32_t token);
 static uint8_t IsValidToken(uint32_t *token_pool, uint32_t token);
-static void DeallocateToken(uint32_t *token_pool, uint32_t token);
 static int blockingWrite(int fd, const void *buffer, size_t len);
 static int RecordReqHistory(RilClientPrv *prv, int token, uint32_t id);
 static void ClearReqHistory(RilClientPrv *prv, int token);
@@ -364,7 +340,6 @@ int Connect_RILD(HRilClient client) {
     client_prv = (RilClientPrv *)(client->prv);
 
     // Open client socket and connect to server.
-    //client_prv->sock = socket_loopback_client(RILD_PORT, SOCK_STREAM);
     client_prv->sock = socket_local_client(MULTI_CLIENT_SOCKET_NAME, ANDROID_SOCKET_NAMESPACE_ABSTRACT, SOCK_STREAM );
 
     if (client_prv->sock < 0) {
@@ -408,136 +383,6 @@ int Connect_RILD(HRilClient client) {
 
     return RIL_CLIENT_ERR_SUCCESS;
 }
-
-/**
- * @fn  int Connect_QRILD(void)
- *
- * @params  client: Client handle.
- *
- * @return  0, or error code.
- */
-extern "C"
-int Connect_QRILD(HRilClient client) {
-    RilClientPrv *client_prv;
-
-    if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
-        return RIL_CLIENT_ERR_INVAL;
-    }
-
-    client_prv = (RilClientPrv *)(client->prv);
-
-    // Open client socket and connect to server.
-    //client_prv->sock = socket_loopback_client(RILD_PORT, SOCK_STREAM);
-    client_prv->sock = socket_local_client(MULTI_CLIENT_Q_SOCKET_NAME, ANDROID_SOCKET_NAMESPACE_ABSTRACT, SOCK_STREAM );
-
-    if (client_prv->sock < 0) {
-        ALOGE("%s: Connecting failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
-        return RIL_CLIENT_ERR_CONNECT;
-    }
-
-    client_prv->b_connect = 1;
-
-    if (fcntl(client_prv->sock, F_SETFL, O_NONBLOCK) < 0) {
-        close(client_prv->sock);
-        return RIL_CLIENT_ERR_IO;
-    }
-
-    client_prv->p_rs = record_stream_new(client_prv->sock, MAX_COMMAND_BYTES);
-
-    if (pipe(client_prv->pipefd) < 0) {
-        close(client_prv->sock);
-        ALOGE("%s: Creating command pipe failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
-        return RIL_CLIENT_ERR_IO;
-    }
-
-    if (fcntl(client_prv->pipefd[0], F_SETFL, O_NONBLOCK) < 0) {
-        close(client_prv->sock);
-        close(client_prv->pipefd[0]);
-        close(client_prv->pipefd[1]);
-        return RIL_CLIENT_ERR_IO;
-    }
-
-    // Start socket read thread.
-    if (pthread_create(&(client_prv->tid_reader), NULL, RxReaderFunc, (void *)client_prv) != 0) {
-        close(client_prv->sock);
-        close(client_prv->pipefd[0]);
-        close(client_prv->pipefd[1]);
-
-        memset(client_prv, 0, sizeof(RilClientPrv));
-        client_prv->sock = -1;
-        ALOGE("%s: Can't create Reader thread. %s(%d)", __FUNCTION__, strerror(errno), errno);
-        return RIL_CLIENT_ERR_CONNECT;
-    }
-
-    return RIL_CLIENT_ERR_SUCCESS;
-}
-
-#if defined(SEC_PRODUCT_FEATURE_RIL_CALL_DUALMODE_CDMAGSM)    // mook_120209 Enable multiclient
-/**
- * @fn    int Connect_RILD_Second(void)
- *
- * @params    client: Client handle.
- *
- * @return    0, or error code.
- */
-extern "C"
-int Connect_RILD_Second(HRilClient client)    {
-    RilClientPrv *client_prv;
-
-    if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
-        return RIL_CLIENT_ERR_INVAL;
-    }
-
-    client_prv = (RilClientPrv *)(client->prv);
-
-    // Open client socket and connect to server.
-    //client_prv->sock = socket_loopback_client(RILD_PORT, SOCK_STREAM);
-    client_prv->sock = socket_local_client(MULTI_CLIENT_SOCKET_NAME_2, ANDROID_SOCKET_NAMESPACE_ABSTRACT, SOCK_STREAM );
-
-    if (client_prv->sock < 0) {
-        ALOGE("%s: Connecting failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
-        return RIL_CLIENT_ERR_CONNECT;
-    }
-
-    client_prv->b_connect = 1;
-
-    if (fcntl(client_prv->sock, F_SETFL, O_NONBLOCK) < 0) {
-        close(client_prv->sock);
-        return RIL_CLIENT_ERR_IO;
-    }
-
-    client_prv->p_rs = record_stream_new(client_prv->sock, MAX_COMMAND_BYTES);
-
-    if (pipe(client_prv->pipefd) < 0) {
-        close(client_prv->sock);
-        ALOGE("%s: Creating command pipe failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
-        return RIL_CLIENT_ERR_IO;
-    }
-
-    if (fcntl(client_prv->pipefd[0], F_SETFL, O_NONBLOCK) < 0) {
-        close(client_prv->sock);
-        close(client_prv->pipefd[0]);
-        close(client_prv->pipefd[1]);
-        return RIL_CLIENT_ERR_IO;
-    }
-
-    // Start socket read thread.
-    if (pthread_create(&(client_prv->tid_reader), NULL, RxReaderFunc, (void *)client_prv) != 0) {
-        close(client_prv->sock);
-        close(client_prv->pipefd[0]);
-        close(client_prv->pipefd[1]);
-
-        memset(client_prv, 0, sizeof(RilClientPrv));
-        client_prv->sock = -1;
-        ALOGE("%s: Can't create Reader thread. %s(%d)", __FUNCTION__, strerror(errno), errno);
-        return RIL_CLIENT_ERR_CONNECT;
-    }
-
-    return RIL_CLIENT_ERR_SUCCESS;
-}
-#endif
 
 /**
  * @fn  int isConnected_RILD(HRilClient client)
@@ -1005,49 +850,6 @@ int SetTwoMicControl(HRilClient client, TwoMicSolDevice device, TwoMicSolReport 
     return ret;
 }
 
-extern "C"
-int SetDhaSolution(HRilClient client, DhaSolMode mode, DhaSolSelect select, char *parameter) {
-    RilClientPrv *client_prv;
-    int ret;
-    char data[30] = {0,};
-    char tempPara[24]={0,};
-
-    if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
-        return RIL_CLIENT_ERR_INVAL;
-    }
-
-    client_prv = (RilClientPrv *)(client->prv);
-
-    if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
-        return RIL_CLIENT_ERR_CONNECT;
-    }
-
-    ALOGE("%s: DHA mode=%d, select=%d", __FUNCTION__,mode, select);
-
-    // Make raw data
-    data[0] = OEM_FUNC_SOUND;
-    data[1] = OEM_SND_SET_DHA_CTL;
-    data[2] = 0x00; // data length
-    data[3] = 0x1E; // data length
-    data[4] = mode;
-    data[5] = select;
-
-    memcpy(tempPara, parameter, 24);
-    for(int i=0; i<24; i++)
-         data[6+i]= tempPara[i];
-
-    RegisterRequestCompleteHandler(client, REQ_SET_DHA_CTRL, NULL);
-
-    ret = SendOemRequestHookRaw(client, REQ_SET_DHA_CTRL, data, sizeof(data));
-    if (ret != RIL_CLIENT_ERR_SUCCESS) {
-        RegisterRequestCompleteHandler(client, REQ_SET_DHA_CTRL, NULL);
-    }
-
-    return ret;
-}
-
 /**
  * Set LoopbackTest mode, path.
  */
@@ -1241,7 +1043,6 @@ static char ConvertAudioPath(AudioPath path) {
 static void * RxReaderFunc(void *param) {
     RilClientPrv *client_prv = (RilClientPrv *)param;
     int maxfd = 0;
-    int token = 0;
     void *p_record = NULL;
     size_t recordlen = 0;
     int ret = 0;
@@ -1572,12 +1373,6 @@ static RilOnComplete FindReqHandler(RilClientPrv *prv, int token, uint32_t *id) 
 
     return NULL;
 }
-
-
-static void DeallocateToken(uint32_t *token_pool, uint32_t token) {
-    *token_pool &= !token;
-}
-
 
 static int blockingWrite(int fd, const void *buffer, size_t len) {
     size_t writeOffset = 0;
