@@ -668,7 +668,7 @@ int SetCallVolume(HRilClient client, SoundType type, int vol_level) {
  * Set external sound device path for noise reduction.
  */
 extern "C"
-int SetCallAudioPath(HRilClient client, AudioPath path, ExtraVolume mode) {
+int SetCallAudioPath(HRilClient client, AudioPath path) {
     RilClientPrv *client_prv;
     int ret;
     char data[6] = {0,};
@@ -696,7 +696,6 @@ int SetCallAudioPath(HRilClient client, AudioPath path, ExtraVolume mode) {
     data[2] = 0x00;     // data length
     data[3] = 0x06;     // data length
     data[4] = ConvertAudioPath(path); // audio path
-    data[5] = mode; // ExtraVolume
 
     RegisterRequestCompleteHandler(client, REQ_SET_AUDIO_PATH, NULL);
 
@@ -1187,20 +1186,10 @@ static char ConvertAudioPath(AudioPath path) {
             return OEM_SND_AUDIO_PATH_SPEAKER;
         case SOUND_AUDIO_PATH_BLUETOOTH:
             return OEM_SND_AUDIO_PATH_BLUETOOTH;
-        case SOUND_AUDIO_PATH_STEREO_BT:
-            return OEM_SND_AUDIO_PATH_STEREO_BLUETOOTH;
         case SOUND_AUDIO_PATH_HEADPHONE:
             return OEM_SND_AUDIO_PATH_HEADPHONE;
         case SOUND_AUDIO_PATH_BLUETOOTH_NO_NR:
             return OEM_SND_AUDIO_PATH_BT_NSEC_OFF;
-        case SOUND_AUDIO_PATH_MIC1:
-            return OEM_SND_AUDIO_PATH_MIC1;
-        case SOUND_AUDIO_PATH_MIC2:
-            return OEM_SND_AUDIO_PATH_MIC2;
-        case SOUND_AUDIO_PATH_BLUETOOTH_WB:
-            return OEM_SND_AUDIO_PATH_BT_WB;
-        case SOUND_AUDIO_PATH_BLUETOOTH_WB_NO_NR:
-            return OEM_SND_AUDIO_PATH_BT_WB_NSEC_OFF;
 
         default:
             return OEM_SND_AUDIO_PATH_HANDSET;

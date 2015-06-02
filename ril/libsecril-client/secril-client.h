@@ -142,22 +142,9 @@ typedef enum _AudioPath {
     SOUND_AUDIO_PATH_HEADSET,
     SOUND_AUDIO_PATH_SPEAKER,
     SOUND_AUDIO_PATH_BLUETOOTH,
-    SOUND_AUDIO_PATH_STEREO_BT,
-    SOUND_AUDIO_PATH_HEADPHONE,
     SOUND_AUDIO_PATH_BLUETOOTH_NO_NR,
-    SOUND_AUDIO_PATH_MIC1,
-    SOUND_AUDIO_PATH_MIC2,
-    SOUND_AUDIO_PATH_BLUETOOTH_WB,
-    SOUND_AUDIO_PATH_BLUETOOTH_WB_NO_NR
+    SOUND_AUDIO_PATH_HEADPHONE
 } AudioPath;
-
-/**
- * ExtraVolume
- */
-typedef enum _ExtraVolume {
-    ORIGINAL_PATH,
-    EXTRA_VOLUME_PATH
-} ExtraVolume;
 
 /**
  * Clock adjustment parameters.
@@ -244,7 +231,7 @@ int SetCallVolume(HRilClient client, SoundType type, int vol_level);
 /**
  * Set external sound device path for noise reduction.
  */
-int SetCallAudioPath(HRilClient client, AudioPath path, ExtraVolume mode);
+int SetCallAudioPath(HRilClient client, AudioPath path);
 
 /**
  * Set modem clock to master or slave.
