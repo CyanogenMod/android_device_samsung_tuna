@@ -22,8 +22,9 @@ LOCAL_SRC_FILES := audio_hw.c ril_interface.c
 LOCAL_C_INCLUDES += \
 	external/tinyalsa/include \
 	$(call include-path-for, audio-utils) \
-	$(call include-path-for, audio-effects)
-LOCAL_SHARED_LIBRARIES := liblog libcutils libtinyalsa libaudioutils libdl
+	$(call include-path-for, audio-effects) \
+	$(LOCAL_PATH)/../ril/libsecril-client
+LOCAL_SHARED_LIBRARIES := liblog libcutils libtinyalsa libaudioutils libdl libsecril-client
 LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_SHARED_LIBRARY)

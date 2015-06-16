@@ -28,18 +28,6 @@
 #define VOLUME_STEPS_DEFAULT  "5"
 #define VOLUME_STEPS_PROPERTY "ro.config.vc_call_vol_steps"
 
-/* Function pointers */
-void *(*_ril_open_client)(void);
-int (*_ril_close_client)(void *);
-int (*_ril_connect)(void *);
-int (*_ril_is_connected)(void *);
-int (*_ril_disconnect)(void *);
-int (*_ril_set_call_volume)(void *, enum ril_sound_type, int);
-int (*_ril_set_call_audio_path)(void *, enum ril_audio_path);
-int (*_ril_register_unsolicited_handler)(void *, int, void *);
-int (*_ril_get_wb_amr)(void *, void *);
-int (*_ril_set_mic_mute)(void *, enum ril_mic_mute);
-
 /* Audio WB AMR callback */
 void (*_audio_set_wb_amr_callback)(void *, int);
 void *callback_data = NULL;
@@ -68,18 +56,17 @@ static int ril_set_wb_amr_callback(void *ril_client,
 
 static int ril_connect_if_required(struct ril_handle *ril)
 {
-    if (_ril_is_connected(ril->client))
+    if (isConnected_RILD(ril->client))
         return 0;
 
-    if (_ril_connect(ril->client) != RIL_CLIENT_ERR_SUCCESS) {
-        ALOGE("ril_connect() failed");
+    if (Connect_RILD(ril->client) != RIL_CLIENT_ERR_SUCCESS) {
+        ALOGE("Connect_RILD() failed");
         return -1;
     }
 
     /* get wb amr status to set pcm samplerate depending on
        wb amr status when ril is connected. */
-    if(_ril_get_wb_amr)
-        _ril_get_wb_amr(ril->client, ril_set_wb_amr_callback);
+    GetWB_AMR(ril->client, (RilOnComplete)ril_set_wb_amr_callback);
 
     return 0;
 }
@@ -91,45 +78,15 @@ int ril_open(struct ril_handle *ril)
     if (!ril)
         return -1;
 
-    ril->handle = dlopen(RIL_CLIENT_LIBPATH, RTLD_NOW);
-
-    if (!ril->handle) {
-        ALOGE("Cannot open '%s'", RIL_CLIENT_LIBPATH);
-        return -1;
-    }
-
-    _ril_open_client = dlsym(ril->handle, "OpenClient_RILD");
-    _ril_close_client = dlsym(ril->handle, "CloseClient_RILD");
-    _ril_connect = dlsym(ril->handle, "Connect_RILD");
-    _ril_is_connected = dlsym(ril->handle, "isConnected_RILD");
-    _ril_disconnect = dlsym(ril->handle, "Disconnect_RILD");
-    _ril_set_call_volume = dlsym(ril->handle, "SetCallVolume");
-    _ril_set_call_audio_path = dlsym(ril->handle, "SetCallAudioPath");
-    _ril_set_mic_mute = dlsym(ril->handle, "SetMute");
-    _ril_register_unsolicited_handler = dlsym(ril->handle,
-                                              "RegisterUnsolicitedHandler");
-    /* since this function is not supported in all RILs, don't require it */
-    _ril_get_wb_amr = dlsym(ril->handle, "GetWB_AMR");
-
-    if (!_ril_open_client || !_ril_close_client || !_ril_connect ||
-        !_ril_is_connected || !_ril_disconnect || !_ril_set_call_volume ||
-        !_ril_set_call_audio_path || !_ril_register_unsolicited_handler ||
-        !_ril_set_mic_mute) {
-        ALOGE("Cannot get symbols from '%s'", RIL_CLIENT_LIBPATH);
-        dlclose(ril->handle);
-        return -1;
-    }
-
-    ril->client = _ril_open_client();
+    ril->client = OpenClient_RILD();
     if (!ril->client) {
-        ALOGE("ril_open_client() failed");
-        dlclose(ril->handle);
+        ALOGE("OpenClient_RILD() failed");
         return -1;
     }
 
     /* register the wideband AMR callback */
-    _ril_register_unsolicited_handler(ril->client, RIL_UNSOL_WB_AMR_STATE,
-                                      ril_set_wb_amr_callback);
+    RegisterUnsolicitedHandler(ril->client, RIL_UNSOL_WB_AMR_STATE,
+                               (RilOnUnsolicited)ril_set_wb_amr_callback);
 
     property_get(VOLUME_STEPS_PROPERTY, property, VOLUME_STEPS_DEFAULT);
     ril->volume_steps_max = atoi(property);
@@ -143,41 +100,40 @@ int ril_open(struct ril_handle *ril)
 
 int ril_close(struct ril_handle *ril)
 {
-    if (!ril || !ril->handle || !ril->client)
+    if (!ril || !ril->client)
         return -1;
 
-    if ((_ril_disconnect(ril->client) != RIL_CLIENT_ERR_SUCCESS) ||
-        (_ril_close_client(ril->client) != RIL_CLIENT_ERR_SUCCESS)) {
-        ALOGE("ril_disconnect() or ril_close_client() failed");
+    if ((Disconnect_RILD(ril->client) != RIL_CLIENT_ERR_SUCCESS) ||
+        (CloseClient_RILD(ril->client) != RIL_CLIENT_ERR_SUCCESS)) {
+        ALOGE("Disconnect_RILD() or CloseClient_RILD() failed");
         return -1;
     }
 
-    dlclose(ril->handle);
     return 0;
 }
 
-int ril_set_call_volume(struct ril_handle *ril, enum ril_sound_type sound_type,
+int ril_set_call_volume(struct ril_handle *ril, enum _SoundType sound_type,
                         float volume)
 {
     if (ril_connect_if_required(ril))
         return 0;
 
-    return _ril_set_call_volume(ril->client, sound_type,
-                                (int)(volume * ril->volume_steps_max));
+    return SetCallVolume(ril->client, sound_type,
+                         (int)(volume * ril->volume_steps_max));
 }
 
-int ril_set_call_audio_path(struct ril_handle *ril, enum ril_audio_path path)
+int ril_set_call_audio_path(struct ril_handle *ril, enum _AudioPath path)
 {
     if (ril_connect_if_required(ril))
         return 0;
 
-    return _ril_set_call_audio_path(ril->client, path);
+    return SetCallAudioPath(ril->client, path);
 }
 
-int ril_set_mic_mute(struct ril_handle *ril, enum ril_mic_mute state)
+int ril_set_mic_mute(struct ril_handle *ril, enum _MuteCondition state)
 {
     if (ril_connect_if_required(ril))
         return 0;
 
-    return _ril_set_mic_mute(ril->client, state);
+    return SetMute(ril->client, state);
 }

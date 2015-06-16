@@ -17,16 +17,7 @@
 #ifndef RIL_INTERFACE_H
 #define RIL_INTERFACE_H
 
-#define RIL_CLIENT_LIBPATH "libsecril-client.so"
-
-#define RIL_CLIENT_ERR_SUCCESS      0
-#define RIL_CLIENT_ERR_AGAIN        1
-#define RIL_CLIENT_ERR_INIT         2 // Client is not initialized
-#define RIL_CLIENT_ERR_INVAL        3 // Invalid value
-#define RIL_CLIENT_ERR_CONNECT      4 // Connection error
-#define RIL_CLIENT_ERR_IO           5 // IO error
-#define RIL_CLIENT_ERR_RESOURCE     6 // Resource not available
-#define RIL_CLIENT_ERR_UNKNOWN      7
+#include "secril-client.h"
 
 #define RIL_OEM_UNSOL_RESPONSE_BASE 11000 // RIL response base index
 #define RIL_UNSOL_WB_AMR_STATE \
@@ -34,43 +25,17 @@
 
 struct ril_handle
 {
-    void *handle;
     void *client;
     int volume_steps_max;
-};
-
-enum ril_sound_type {
-    SOUND_TYPE_VOICE,
-    SOUND_TYPE_SPEAKER,
-    SOUND_TYPE_HEADSET,
-    SOUND_TYPE_BTVOICE
-};
-
-enum ril_audio_path {
-    SOUND_AUDIO_PATH_HANDSET,
-    SOUND_AUDIO_PATH_HEADSET,
-    SOUND_AUDIO_PATH_SPEAKER,
-    SOUND_AUDIO_PATH_BLUETOOTH,
-    SOUND_AUDIO_PATH_BLUETOOTH_NO_NR,
-    SOUND_AUDIO_PATH_HEADPHONE
-};
-
-enum ril_clock_state {
-    SOUND_CLOCK_STOP,
-    SOUND_CLOCK_START
-};
-
-enum ril_mic_mute {
-    MIC_UNMUTE,
-    MIC_MUTE
 };
 
 /* Function prototypes */
 int ril_open(struct ril_handle *ril);
 int ril_close(struct ril_handle *ril);
-int ril_set_call_volume(struct ril_handle *ril, enum ril_sound_type sound_type,
+int ril_set_call_volume(struct ril_handle *ril, enum _SoundType sound_type,
                         float volume);
-int ril_set_call_audio_path(struct ril_handle *ril, enum ril_audio_path path);
+int ril_set_call_audio_path(struct ril_handle *ril, enum _AudioPath path);
+int ril_set_mic_mute(struct ril_handle *ril, enum _MuteCondition state);
 void ril_register_set_wb_amr_callback(void *function, void *data);
-#endif
 
+#endif
