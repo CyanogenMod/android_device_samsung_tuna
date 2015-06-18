@@ -206,6 +206,10 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PROPERTY_OVERRIDES += \
 	camera2.portability.force_api=1
 
+# Disable VFR support for encoders
+PRODUCT_PROPERTY_OVERRIDES += \
+	debug.vfr.enable=0
+
 PRODUCT_CHARACTERISTICS := nosdcard
 
 PRODUCT_PACKAGES += \
