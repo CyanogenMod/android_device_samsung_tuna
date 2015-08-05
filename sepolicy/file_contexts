@@ -16,6 +16,7 @@
 /dev/umts_ipc0                  u:object_r:radio_device:s0
 /dev/umts_ramdump0              u:object_r:radio_device:s0
 /dev/umts_rfs0                  u:object_r:radio_device:s0
+/dev/i2c-2			u:object_r:camera_device:s0
 /factory(/.*)?                  u:object_r:efs_file:s0
 /factory/bluetooth(/.*)?        u:object_r:bluetooth_efs_file:s0
 /factory/nv_data.bin.*          u:object_r:radio_data_file:s0
@@ -36,5 +37,5 @@
 /dev/accelirq                   u:object_r:sensors_device:s0
 
 # System binaries
-/system/bin/pvrsrvinit u:object_r:pvrsrvinit_exec:s0
-/system/vendor/bin/fRom u:object_r:fRom_exec:s0
+/system/bin/pvrsrvinit 		u:object_r:pvrsrvinit_exec:s0
+/system/bin/dumpdcc		u:object_r:dumpdcc_exec:s0

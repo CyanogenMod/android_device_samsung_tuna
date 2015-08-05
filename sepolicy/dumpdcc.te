@@ -1,0 +1,10 @@
+# dumpdcc
+type dumpdcc, domain;
+type dumpdcc_exec, exec_type, file_type;
+
+init_daemon_domain(dumpdcc)
+allow dumpdcc camera_device:chr_file { read write open ioctl };
+allow dumpdcc mtd_device:chr_file {read open };
+allow dumpdcc mtd_device:dir search;
+allow dumpdcc camera_data_file:dir { write add_name search };
+allow dumpdcc camera_data_file:file { create write open };

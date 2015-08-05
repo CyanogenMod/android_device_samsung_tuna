@@ -111,16 +111,17 @@ BOARD_HAL_STATIC_LIBRARIES := libdumpstate.tuna
 
 # SELinux
 BOARD_SEPOLICY_DIRS += \
-        $(DEVICE_FOLDER)/sepolicy
+	$(DEVICE_FOLDER)/sepolicy
 
 BOARD_SEPOLICY_UNION += \
-        genfs_contexts \
-        file_contexts \
-        fRom.te \
-        init.te \
-        mediaserver.te \
-        pvrsrvinit.te \
-        rild.te
+	genfs_contexts \
+	file_contexts \
+	bluetooth.te \
+	dumpdcc.te \
+	init.te \
+	mediaserver.te \
+	pvrsrvinit.te \
+	rild.te
 
 # Recovery
 RECOVERY_FSTAB_VERSION := 2
