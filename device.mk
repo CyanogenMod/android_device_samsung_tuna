@@ -25,21 +25,20 @@ $(call inherit-product-if-exists, hardware/ti/omap4/omap4.mk)
 
 DEVICE_PACKAGE_OVERLAYS := $(DEVICE_FOLDER)/overlay
 
-# This device is xhdpi.  However the platform doesn't
-# currently contain all of the bitmaps at xhdpi density so
-# we do this little trick to fall back to the hdpi version
-# if the xhdpi doesn't exist.
-PRODUCT_AAPT_CONFIG := normal hdpi xhdpi
+PRODUCT_AAPT_CONFIG := normal
 PRODUCT_AAPT_PREF_CONFIG := xhdpi
 
 # HALs
 PRODUCT_PACKAGES += \
-	hwcomposer.tuna \
+	audio.a2dp.default \
+	audio.primary.tuna \
+	audio.r_submix.default \
+	audio.usb.default \
 	camera.omap4 \
 	lights.tuna \
 	nfc.tuna \
 	power.tuna \
-	audio.primary.tuna
+	sensors.tuna
 
 # RIL
 PRODUCT_PACKAGES += \
@@ -47,22 +46,11 @@ PRODUCT_PACKAGES += \
 
 # Sensors
 PRODUCT_PACKAGES += \
-	sensors.tuna \
 	libinvensense_mpl
 
 # Charging mode
 PRODUCT_PACKAGES += \
 	charger_res_images
-
-# Audio
-PRODUCT_PACKAGES += \
-	audio.a2dp.default \
-	audio.usb.default \
-	audio.r_submix.default
-
-# Symlinks
-PRODUCT_PACKAGES += \
-	libion.so
 
 PRODUCT_COPY_FILES += \
 	$(DEVICE_FOLDER)/audio/audio_policy.conf:system/etc/audio_policy.conf \
@@ -101,10 +89,6 @@ PRODUCT_COPY_FILES += \
 	$(DEVICE_FOLDER)/media_codecs.xml:system/etc/media_codecs.xml
 
 # Wifi
-ifneq ($(TARGET_PREBUILT_WIFI_MODULE),)
-PRODUCT_COPY_FILES += \
-	$(TARGET_PREBUILT_WIFI_MODULE):system/lib/modules/bcmdhd.ko
-endif
 PRODUCT_COPY_FILES += \
 	$(DEVICE_FOLDER)/bcmdhd.cal:system/etc/wifi/bcmdhd.cal
 
@@ -172,10 +156,6 @@ PRODUCT_COPY_FILES += \
 	$(DEVICE_FOLDER)/touchscreen/mms144_ts_rev31.fw:system/vendor/firmware/mms144_ts_rev31.fw \
 	$(DEVICE_FOLDER)/touchscreen/mms144_ts_rev32.fw:system/vendor/firmware/mms144_ts_rev32.fw
 
-# Commands to migrate prefs from com.android.nfc3 to com.android.nfc
-PRODUCT_COPY_FILES += $(call add-to-product-copy-files-if-exists,\
-	packages/apps/Nfc/migrate_nfc.txt:system/etc/updatecmds/migrate_nfc.txt)
-
 # file that declares the MIFARE NFC constant
 PRODUCT_COPY_FILES += \
 	frameworks/native/data/etc/com.nxp.mifare.xml:system/etc/permissions/com.nxp.mifare.xml
@@ -225,14 +205,14 @@ PRODUCT_PACKAGES += \
 
 # F2FS filesystem
 PRODUCT_PACKAGES += \
-        mkfs.f2fs \
-        fsck.f2fs \
-        fibmap.f2fs \
-        f2fstat
+	mkfs.f2fs \
+	fsck.f2fs \
+	fibmap.f2fs \
+	f2fstat
 
 # DCC
 PRODUCT_PACKAGES += \
-    dumpdcc
+	dumpdcc
 
 $(call inherit-product, frameworks/native/build/phone-xhdpi-1024-dalvik-heap.mk)
 
