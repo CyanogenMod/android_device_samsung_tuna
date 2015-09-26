@@ -184,6 +184,10 @@ ADDITIONAL_BUILD_PROPERTIES += \
 	ro.config.max_starting_bg=8 \
 	ro.sys.fw.bg_apps_limit=16
 
+# I/O Scheduler
+PRODUCT_PROPERTY_OVERRIDES += \
+	sys.io.scheduler=bfq
+
 PRODUCT_PROPERTY_OVERRIDES += \
 	ro.opengles.version=131072 \
 	ro.sf.lcd_density=320 \
