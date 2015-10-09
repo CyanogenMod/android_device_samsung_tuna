@@ -116,16 +116,6 @@ BOARD_HAL_STATIC_LIBRARIES := libdumpstate.tuna
 BOARD_SEPOLICY_DIRS += \
 	$(DEVICE_FOLDER)/sepolicy
 
-BOARD_SEPOLICY_UNION += \
-	genfs_contexts \
-	file_contexts \
-	bluetooth.te \
-	dumpdcc.te \
-	init.te \
-	mediaserver.te \
-	pvrsrvinit.te \
-	rild.te
-
 # Recovery
 RECOVERY_FSTAB_VERSION := 2
 TARGET_RECOVERY_FSTAB = $(DEVICE_FOLDER)/rootdir/fstab.tuna
