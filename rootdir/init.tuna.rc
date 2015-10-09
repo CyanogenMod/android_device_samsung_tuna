@@ -1,19 +1,9 @@
 import init.tuna.usb.rc
 
 on init
-    # See storage config details at http://source.android.com/tech/storage/
-    mkdir /mnt/shell/emulated 0700 shell shell
-    mkdir /storage/emulated 0555 root root
-
-    export EXTERNAL_STORAGE /storage/emulated/legacy
-    export EMULATED_STORAGE_SOURCE /mnt/shell/emulated
-    export EMULATED_STORAGE_TARGET /storage/emulated
-
     # Support legacy paths
-    symlink /storage/emulated/legacy /sdcard
-    symlink /storage/emulated/legacy /mnt/sdcard
-    symlink /storage/emulated/legacy /storage/sdcard0
-    symlink /mnt/shell/emulated/0 /storage/emulated/legacy
+    symlink /sdcard /mnt/sdcard
+    symlink /sdcard /storage/sdcard0
 
     # create directory for mounting usb drives
     chmod 0701 /mnt/media_rw
@@ -26,8 +16,6 @@ on init
     write /sys/kernel/mm/ksm/run 1
 
 on post-fs-data
-    mkdir /data/media 0770 media_rw media_rw
-
     mkdir /data/smc 0770 drmrpc drmrpc
     chown drmrpc drmrpc /data/smc/counter.bin
     chown drmrpc drmrpc /data/smc/storage.bin
@@ -70,8 +58,6 @@ on fs
     restorecon /dev/block/platform/omap/omap_hsmmc.0/by-name/radio
     restorecon_recursive /factory
     mount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/efs /factory ro remount
-
-    setprop ro.crypto.fuse_sdcard true
 
     # read only 1 page at a time
     write /proc/sys/vm/page-cluster 0
@@ -190,10 +176,6 @@ service smc_pa_wvdrm /system/bin/smc_pa_ctrl \
         group drmrpc
         oneshot
         disabled
-
-# virtual sdcard daemon running as media_rw (1023)
-service sdcard /system/bin/sdcard -u 1023 -g 1023 -l /data/media /mnt/shell/emulated
-    class late_start
 
 service fuse_usbdisk /system/bin/sdcard -u 1023 -g 1023 /mnt/media_rw/usbdisk /storage/usbdisk
     class late_start
