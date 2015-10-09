@@ -24,6 +24,7 @@
 #include <sys/select.h>
 #include <cutils/log.h>
 #include <pthread.h>
+#include <string.h>
 
 #include "SamsungSensorBase.h"
 
