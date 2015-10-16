@@ -72,9 +72,5 @@ LOCAL_SRC_FILES := \
 	mlutils/mputest.c \
 	mlutils/checksum.c
 
-ifeq ($(HARDWARE),M_HW)
-	LOCAL_SRC_FILES += mllite/accel/mantis.c
-endif
-
 LOCAL_SHARED_LIBRARIES := libm libutils libcutils liblog libmlplatform
 include $(BUILD_SHARED_LIBRARY)

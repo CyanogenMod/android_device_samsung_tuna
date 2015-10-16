@@ -126,9 +126,6 @@ private:
 
     /* added for dynamic get sensor list              */
     bool mNineAxisEnabled;
-    void fillAccel(unsigned char accel, struct sensor_t *list);
-    void fillCompass(unsigned char compass, struct sensor_t *list);
-    void fillGyro(const char* gyro, struct sensor_t *list);
     void fillRV(struct sensor_t *list);
     void fillOrientation(struct sensor_t *list);
     void fillGravity(struct sensor_t *list);

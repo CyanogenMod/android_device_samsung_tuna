@@ -115,7 +115,7 @@ void mot_cb_wrapper(uint16_t val)
 
 void procData_cb_wrapper()
 {
-    if(gMPLSensor) {
+    if (gMPLSensor) {
         gMPLSensor->cbProcData();
     }
 }
@@ -266,7 +266,6 @@ MPLSensor::MPLSensor() :
 
 
     pthread_mutex_unlock(&mMplMutex);
-
 }
 
 MPLSensor::~MPLSensor()
@@ -319,7 +318,6 @@ void MPLSensor::setPowerStates(int enabled_sensors)
     bool irq_set[5] = { false, false, false, false, false };
 
     do {
-
         if (LA_ENABLED || GR_ENABLED || RV_ENABLED || O_ENABLED) {
             mLocalSensorMask = ALL_MPL_SENSORS_NP;
             break;
@@ -347,7 +345,6 @@ void MPLSensor::setPowerStates(int enabled_sensors)
         } else {
             mLocalSensorMask &= ~(INV_THREE_AXIS_COMPASS);
         }
-
     } while (0);
 
     //record the new sensor state
@@ -418,7 +415,6 @@ void MPLSensor::setPowerStates(int enabled_sensors)
         mPollTime = -1;
         mCurFifoRate = -1;
     }
-
 }
 
 /**
@@ -482,7 +478,6 @@ void MPLSensor::initMPL()
     }
 
     setupCallbacks();
-
 }
 
 /** setup the fifo contents.
@@ -522,7 +517,6 @@ void MPLSensor::setupFIFO()
     if (result != INV_SUCCESS) {
         ALOGE("Fatal error: inv_send_gyro returned %d\n", result);
     }
-
 }
 
 /**
@@ -669,7 +663,6 @@ void MPLSensor::rvHandler(sensors_event_t* s, uint32_t* pending_mask,
     s->gyro.v[0] = quat[1];
     s->gyro.v[1] = quat[2];
     s->gyro.v[2] = quat[3];
-
 }
 
 void MPLSensor::laHandler(sensors_event_t* s, uint32_t* pending_mask,
@@ -758,7 +751,6 @@ void MPLSensor::orienHandler(sensors_event_t* s, uint32_t* pending_mask,
         *pending_mask |= (1 << index);
     else
         ALOGW("orienHandler: data not valid (%d)", (int) res);
-
 }
 
 int MPLSensor::enable(int32_t handle, int en)
@@ -981,7 +973,6 @@ int MPLSensor::readEvents(sensors_event_t* data, int count)
                 numEventReceived++;
             }
         }
-
     }
 
     pthread_mutex_unlock(&mMplMutex);
@@ -1005,8 +996,7 @@ int MPLSensor::getTimerFd() const
 
 int MPLSensor::getPowerFd() const
 {
-    int hdl = (uintptr_t) inv_get_serial_handle();
-    return hdl;
+    return (uintptr_t) inv_get_serial_handle();
 }
 
 int MPLSensor::getPollTime()
@@ -1083,21 +1073,19 @@ int MPLSensor::populateSensorList(struct sensor_t *list, size_t len)
     /* first add gyro, accel and compass to the list */
 
     /* fill in accel values                          */
-    unsigned short accelId = inv_get_accel_id();
-    if(accelId == 0) {
-       ALOGE("Can not get accel id");
-    }
-    fillAccel(accelId, list);
+    list[Accelerometer].maxRange = ACCEL_BMA250_RANGE;
+    list[Accelerometer].resolution = ACCEL_BMA250_RESOLUTION;
+    list[Accelerometer].power = ACCEL_BMA250_POWER;
 
     /* fill in compass values                        */
-    unsigned short compassId = inv_get_compass_id();
-    if(compassId == 0) {
-       ALOGE("Can not get compass id");
-    }
-    fillCompass(compassId, list);
+    list[MagneticField].maxRange = COMPASS_YAS530_RANGE;
+    list[MagneticField].resolution = COMPASS_YAS530_RESOLUTION;
+    list[MagneticField].power = COMPASS_YAS530_POWER;
 
     /* fill in gyro values                           */
-    fillGyro(MPU_NAME, list);
+    list[Gyro].maxRange = GYRO_MPU3050_RANGE;
+    list[Gyro].resolution = GYRO_MPU3050_RESOLUTION;
+    list[Gyro].power = GYRO_MPU3050_POWER;
 
     if(mNineAxisEnabled)
     {
@@ -1122,148 +1110,6 @@ int MPLSensor::populateSensorList(struct sensor_t *list, size_t len)
 
     return numsensors;
 }
-
-void MPLSensor::fillAccel(unsigned char accel, struct sensor_t *list)
-{
-    switch (accel) {
-    case ACCEL_ID_LIS331:
-        list[Accelerometer].maxRange = ACCEL_LIS331_RANGE;
-        list[Accelerometer].resolution = ACCEL_LIS331_RESOLUTION;
-        list[Accelerometer].power = ACCEL_LIS331_POWER;
-        break;
-
-    case ACCEL_ID_LIS3DH:
-        list[Accelerometer].maxRange = ACCEL_LIS3DH_RANGE;
-        list[Accelerometer].resolution = ACCEL_LIS3DH_RESOLUTION;
-        list[Accelerometer].power = ACCEL_LIS3DH_POWER;
-        break;
-
-    case ACCEL_ID_KXSD9:
-        list[Accelerometer].maxRange = ACCEL_KXSD9_RANGE;
-        list[Accelerometer].resolution = ACCEL_KXSD9_RESOLUTION;
-        list[Accelerometer].power = ACCEL_KXSD9_POWER;
-        break;
-
-    case ACCEL_ID_KXTF9:
-        list[Accelerometer].maxRange = ACCEL_KXTF9_RANGE;
-        list[Accelerometer].resolution = ACCEL_KXTF9_RESOLUTION;
-        list[Accelerometer].power = ACCEL_KXTF9_POWER;
-        break;
-
-    case ACCEL_ID_BMA150:
-        list[Accelerometer].maxRange = ACCEL_BMA150_RANGE;
-        list[Accelerometer].resolution = ACCEL_BMA150_RESOLUTION;
-        list[Accelerometer].power = ACCEL_BMA150_POWER;
-        break;
-
-    case ACCEL_ID_BMA222:
-        list[Accelerometer].maxRange = ACCEL_BMA222_RANGE;
-        list[Accelerometer].resolution = ACCEL_BMA222_RESOLUTION;
-        list[Accelerometer].power = ACCEL_BMA222_POWER;
-        break;
-
-    case ACCEL_ID_BMA250:
-        list[Accelerometer].maxRange = ACCEL_BMA250_RANGE;
-        list[Accelerometer].resolution = ACCEL_BMA250_RESOLUTION;
-        list[Accelerometer].power = ACCEL_BMA250_POWER;
-        break;
-
-    case ACCEL_ID_ADXL34X:
-        list[Accelerometer].maxRange = ACCEL_ADXL34X_RANGE;
-        list[Accelerometer].resolution = ACCEL_ADXL34X_RESOLUTION;
-        list[Accelerometer].power = ACCEL_ADXL34X_POWER;
-        break;
-
-    case ACCEL_ID_MMA8450:
-        list[Accelerometer].maxRange = ACCEL_MMA8450_RANGE;
-        list[Accelerometer].maxRange = ACCEL_MMA8450_RANGE;
-        list[Accelerometer].maxRange = ACCEL_MMA8450_RANGE;
-        break;
-
-    case ACCEL_ID_MMA845X:
-        list[Accelerometer].maxRange = ACCEL_MMA845X_RANGE;
-        list[Accelerometer].resolution = ACCEL_MMA845X_RESOLUTION;
-        list[Accelerometer].power = ACCEL_MMA845X_POWER;
-        break;
-
-    case ACCEL_ID_MPU6050:
-        list[Accelerometer].maxRange = ACCEL_MPU6050_RANGE;
-        list[Accelerometer].resolution = ACCEL_MPU6050_RESOLUTION;
-        list[Accelerometer].power = ACCEL_MPU6050_POWER;
-        break;
-    default:
-        ALOGE("unknown accel id -- accel params will be wrong.");
-        break;
-    }
-}
-
-void MPLSensor::fillCompass(unsigned char compass, struct sensor_t *list)
-{
-    switch (compass) {
-    case COMPASS_ID_AK8975:
-        list[MagneticField].maxRange = COMPASS_AKM8975_RANGE;
-        list[MagneticField].resolution = COMPASS_AKM8975_RESOLUTION;
-        list[MagneticField].power = COMPASS_AKM8975_POWER;
-        break;
-    case COMPASS_ID_AMI30X:
-        list[MagneticField].maxRange = COMPASS_AMI30X_RANGE;
-        list[MagneticField].resolution = COMPASS_AMI30X_RESOLUTION;
-        list[MagneticField].power = COMPASS_AMI30X_POWER;
-        break;
-    case COMPASS_ID_AMI306:
-        list[MagneticField].maxRange = COMPASS_AMI306_RANGE;
-        list[MagneticField].resolution = COMPASS_AMI306_RESOLUTION;
-        list[MagneticField].power = COMPASS_AMI306_POWER;
-        break;
-    case COMPASS_ID_YAS529:
-        list[MagneticField].maxRange = COMPASS_YAS529_RANGE;
-        list[MagneticField].resolution = COMPASS_AMI306_RESOLUTION;
-        list[MagneticField].power = COMPASS_AMI306_POWER;
-        break;
-    case COMPASS_ID_YAS530:
-        list[MagneticField].maxRange = COMPASS_YAS530_RANGE;
-        list[MagneticField].resolution = COMPASS_YAS530_RESOLUTION;
-        list[MagneticField].power = COMPASS_YAS530_POWER;
-        break;
-    case COMPASS_ID_HMC5883:
-        list[MagneticField].maxRange = COMPASS_HMC5883_RANGE;
-        list[MagneticField].resolution = COMPASS_HMC5883_RESOLUTION;
-        list[MagneticField].power = COMPASS_HMC5883_POWER;
-        break;
-    case COMPASS_ID_MMC314X:
-        list[MagneticField].maxRange = COMPASS_MMC314X_RANGE;
-        list[MagneticField].resolution = COMPASS_MMC314X_RESOLUTION;
-        list[MagneticField].power = COMPASS_MMC314X_POWER;
-        break;
-    case COMPASS_ID_HSCDTD002B:
-        list[MagneticField].maxRange = COMPASS_HSCDTD002B_RANGE;
-        list[MagneticField].resolution = COMPASS_HSCDTD002B_RESOLUTION;
-        list[MagneticField].power = COMPASS_HSCDTD002B_POWER;
-        break;
-    case COMPASS_ID_HSCDTD004A:
-        list[MagneticField].maxRange = COMPASS_HSCDTD004A_RANGE;
-        list[MagneticField].resolution = COMPASS_HSCDTD004A_RESOLUTION;
-        list[MagneticField].power = COMPASS_HSCDTD004A_POWER;
-        break;
-    default:
-        ALOGE("unknown compass id -- compass parameters will be wrong");
-    }
-}
-
-void MPLSensor::fillGyro(const char* gyro, struct sensor_t *list)
-{
-    if ((gyro != NULL) && (strcmp(gyro, "mpu3050") == 0)) {
-        list[Gyro].maxRange = GYRO_MPU3050_RANGE;
-        list[Gyro].resolution = GYRO_MPU3050_RESOLUTION;
-        list[Gyro].power = GYRO_MPU3050_POWER;
-    } else {
-        list[Gyro].maxRange = GYRO_MPU6050_RANGE;
-        list[Gyro].resolution = GYRO_MPU6050_RESOLUTION;
-        list[Gyro].power = GYRO_MPU6050_POWER;
-    }
-    return;
-}
-
 
 /* fillRV depends on values of accel and compass in the list	*/
 void MPLSensor::fillRV(struct sensor_t *list)
