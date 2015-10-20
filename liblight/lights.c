@@ -16,6 +16,7 @@
 
 #define LOG_TAG "lights"
 #include <cutils/log.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
@@ -91,7 +92,7 @@ static int rgb_to_brightness(struct light_state_t const *state)
 		+ (150*((color>>8) & 0x00ff)) + (29*(color & 0x00ff))) >> 8;
 }
 
-static int set_light_backlight(struct light_device_t *dev,
+static int set_light_backlight(struct light_device_t *dev __unused,
 			struct light_state_t const *state)
 {
 	int err = 0;
@@ -207,13 +208,13 @@ static int set_light_leds(struct light_state_t const *state, int type)
 	return write_leds_priority();
 }
 
-static int set_light_leds_notifications(struct light_device_t *dev,
+static int set_light_leds_notifications(struct light_device_t *dev __unused,
 			struct light_state_t const *state)
 {
 	return set_light_leds(state, LED_TYPE_NOTIFICATION);
 }
 
-static int set_light_leds_attention(struct light_device_t *dev,
+static int set_light_leds_attention(struct light_device_t *dev __unused,
 			struct light_state_t const *state)
 {
 	struct light_state_t attention_state = *state;
@@ -224,7 +225,7 @@ static int set_light_leds_attention(struct light_device_t *dev,
 	return set_light_leds(&attention_state, LED_TYPE_ATTENTION);
 }
 
-static int set_light_leds_battery(struct light_device_t *dev,
+static int set_light_leds_battery(struct light_device_t *dev __unused,
 			struct light_state_t const *state)
 {
 	return set_light_leds(state, LED_TYPE_CHARGING);

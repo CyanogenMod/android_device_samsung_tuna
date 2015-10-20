@@ -30,4 +30,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/../kernel-headers
 
 LOCAL_MODULE_TAGS := optional
 
+LOCAL_CFLAGS := -Wall -Werror
+
 include $(BUILD_SHARED_LIBRARY)
