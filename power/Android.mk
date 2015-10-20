@@ -24,4 +24,5 @@ LOCAL_SHARED_LIBRARIES := liblog libcutils
 LOCAL_SRC_FILES := power_tuna.c
 LOCAL_MODULE := power.tuna
 LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := -Wall -Werror
 include $(BUILD_SHARED_LIBRARY)
