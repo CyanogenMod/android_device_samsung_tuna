@@ -23,4 +23,6 @@ LOCAL_MODULE := libdumpstate.tuna
 
 LOCAL_MODULE_TAGS := optional
 
+LOCAL_CFLAGS := -Wall -Werror
+
 include $(BUILD_STATIC_LIBRARY)

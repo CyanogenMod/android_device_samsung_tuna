@@ -29,8 +29,8 @@ void dumpstate_board()
     dump_file("dsscomp_log", "/d/dsscomp/log");
     dump_file("dsscomp_comps", "/d/dsscomp/comps");
     dump_file("dsscomp_gralloc", "/d/dsscomp/gralloc");
-    dump_file("audio media state", "/d/asoc/Tuna/SDP4430\ Media/state");
-    dump_file("audio modem state", "/d/asoc/Tuna/SDP4430\ MODEM/state");
+    dump_file("audio media state", "/d/asoc/Tuna/Tuna Media/state");
+    dump_file("audio modem state", "/d/asoc/Tuna/Tuna MODEM/state");
     dump_file("audio codec_reg", "/sys/devices/platform/soc-audio/PDM-DL1/codec_reg");
     dump_file("ducati firmware version", "/d/remoteproc/omap-rproc.1/version");
     dump_file("ducati trace1", "/d/remoteproc/omap-rproc.1/trace1");
