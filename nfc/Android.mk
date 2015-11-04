@@ -24,3 +24,14 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS += -D$(TARGET_DEVICE)
 
 include $(BUILD_SHARED_LIBRARY)
+
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libpn544_fw
+LOCAL_MODULE_PATH := $(TARGET_OUT_VENDOR)/firmware
+LOCAL_SRC_FILES := pn544_fw.c
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := -Wall -Werror
+
+include $(BUILD_SHARED_LIBRARY)
