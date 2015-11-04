@@ -36,7 +36,7 @@ ProximitySensor::ProximitySensor()
     mPendingEvent.type = SENSOR_TYPE_PROXIMITY;
 }
 
-int ProximitySensor::setDelay(int32_t handle, int64_t ns)
+int ProximitySensor::setDelay(int32_t handle __unused, int64_t ns __unused)
 {
     return -1;
 }

@@ -47,11 +47,11 @@ char *SamsungSensorBase::makeSysfsName(const char *input_name,
     return name;
 }
 
-bool SamsungSensorBase::handleEvent(input_event const * event) {
+bool SamsungSensorBase::handleEvent(input_event const * event __unused) {
     return true;
 }
 
-int SamsungSensorBase::handleEnable(int en) {
+int SamsungSensorBase::handleEnable(int en __unused) {
     return 0;
 }
 
@@ -96,7 +96,7 @@ SamsungSensorBase::~SamsungSensorBase() {
     delete[] mInputSysfsPollDelay;
 }
 
-int SamsungSensorBase::enable(int32_t handle, int en)
+int SamsungSensorBase::enable(int32_t handle __unused, int en)
 {
     int err = 0;
     pthread_mutex_lock(&mLock);
@@ -120,7 +120,7 @@ cleanup:
     return err;
 }
 
-int SamsungSensorBase::setDelay(int32_t handle, int64_t ns)
+int SamsungSensorBase::setDelay(int32_t handle __unused, int64_t ns)
 {
     int fd;
     int result = 0;

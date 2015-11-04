@@ -111,30 +111,38 @@ static int open_sensors(const struct hw_module_t* module, const char* id,
                         struct hw_device_t** device);
 
 
-static int sensors__get_sensors_list(struct sensors_module_t* module,
+static int sensors__get_sensors_list(struct sensors_module_t* module __unused,
                                      struct sensor_t const** list)
 {
     *list = sSensorList;
     return numSensors;
 }
 
+static int sensors__set_operation_mode(unsigned int mode)
+{
+    if (mode == SENSOR_HAL_NORMAL_MODE)
+        return 0;
+    return -EINVAL;
+}
+
 static struct hw_module_methods_t sensors_module_methods = {
-        open: open_sensors
+        .open = open_sensors
 };
 
 struct sensors_module_t HAL_MODULE_INFO_SYM = {
-        common: {
-                tag: HARDWARE_MODULE_TAG,
-                version_major: 1,
-                version_minor: 0,
-                id: SENSORS_HARDWARE_MODULE_ID,
-                name: "Samsung Sensor module",
-                author: "Samsung Electronic Company",
-                methods: &sensors_module_methods,
-                dso: 0,
-                reserved: {},
+        .common = {
+                .tag = HARDWARE_MODULE_TAG,
+                .version_major = 1,
+                .version_minor = 0,
+                .id = SENSORS_HARDWARE_MODULE_ID,
+                .name = "Samsung Sensor module",
+                .author = "Samsung Electronic Company",
+                .methods = &sensors_module_methods,
+                .dso = 0,
+                .reserved = {},
         },
-        get_sensors_list: sensors__get_sensors_list,
+        .get_sensors_list = sensors__get_sensors_list,
+        .set_operation_mode = sensors__set_operation_mode,
 };
 
 struct sensors_poll_context_t {
@@ -323,8 +331,6 @@ int sensors_poll_context_t::pollEvents(sensors_event_t* data, int count)
             // we still have some room, so try to see if we can get
             // some events immediately or just wait if we don't have
             // anything to return
-            int i;
-
             do {
                 n = poll(mPollFds, numFds, nbEvents ? 0 : polltime);
             } while (n < 0 && errno == EINTR);
@@ -389,7 +395,8 @@ static int poll__poll(struct sensors_poll_device_t *dev,
 /*****************************************************************************/
 
 /** Open a new instance of a sensor device using name */
-static int open_sensors(const struct hw_module_t* module, const char* id,
+static int open_sensors(const struct hw_module_t* module,
+                        const char* id __unused,
                         struct hw_device_t** device)
 {
     FUNC_LOG;
@@ -411,5 +418,3 @@ static int open_sensors(const struct hw_module_t* module, const char* id,
 
     return status;
 }
-
-

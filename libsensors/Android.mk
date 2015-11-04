@@ -38,5 +38,6 @@ LOCAL_SRC_FILES := \
 
 LOCAL_SHARED_LIBRARIES := libinvensense_hal.$(TARGET_BOOTLOADER_BOARD_NAME) liblog libcutils libutils libdl
 LOCAL_CLANG := true
+LOCAL_CFLAGS += -Wall -Werror
 
 include $(BUILD_SHARED_LIBRARY)
