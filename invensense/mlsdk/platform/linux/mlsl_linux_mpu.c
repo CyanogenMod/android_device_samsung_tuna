@@ -96,7 +96,7 @@
 inv_error_t inv_serial_read_cfg(unsigned char *cfg, unsigned int len)
 {
     FILE *fp;
-    int bytesRead;
+    unsigned int bytesRead;
 
     fp = fopen(MLCFG_FILE, "rb");
     if (fp == NULL) {
@@ -122,7 +122,7 @@ inv_error_t inv_serial_read_cfg(unsigned char *cfg, unsigned int len)
 inv_error_t inv_serial_write_cfg(unsigned char *cfg, unsigned int len)
 {
     FILE *fp;
-    int bytesWritten;
+    unsigned int bytesWritten;
     unsigned char cfgId[4];
 
     fp = fopen(MLCFG_FILE,"wb");
@@ -156,7 +156,7 @@ inv_error_t inv_serial_write_cfg(unsigned char *cfg, unsigned int len)
 inv_error_t inv_serial_read_cal(unsigned char *cal, unsigned int len)
 {
     FILE *fp;
-    int bytesRead;
+    unsigned int bytesRead;
     inv_error_t result = INV_SUCCESS;
 
     fp = fopen(MLCAL_FILE,"rb");
@@ -187,7 +187,7 @@ read_cal_end:
 inv_error_t inv_serial_write_cal(unsigned char *cal, unsigned int len)
 {
     FILE *fp;
-    int bytesWritten;
+    unsigned int bytesWritten;
     inv_error_t result = INV_SUCCESS;
 
     fp = fopen(MLCAL_FILE,"wb");

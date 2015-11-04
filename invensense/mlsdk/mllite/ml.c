@@ -64,6 +64,7 @@
 #include "mlsl.h"
 #include "mlos.h"
 #include "mlBiasNoMotion.h"
+#include "mlSetGyroBias.h"
 #include "log.h"
 #undef MPL_LOG_TAG
 #define MPL_LOG_TAG "MPL-ml"

@@ -730,7 +730,7 @@ inv_error_t inv_set_fifo_processed_callback(void (*func) (void))
 inv_error_t inv_process_fifo_packet(const unsigned char *dmpData)
 {
     INVENSENSE_FUNC_START;
-    int N, kk;
+    unsigned int N, kk;
     unsigned char *p;
 
     p = (unsigned char *)(&fifo_obj.decoded);

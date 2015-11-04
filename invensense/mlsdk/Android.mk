@@ -7,6 +7,7 @@ LOCAL_MODULE := libmlplatform
 
 LOCAL_CFLAGS := -D_REENTRANT -DLINUX -DANDROID
 LOCAL_CFLAGS += -DCONFIG_MPU_SENSORS_MPU3050
+LOCAL_CFLAGS += -Wall -Werror
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/platform/include \
@@ -31,6 +32,7 @@ LOCAL_CFLAGS := -DNDEBUG -D_REENTRANT -DLINUX -DANDROID
 LOCAL_CFLAGS += -DCONFIG_MPU_SENSORS_MPU3050
 LOCAL_CFLAGS += -DUNICODE -D_UNICODE -DSK_RELEASE
 LOCAL_CFLAGS += -DI2CDEV=\"/dev/mpu\"
+LOCAL_CFLAGS += -Wall -Werror
 
 # optionally apply the compass filter. this is set in
 # BoardConfig.mk

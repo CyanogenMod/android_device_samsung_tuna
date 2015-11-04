@@ -133,7 +133,7 @@ inv_error_t inv_get_accel_data(long *data)
     inv_error_t result;
     unsigned char raw_data[2 * ACCEL_NUM_AXES];
     long tmp[ACCEL_NUM_AXES];
-    int ii;
+    unsigned int ii;
     signed char *mtx = mldl_cfg->pdata->accel.orientation;
     char accelId = mldl_cfg->accel->id;
 

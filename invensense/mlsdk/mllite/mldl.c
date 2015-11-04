@@ -609,7 +609,7 @@ inv_error_t inv_clock_source(unsigned char clkSource)
  */
 inv_error_t inv_set_offsetTC(const unsigned char *tc)
 {
-    int ii;
+    unsigned int ii;
     inv_error_t result;
 
     for (ii = 0; ii < ARRAY_SIZE(mldlCfg.offset_tc); ii++) {
@@ -683,7 +683,7 @@ inv_error_t inv_set_offset(const short *offset)
 {
     inv_error_t result;
     unsigned char regs[7];
-    int ii;
+    unsigned int ii;
     long sf;
 
     sf = (2000L * 131) / mldlCfg.gyro_sens_trim;

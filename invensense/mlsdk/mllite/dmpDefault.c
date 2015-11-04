@@ -37,6 +37,7 @@
 #include "mpu.h"
 #include "mldl.h"
 #include "mldl_cfg.h"
+#include "accel.h"
 
 #define CFG_25  703
 #define CFG_24  699
@@ -306,7 +307,7 @@ static unsigned short inv_setup_dmpGetAddress(unsigned short key)
 {
     static int isSorted = 0;
     if ( !isSorted ) {
-        int kk;
+        unsigned short kk;
         for (kk=0; kk<NUM_KEYS; ++kk) {
             keys[ kk ].addr = 0xffff;
             keys[ kk ].key = kk;
