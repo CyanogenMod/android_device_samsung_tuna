@@ -131,7 +131,7 @@ SensorListener::~SensorListener() {
 status_t SensorListener::initialize() {
     status_t ret = NO_ERROR;
 #ifdef ANDROID_API_MM_OR_LATER
-    android::SensorManager mgr(android::String16("TI OMAP CameraHal Module"));
+    android::SensorManager& mgr(android::SensorManager::getInstanceForPackage(android::String16("TI OMAP CameraHal Module")));
 #else
     android::SensorManager& mgr(android::SensorManager::getInstance());
 #endif
@@ -198,7 +198,7 @@ void SensorListener::handleOrientation(uint32_t orientation, uint32_t tilt) {
 void SensorListener::enableSensor(sensor_type_t type) {
     android::Sensor const* sensor;
 #ifdef ANDROID_API_MM_OR_LATER
-    android::SensorManager mgr(android::String16("TI OMAP CameraHal Module"));
+    android::SensorManager& mgr(android::SensorManager::getInstanceForPackage(android::String16("TI OMAP CameraHal Module")));
 #else
     android::SensorManager& mgr(android::SensorManager::getInstance());
 #endif
@@ -225,7 +225,7 @@ void SensorListener::enableSensor(sensor_type_t type) {
 void SensorListener::disableSensor(sensor_type_t type) {
     android::Sensor const* sensor;
 #ifdef ANDROID_API_MM_OR_LATER
-    android::SensorManager mgr(android::String16("TI OMAP CameraHal Module"));
+    android::SensorManager& mgr(android::SensorManager::getInstanceForPackage(android::String16("TI OMAP CameraHal Module")));
 #else
     android::SensorManager& mgr(android::SensorManager::getInstance());
 #endif
