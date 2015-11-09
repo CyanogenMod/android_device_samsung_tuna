@@ -79,9 +79,6 @@ void mpu_print_cfg(struct mldl_cfg * mldl_cfg)
     MPL_LOGD("mldl_cfg.silicon_revision = %02x\n", mldl_cfg->silicon_revision);
     MPL_LOGD("mldl_cfg.product_id       = %02x\n", mldl_cfg->product_id);
     MPL_LOGD("mldl_cfg.gyro_sens_trim   = %02x\n", mldl_cfg->gyro_sens_trim);
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || defined CONFIG_MPU_SENSORS_MPU6050B1
-    MPL_LOGD("mldl_cfg.accel_sens_trim   = %02x\n", mldl_cfg->accel_sens_trim);
-#endif
 
     if (mldl_cfg->accel) {
         MPL_LOGD("slave_accel->suspend      = %p\n", mldl_cfg->accel->suspend);

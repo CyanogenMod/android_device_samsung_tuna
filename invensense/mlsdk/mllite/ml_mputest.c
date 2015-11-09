@@ -134,11 +134,7 @@ inv_error_t inv_self_test_factory_calibrate(void *mlsl_handle,
  */
 inv_error_t inv_self_test_run(void)
 {
-#ifdef CONFIG_MPU_SENSORS_MPU3050
     return inv_self_test_factory_calibrate(inv_get_serial_handle(), TRUE);
-#else
-    return inv_self_test_factory_calibrate(inv_get_serial_handle(), FALSE);
-#endif
 }
 
 /**

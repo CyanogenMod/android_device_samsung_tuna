@@ -30,15 +30,7 @@
 #include "mltypes.h"
 #include "mlsl.h"
 #include <linux/mpu.h>
-#if defined CONFIG_MPU_SENSORS_MPU6050A2
-#    include "mpu6050a2.h"
-#elif defined CONFIG_MPU_SENSORS_MPU6050B1
-#    include "mpu6050b1.h"
-#elif defined CONFIG_MPU_SENSORS_MPU3050
-#  include "mpu3050.h"
-#else
-#error Invalid or undefined CONFIG_MPU_SENSORS_MPUxxxx
-#endif
+#include "mpu3050.h"
 
 #include "log.h"
 
@@ -106,10 +98,6 @@ struct mldl_cfg {
 	unsigned char silicon_revision;
 	unsigned char product_id;
 	unsigned short gyro_sens_trim;
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-	defined CONFIG_MPU_SENSORS_MPU6050B1
-	unsigned short accel_sens_trim;
-#endif
 
 	/* Driver/Kernel related state information */
 	int gyro_is_bypassed;

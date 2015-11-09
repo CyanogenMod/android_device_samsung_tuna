@@ -372,7 +372,6 @@
 #define DINC7A 0x7a
 #define DINC7B 0x7b
 
-#if defined CONFIG_MPU_SENSORS_MPU3050
 #define DINA80 0x80
 #define DINA90 0x90
 #define DINAA0 0xa0
@@ -394,39 +393,6 @@
 #define DINAC3 0xc3
 #define DINAC4 0xc4
 #define DINAC5 0xc5
-#elif defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-	defined CONFIG_MPU_SENSORS_MPU6050B1
-
-#define DINA80 0x80
-#define DINA90 0x90
-#define DINAA0 0xa0
-#define DINAC9 0xc9
-#define DINACB 0xcb
-#define DINACD 0xcd
-#define DINACF 0xcf
-#define DINAC8 0xc8
-#define DINACA 0xca
-#define DINACC 0xcc
-#define DINACE 0xce
-#define DINAD8 0xd8
-#define DINADD 0xdd
-#define DINAF8 0xf0
-#define DINAFE 0xfe
-
-#define DINBF8 0xf8
-#define DINAC0 0xb0
-#define DINAC1 0xb1
-#define DINAC2 0xb4
-#define DINAC3 0xb5
-#define DINAC4 0xb8
-#define DINAC5 0xb9
-#define DINBC0 0xc0
-#define DINBC2 0xc2
-#define DINBC4 0xc4
-#define DINBC6 0xc6
-#else
-#error No CONFIG_MPU_SENSORS_xxxx has been defined.
-#endif
 
 
 #endif // DMPKEY_H__

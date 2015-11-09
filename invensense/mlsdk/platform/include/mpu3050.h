@@ -27,10 +27,6 @@
 #include <linux/types.h>
 #endif
 
-#if !defined CONFIG_MPU_SENSORS_MPU3050
-#error MPU6000 build including MPU3050 header
-#endif
-
 #define MPU_NAME "mpu3050"
 #define DEFAULT_MPU_SLAVEADDR       0x68
 

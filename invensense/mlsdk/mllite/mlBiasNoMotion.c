@@ -71,30 +71,6 @@ inv_error_t inv_set_motion_callback(void (*func) (unsigned short motion_state))
     return INV_SUCCESS;
 }
 
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-    defined CONFIG_MPU_SENSORS_MPU6050B1
-/** Turns on the feature to compute gyro bias from No Motion */
-inv_error_t inv_turn_on_bias_from_no_motion()
-{
-    inv_error_t result;
-    unsigned char regs[3] = { 0x0d, DINA35, 0x5d };
-    inv_params_obj.bias_mode |= INV_BIAS_FROM_NO_MOTION;
-    result = inv_set_mpu_memory(KEY_CFG_MOTION_BIAS, 3, regs);
-    return result;
-}
-
-/** Turns off the feature to compute gyro bias from No Motion
-*/
-inv_error_t inv_turn_off_bias_from_no_motion()
-{
-    inv_error_t result;
-    unsigned char regs[3] = { DINA90 + 8, DINA90 + 8, DINA90 + 8 };
-    inv_params_obj.bias_mode &= ~INV_BIAS_FROM_NO_MOTION;
-    result = inv_set_mpu_memory(KEY_CFG_MOTION_BIAS, 3, regs);
-    return result;
-}
-#endif
-
 inv_error_t inv_update_bias(void)
 {
     INVENSENSE_FUNC_START;
@@ -237,7 +213,6 @@ inv_error_t MLPollMotionStatus(struct inv_obj_t * inv_obj)
 
     inv_obj->poll_no_motion = currentTime;
 
-#if defined CONFIG_MPU_SENSORS_MPU3050
     if (inv_get_gyro_present()
         && ((inv_params_obj.bias_mode & INV_BIAS_FROM_FAST_NO_MOTION) == 0)) {
         static long repeatBiasUpdateTime = 0;
@@ -309,52 +284,7 @@ inv_error_t MLPollMotionStatus(struct inv_obj_t * inv_obj)
             }
         }
     }
-#else                           // CONFIG_MPU_SENSORS_MPU3050
-    if (inv_get_gyro_present()
-        && ((inv_params_obj.bias_mode & INV_BIAS_FROM_FAST_NO_MOTION) == 0)) {
-        result = inv_get_mpu_memory(KEY_D_1_98, 2, regs);
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
 
-        motionFlag = (unsigned short)regs[0] * 256 + (unsigned short)regs[1];
-
-        _mlDebug(MPL_LOGV("motionFlag from RAM : 0x%04X\n", motionFlag);
-            )
-            if (motionFlag > 0) {
-            unsigned char biasReg[12];
-            long biasTmp2[3], biasTmp[3];
-            int i;
-
-            if (inv_obj->last_motion != motionFlag) {
-                result = inv_get_mpu_memory(KEY_D_2_96, 12, biasReg);
-
-                for (i = 0; i < 3; i++) {
-                    biasTmp2[i] = inv_big8_to_int32(&biasReg[i * 4]);
-                }
-                // Rotate bias vector by the transpose of the orientation matrix
-                for (i = 0; i < 3; ++i) {
-                    biasTmp[i] =
-                        inv_q30_mult(biasTmp2[0],
-                                     inv_obj->gyro_orient[i]) +
-                        inv_q30_mult(biasTmp2[1],
-                                     inv_obj->gyro_orient[i + 3]) +
-                        inv_q30_mult(biasTmp2[2], inv_obj->gyro_orient[i + 6]);
-                }
-                inv_obj->gyro_bias[0] = inv_q30_mult(biasTmp[0], 1501974482L);
-                inv_obj->gyro_bias[1] = inv_q30_mult(biasTmp[1], 1501974482L);
-                inv_obj->gyro_bias[2] = inv_q30_mult(biasTmp[2], 1501974482L);
-            }
-            inv_set_motion_state(INV_NO_MOTION);
-        } else {
-            // We are in a motion state
-            inv_set_motion_state(INV_MOTION);
-        }
-        inv_obj->last_motion = motionFlag;
-
-    }
-#endif                          // CONFIG_MPU_SENSORS_MPU3050
     return INV_SUCCESS;
 }
 
@@ -365,14 +295,6 @@ inv_error_t inv_enable_bias_no_motion(void)
     result =
         inv_register_fifo_rate_process(MLPollMotionStatus,
                                        INV_PRIORITY_BIAS_NO_MOTION);
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-    defined CONFIG_MPU_SENSORS_MPU6050B1
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-    result = inv_turn_on_bias_from_no_motion();
-#endif
     return result;
 }
 
@@ -381,13 +303,5 @@ inv_error_t inv_disable_bias_no_motion(void)
     inv_error_t result;
     inv_params_obj.bias_mode &= ~INV_BIAS_FROM_NO_MOTION;
     result = inv_unregister_fifo_rate_process(MLPollMotionStatus);
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-    defined CONFIG_MPU_SENSORS_MPU6050B1
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-    result = inv_turn_off_bias_from_no_motion();
-#endif
     return result;
 }

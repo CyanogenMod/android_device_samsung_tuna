@@ -33,15 +33,7 @@
 
 #include <string.h>
 #include "mpu.h"
-#if defined CONFIG_MPU_SENSORS_MPU6050A2
-#    include "mpu6050a2.h"
-#elif defined CONFIG_MPU_SENSORS_MPU6050B1
-#    include "mpu6050b1.h"
-#elif defined CONFIG_MPU_SENSORS_MPU3050
-#  include "mpu3050.h"
-#else
-#error Invalid or undefined CONFIG_MPU_SENSORS_MPUxxxx
-#endif
+#include "mpu3050.h"
 #include "mlFIFO.h"
 #include "mlFIFOHW.h"
 #include "dmpKey.h"
@@ -765,18 +757,8 @@ inv_error_t inv_process_fifo_packet(const unsigned char *dmpData)
 */
 long inv_decode_temperature(short tempReg)
 {
-#if defined CONFIG_MPU_SENSORS_MPU6050A2
-    // Celcius = 35 + (T + 3048.7)/325.9
-    return 2906830L + inv_q30_mult((long)tempReg << 16, 3294697L);
-#endif
-#if defined CONFIG_MPU_SENSORS_MPU6050B1
-    // Celcius = 35 + (T + 927.4)/360.6
-    return 2462307L + inv_q30_mult((long)tempReg << 16, 2977653L);
-#endif
-#if defined CONFIG_MPU_SENSORS_MPU3050
     // Celcius = 35 + (T + 13200)/280
     return 5383314L + inv_q30_mult((long)tempReg << 16, 3834792L);
-#endif
 }
 
 /**  @internal
@@ -957,24 +939,8 @@ inv_error_t inv_get_gyro_and_accel_sensor(long *data)
  */
 inv_error_t inv_get_external_sensor_data(long *data, int size)
 {
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-	defined CONFIG_MPU_SENSORS_MPU6050B1
-    int ii;
-    if (data == NULL)
-        return INV_ERROR_INVALID_PARAMETER;
-
-    if (!fifo_obj.data_config[CONFIG_RAW_EXTERNAL])
-        return INV_ERROR_FEATURE_NOT_ENABLED;
-
-    for (ii = 0; ii < size && ii < 6; ii++) {
-        data[ii] = fifo_obj.decoded[REF_RAW_EXTERNAL + ii];
-    }
-
-    return INV_SUCCESS;
-#else
     memset(data, 0, COMPASS_NUM_AXES * sizeof(long));
     return INV_ERROR_FEATURE_NOT_IMPLEMENTED;
-#endif
 }
 
 /**
@@ -1298,61 +1264,6 @@ inv_error_t inv_send_quaternion(uint_fast16_t accuracy)
 inv_error_t inv_send_sensor_data(uint_fast16_t elements, uint_fast16_t accuracy)
 {
     int result;
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-	defined CONFIG_MPU_SENSORS_MPU6050B1
-    unsigned char regs[7] = { DINAA0 + 3, DINAA0 + 3, DINAA0 + 3,
-        DINAA0 + 3, DINAA0 + 3, DINAA0 + 3,
-        DINAA0 + 3
-    };
-
-    if (inv_get_state() < INV_STATE_DMP_OPENED)
-        return INV_ERROR_SM_IMPROPER_STATE;
-
-    if (accuracy)
-        accuracy = INV_16_BIT;
-
-    elements = inv_set_fifo_reference(elements, accuracy, REF_RAW, 7);
-
-    if (elements & 1)
-        fifo_obj.data_config[CONFIG_TEMPERATURE] = 1 | INV_16_BIT;
-    else
-        fifo_obj.data_config[CONFIG_TEMPERATURE] = 0;
-    if (elements & 0x7e)
-        fifo_obj.data_config[CONFIG_RAW_DATA] =
-            (0x3f & (elements >> 1)) | INV_16_BIT;
-    else
-        fifo_obj.data_config[CONFIG_RAW_DATA] = 0;
-
-    if (elements & INV_ELEMENT_1) {
-        regs[0] = DINACA;
-    }
-    if (elements & INV_ELEMENT_2) {
-        regs[1] = DINBC4;
-    }
-    if (elements & INV_ELEMENT_3) {
-        regs[2] = DINACC;
-    }
-    if (elements & INV_ELEMENT_4) {
-        regs[3] = DINBC6;
-    }
-    if (elements & INV_ELEMENT_5) {
-        regs[4] = DINBC0;
-    }
-    if (elements & INV_ELEMENT_6) {
-        regs[5] = DINAC8;
-    }
-    if (elements & INV_ELEMENT_7) {
-        regs[6] = DINBC2;
-    }
-    result = inv_set_mpu_memory(KEY_CFG_15, 7, regs);
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-
-    return inv_set_footer();
-
-#else
     INVENSENSE_FUNC_START;
     unsigned char regs[4] = { DINAA0 + 3,
         DINAA0 + 3,
@@ -1402,7 +1313,6 @@ inv_error_t inv_send_sensor_data(uint_fast16_t elements, uint_fast16_t accuracy)
         fifo_obj.data_config[CONFIG_RAW_DATA] = 0;
 
     return inv_set_footer();
-#endif
 }
 
 /** Sends raw external data to the FIFO.
@@ -1417,56 +1327,7 @@ inv_error_t inv_send_sensor_data(uint_fast16_t elements, uint_fast16_t accuracy)
 inv_error_t inv_send_external_sensor_data(uint_fast16_t elements,
                                           uint_fast16_t accuracy)
 {
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-	defined CONFIG_MPU_SENSORS_MPU6050B1
-    int result;
-    unsigned char regs[6] = { DINAA0 + 3, DINAA0 + 3,
-                              DINAA0 + 3, DINAA0 + 3,
-                              DINAA0 + 3, DINAA0 + 3 };
-
-    if (inv_get_state() < INV_STATE_DMP_OPENED)
-        return INV_ERROR_SM_IMPROPER_STATE;
-
-    if (accuracy)
-        accuracy = INV_16_BIT;
-
-    elements = inv_set_fifo_reference(elements, accuracy, REF_RAW_EXTERNAL, 6);
-
-    if (elements)
-        fifo_obj.data_config[CONFIG_RAW_EXTERNAL] = elements | INV_16_BIT;
-    else
-        fifo_obj.data_config[CONFIG_RAW_EXTERNAL] = 0;
-
-    if (elements & INV_ELEMENT_1) {
-        regs[0] = DINBC2;
-    }
-    if (elements & INV_ELEMENT_2) {
-        regs[1] = DINACA;
-    }
-    if (elements & INV_ELEMENT_3) {
-        regs[2] = DINBC4;
-    }
-    if (elements & INV_ELEMENT_4) {
-        regs[3] = DINBC0;
-    }
-    if (elements & INV_ELEMENT_5) {
-        regs[4] = DINAC8;
-    }
-    if (elements & INV_ELEMENT_6) {
-        regs[5] = DINACC;
-    }
-
-    result = inv_set_mpu_memory(KEY_CFG_EXTERNAL, sizeof(regs), regs);
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-
-    return inv_set_footer();
-
-#else
     return INV_ERROR_FEATURE_NOT_IMPLEMENTED;    // Feature not supported
-#endif
 }
 
 /**

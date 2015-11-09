@@ -39,15 +39,7 @@
 #include <string.h>
 
 #include "mpu.h"
-#if defined CONFIG_MPU_SENSORS_MPU6050A2
-#    include "mpu6050a2.h"
-#elif defined CONFIG_MPU_SENSORS_MPU6050B1
-#    include "mpu6050b1.h"
-#elif defined CONFIG_MPU_SENSORS_MPU3050
-#  include "mpu3050.h"
-#else
-#error Invalid or undefined CONFIG_MPU_SENSORS_MPUxxxx
-#endif
+#include "mpu3050.h"
 #include "mldl.h"
 #include "mldl_cfg.h"
 #include "compass.h"
@@ -422,12 +414,10 @@ inv_error_t inv_get_dl_cfg_int(unsigned char triggers)
 {
     inv_error_t result = INV_SUCCESS;
 
-#if defined CONFIG_MPU_SENSORS_MPU3050
     /* Mantis has 8 bits of interrupt config bits */
     if (triggers & !(BIT_MPU_RDY_EN | BIT_DMP_INT_EN | BIT_RAW_RDY_EN)) {
         return INV_ERROR_INVALID_PARAMETER;
     }
-#endif
 
     mldlCfg.int_config = triggers;
     if (!mldlCfg.gyro_is_suspended) {
@@ -617,7 +607,6 @@ inv_error_t inv_set_offsetTC(const unsigned char *tc)
     }
 
     if (!mldlCfg.gyro_is_suspended) {
-#ifdef CONFIG_MPU_SENSORS_MPU3050
         result = inv_serial_single_write(sMLSLHandle, mldlCfg.addr,
                                          MPUREG_XG_OFFS_TC, tc[0]);
         if (result) {
@@ -636,36 +625,6 @@ inv_error_t inv_set_offsetTC(const unsigned char *tc)
             LOG_RESULT_LOCATION(result);
             return result;
         }
-#else
-        unsigned char reg;
-        result = inv_serial_single_write(sMLSLHandle, mldlCfg.addr,
-                                         MPUREG_XG_OFFS_TC,
-                                         ((mldlCfg.offset_tc[0] << 1)
-                                          & BITS_XG_OFFS_TC));
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-        reg = ((mldlCfg.offset_tc[1] << 1) & BITS_YG_OFFS_TC);
-#ifdef CONFIG_MPU_SENSORS_MPU6050B1
-        if (mldlCfg.pdata->level_shifter)
-            reg |= BIT_I2C_MST_VDDIO;
-#endif
-        result = inv_serial_single_write(sMLSLHandle, mldlCfg.addr,
-                                         MPUREG_YG_OFFS_TC, reg);
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-        result = inv_serial_single_write(sMLSLHandle, mldlCfg.addr,
-                                         MPUREG_ZG_OFFS_TC,
-                                         ((mldlCfg.offset_tc[2] << 1)
-                                          & BITS_ZG_OFFS_TC));
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-#endif
     } else {
         mldlCfg.gyro_needs_reset = TRUE;
     }

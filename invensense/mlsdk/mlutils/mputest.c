@@ -275,7 +275,6 @@ void inv_set_test_parameters(unsigned int slave_addr, float sensitivity,
 #define Y   (1)
 #define Z   (2)
 
-#ifdef CONFIG_MPU_SENSORS_MPU3050
 /**
  *  @brief  Test the gyroscope sensor.
  *          Implements the core logic of the MPU Self Test.
@@ -546,235 +545,6 @@ int inv_test_gyro_3050(void *mlsl_handle,
     return retVal;
 }
 
-#else /* CONFIG_MPU_SENSORS_MPU3050 */
-
-/**
- *  @brief  Test the gyroscope sensor.
- *          Implements the core logic of the MPU Self Test but does not provide
- *          a PASS/FAIL output as in the MPU-3050 implementation.
- *  @param  mlsl_handle
- *              serial interface handle to allow serial communication with the
- *              device, both gyro and accelerometer.
- *  @param  gyro_biases
- *              output pointer to store the initial bias calculation provided
- *              by the MPU Self Test.  Requires 3 elements for gyro X, Y,
- *              and Z.
- *  @param  temp_avg
- *              output pointer to store the initial average temperature as
- *              provided by the MPU Self Test.
- *
- *  @return 0 on success.
- *          A non-zero error code on error.
- */
-int inv_test_gyro_6050(void *mlsl_handle,
-                       short gyro_biases[3], short *temp_avg)
-{
-    inv_error_t result;
-
-    int total_count = 0;
-    int total_count_axis[3] = {0, 0, 0};
-    int packet_count;
-    short x[DEF_TEST_TIME_PER_AXIS / 8 * 4] = {0};
-    short y[DEF_TEST_TIME_PER_AXIS / 8 * 4] = {0};
-    short z[DEF_TEST_TIME_PER_AXIS / 8 * 4] = {0};
-    unsigned char regs[7];
-
-    int temperature = 0;
-    float Avg[3];
-    int i, j, tmp;
-    char tmpStr[200];
-
-    /* sample rate = 8ms */
-    result = inv_serial_single_write(
-                mlsl_handle, mputestCfgPtr->addr,
-                MPUREG_SMPLRT_DIV, 0x07);
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-
-    regs[0] = 0x03; /* filter = 42Hz, analog_sample rate = 1 KHz */
-    switch (DEF_GYRO_FULLSCALE) {
-        case 2000:
-            regs[0] |= 0x18;
-            break;
-        case 1000:
-            regs[0] |= 0x10;
-            break;
-        case 500:
-            regs[0] |= 0x08;
-            break;
-        case 250:
-        default:
-            regs[0] |= 0x00;
-            break;
-    }
-    result = inv_serial_single_write(
-                mlsl_handle, mputestCfgPtr->addr,
-                MPUREG_CONFIG, regs[0]);
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-    result = inv_serial_single_write(
-                mlsl_handle, mputestCfgPtr->addr,
-                MPUREG_INT_ENABLE, 0x00);
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-
-    /* 1st, timing test */
-    for (j = 0; j < 3; j++) {
-        MPL_LOGI("Collecting gyro data from %s gyro PLL\n", a_name[j]);
-
-        /* turn on all gyros, use gyro X for clocking
-           Set to Y and Z for 2nd and 3rd iteration */
-#ifdef CONFIG_MPU_SENSORS_MPU6050A2
-        result = inv_serial_single_write(
-                    mlsl_handle, mputestCfgPtr->addr,
-                    MPUREG_PWR_MGMT_1, BITS_PWRSEL | (j + 1));
-#else
-        result = inv_serial_single_write(
-                    mlsl_handle, mputestCfgPtr->addr,
-                    MPUREG_PWR_MGMT_1, j + 1);
-#endif
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-
-        /* wait for 2 ms after switching clock source */
-        usleep(2000);
-
-        /* enable/reset FIFO */
-        result = inv_serial_single_write(
-                    mlsl_handle, mputestCfgPtr->addr,
-                    MPUREG_USER_CTRL, BIT_FIFO_EN | BIT_FIFO_RST);
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-
-        tmp = (int)(test_setup.test_time_per_axis / 600);
-        while (tmp-- > 0) {
-            /* enable XYZ gyro in FIFO and nothing else */
-            result = inv_serial_single_write(mlsl_handle,
-                        mputestCfgPtr->addr, MPUREG_FIFO_EN,
-                        BIT_GYRO_XOUT | BIT_GYRO_YOUT | BIT_GYRO_ZOUT);
-            if (result) {
-                LOG_RESULT_LOCATION(result);
-                return result;
-            }
-
-            /* wait for 600 ms for data */
-            usleep(600000);
-            /* stop storing gyro in the FIFO */
-            result = inv_serial_single_write(
-                        mlsl_handle, mputestCfgPtr->addr,
-                        MPUREG_FIFO_EN, 0x00);
-            if (result) {
-                LOG_RESULT_LOCATION(result);
-                return result;
-            }
-            /* Getting number of bytes in FIFO */
-            result = inv_serial_read(
-                           mlsl_handle, mputestCfgPtr->addr,
-                           MPUREG_FIFO_COUNTH, 2, dataout);
-            if (result) {
-                LOG_RESULT_LOCATION(result);
-                return result;
-            }
-            /* number of 6 B packets in the FIFO */
-            packet_count = CHARS_TO_SHORT(dataout) / 6;
-            sprintf(tmpStr, "Packet Count: %d - ", packet_count);
-
-            if (abs(packet_count - test_setup.packet_thresh)
-                        <=      /* Within +/- total_timing_tol % range */
-                     test_setup.total_timing_tol * test_setup.packet_thresh) {
-                for (i = 0; i < packet_count; i++) {
-                    /* getting FIFO data */
-                    result = inv_serial_read_fifo(mlsl_handle,
-                                mputestCfgPtr->addr, 6, dataout);
-                    if (result) {
-                        LOG_RESULT_LOCATION(result);
-                        return result;
-                    }
-                    x[total_count + i] = CHARS_TO_SHORT(&dataout[0]);
-                    y[total_count + i] = CHARS_TO_SHORT(&dataout[2]);
-                    z[total_count + i] = CHARS_TO_SHORT(&dataout[4]);
-                    if (VERBOSE_OUT) {
-                        MPL_LOGI("Gyros %-4d    : %+13d %+13d %+13d\n",
-                                    total_count + i, x[total_count + i],
-                                    y[total_count + i], z[total_count + i]);
-                    }
-                }
-                total_count += packet_count;
-                total_count_axis[j] += packet_count;
-                sprintf(tmpStr, "%sOK", tmpStr);
-            } else {
-                sprintf(tmpStr, "%sNOK - samples ignored", tmpStr);
-            }
-            MPL_LOGI("%s\n", tmpStr);
-        }
-
-        /* remove gyros from FIFO */
-        result = inv_serial_single_write(
-                    mlsl_handle, mputestCfgPtr->addr,
-                    MPUREG_FIFO_EN, 0x00);
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-
-        /* Read Temperature */
-        result = inv_serial_read(mlsl_handle, mputestCfgPtr->addr,
-                    MPUREG_TEMP_OUT_H, 2, dataout);
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-        temperature += (short)CHARS_TO_SHORT(dataout);
-    }
-
-    MPL_LOGI("\n");
-    MPL_LOGI("Total %d samples\n", total_count);
-    MPL_LOGI("\n");
-
-    /* 2nd, check bias from X and Y PLL clock source */
-    tmp = total_count != 0 ? total_count : 1;
-    for (i = 0,
-            Avg[X] = .0f, Avg[Y] = .0f, Avg[Z] = .0f;
-         i < total_count; i++) {
-        Avg[X] += 1.f * x[i] / tmp;
-        Avg[Y] += 1.f * y[i] / tmp;
-        Avg[Z] += 1.f * z[i] / tmp;
-    }
-    MPL_LOGI("bias          : %+13.3f %+13.3f %+13.3f (LSB)\n",
-             Avg[X], Avg[Y], Avg[Z]);
-    if (VERBOSE_OUT) {
-        MPL_LOGI("              : %+13.3f %+13.3f %+13.3f (dps)\n",
-                 Avg[X] / adjGyroSens,
-                 Avg[Y] / adjGyroSens,
-                 Avg[Z] / adjGyroSens);
-    }
-
-    temperature /= 3;
-    if (VERBOSE_OUT)
-        MPL_LOGI("Temperature   : %+13.3f %13s %13s (deg. C)\n",
-                 SHORT_TO_TEMP_C(temperature), "", "");
-
-    /* load into final storage */
-    *temp_avg = (short)temperature;
-    gyro_biases[X] = FLOAT_TO_SHORT(Avg[X]);
-    gyro_biases[Y] = FLOAT_TO_SHORT(Avg[Y]);
-    gyro_biases[Z] = FLOAT_TO_SHORT(Avg[Z]);
-
-    return INV_SUCCESS;
-}
-
-#endif /* CONFIG_MPU_SENSORS_MPU3050 */
-
 #ifdef TRACK_IDS
 /**
  *  @internal
@@ -992,12 +762,12 @@ static inv_error_t inv_device_power_mgmt(void *mlsl_handle,
         result = inv_serial_single_write(
                     mlsl_handle, mputestCfgPtr->addr,
                     MPUREG_PWR_MGM, pwr_mgm | BIT_H_RESET);
-#ifndef CONFIG_MPU_SENSORS_MPU6050A2
+
         if (result) {
             LOG_RESULT_LOCATION(result);
             return result;
         }
-#endif
+
         inv_sleep(5);
 
         /* re-read power mgmt reg -
@@ -1011,17 +781,6 @@ static inv_error_t inv_device_power_mgmt(void *mlsl_handle,
         }
 
         /* wake up */
-#ifdef CONFIG_MPU_SENSORS_MPU6050A2
-        if ((b & BITS_PWRSEL) != BITS_PWRSEL) {
-            result = inv_serial_single_write(
-                        mlsl_handle, mputestCfgPtr->addr,
-                        MPUREG_PWR_MGM, BITS_PWRSEL);
-            if (result) {
-                LOG_RESULT_LOCATION(result);
-                return result;
-            }
-        }
-#else
         if (pwr_mgm & BIT_SLEEP) {
             result = inv_serial_single_write(
                         mlsl_handle, mputestCfgPtr->addr,
@@ -1031,32 +790,10 @@ static inv_error_t inv_device_power_mgmt(void *mlsl_handle,
                 return result;
             }
         }
-#endif
-        inv_sleep(60);
 
-#if defined(CONFIG_MPU_SENSORS_MPU6050A2) || \
-    defined(CONFIG_MPU_SENSORS_MPU6050B1)
-        result = inv_serial_single_write(
-                    mlsl_handle, mputestCfgPtr->addr,
-                    MPUREG_INT_PIN_CFG, BIT_BYPASS_EN);
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-#endif
+        inv_sleep(60);
     } else {
         /* restore the power state the part was found in */
-#ifdef CONFIG_MPU_SENSORS_MPU6050A2
-        if ((pwr_mgm & BITS_PWRSEL) != BITS_PWRSEL) {
-            result = inv_serial_single_write(
-                        mlsl_handle, mputestCfgPtr->addr,
-                        MPUREG_PWR_MGM, pwr_mgm);
-            if (result) {
-                LOG_RESULT_LOCATION(result);
-                return result;
-            }
-        }
-#else
         if (pwr_mgm & BIT_SLEEP) {
             result = inv_serial_single_write(
                         mlsl_handle, mputestCfgPtr->addr,
@@ -1066,7 +803,6 @@ static inv_error_t inv_device_power_mgmt(void *mlsl_handle,
                 return result;
             }
         }
-#endif
     }
 
     return INV_SUCCESS;
@@ -1140,15 +876,8 @@ int inv_mpu_test(void *mlsl_handle, uint_fast8_t provide_result)
     test_setup.gyro_fs = (int)(32768.f / adjGyroSens);
 
     /* collect gyro and temperature data */
-#ifdef CONFIG_MPU_SENSORS_MPU3050
     result = inv_test_gyro_3050(mlsl_handle,
                 gyro_biases, &temp_avg, provide_result);
-#else
-    MPL_LOGW_IF(provide_result,
-                "Self Test for MPU-6050 devices is for bias correction only: "
-                "no test PASS/FAIL result will be provided\n");
-    result = inv_test_gyro_6050(mlsl_handle, gyro_biases, &temp_avg);
-#endif
 
     MPL_LOGI("\n");
     MPL_LOGI("Test time : %ld ms\n", inv_get_tick_count() - testStart);
@@ -1163,28 +892,12 @@ int inv_mpu_test(void *mlsl_handle, uint_fast8_t provide_result)
         accelSens[0] = (long)(32768L / fs);
         accelSens[1] = (long)(32768L / fs);
         accelSens[2] = (long)(32768L / fs);
-#if defined CONFIG_MPU_SENSORS_MPU6050B1
-        if (MPL_PROD_KEY(mputestCfgPtr->product_id,
-                mputestCfgPtr->product_revision) == MPU_PRODUCT_KEY_B1_E1_5) {
-            accelSens[2] /= 2;
-        } else {
-            unsigned short trim_corr = 16384 / mputestCfgPtr->accel_sens_trim;
-            accelSens[0] /= trim_corr;
-            accelSens[1] /= trim_corr;
-            accelSens[2] /= trim_corr;
-        }
-#endif
     } else {
         /* would be 0, but 1 to avoid divide-by-0 below */
         accelSens[0] = accelSens[1] = accelSens[2] = 1;
     }
-#ifdef CONFIG_MPU_SENSORS_MPU3050
     result = inv_test_accel(mlsl_handle, accel_biases, accelSens[2],
                             provide_result);
-#else
-    result = inv_test_accel(mlsl_handle, accel_biases, accelSens[2],
-                            FALSE);
-#endif
     if (result)
         return result;
 
@@ -1342,17 +1055,9 @@ static inv_error_t test_get_data(
     inv_error_t result;
     unsigned char data[20];
     struct ext_slave_descr *slave = mputestCfgPtr->accel;
-#ifndef CONFIG_MPU_SENSORS_MPU3050
-    struct ext_slave_platform_data *pdata = &mputestCfgPtr->pdata->accel;
-#endif
 
-#ifdef CONFIG_MPU_SENSORS_MPU3050
     result = inv_serial_read(mlsl_handle, mputestCfgPtr->addr, 0x23,
                              6, data);
-#else
-    result = inv_serial_read(mlsl_handle, pdata->address, slave->read_reg,
-                            slave->read_len, data);
-#endif
     if (result) {
         LOG_RESULT_LOCATION(result);
         return result;

@@ -86,16 +86,6 @@ void inv_init_sensor_fusion_supervisor(void)
     yas_filter_init(&f);
     f.init(&handle);
 
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-	defined CONFIG_MPU_SENSORS_MPU6050B1
-    if (inv_compass_present()) {
-        struct mldl_cfg *mldl_cfg = inv_get_dl_config();
-        if (mldl_cfg->pdata->compass.bus == EXT_SLAVE_BUS_SECONDARY) {
-            (void)inv_send_external_sensor_data(INV_ELEMENT_1 | INV_ELEMENT_2 | INV_ELEMENT_3, INV_16_BIT);
-        }
-    }
-#endif
-
     if (ml_supervisor_cb.supervisor_reset_func != NULL) {
         ml_supervisor_cb.supervisor_reset_func();
     }

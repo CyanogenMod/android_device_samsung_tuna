@@ -233,13 +233,8 @@ inv_error_t inv_apply_calibration(void)
     if (NULL != mldl_cfg->accel){
         RANGE_FIXEDPOINT_TO_FLOAT(mldl_cfg->accel->range, accelScale);
         inv_obj.accel_sens = (long)(accelScale * 65536L);
-    /* sensitivity adjustment, typically = 2 (for +/- 2 gee) */
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-    defined CONFIG_MPU_SENSORS_MPU6050B1
-    inv_obj.accel_sens /= 32768 / mldl_cfg->accel_sens_trim;
-#else
-    inv_obj.accel_sens /= 2;
-#endif
+        /* sensitivity adjustment, typically = 2 (for +/- 2 gee) */
+        inv_obj.accel_sens /= 2;
     }
     if (NULL != mldl_cfg->compass){
         RANGE_FIXEDPOINT_TO_FLOAT(mldl_cfg->compass->range, magScale);
@@ -460,7 +455,7 @@ inv_error_t inv_reset_motion(void)
     inv_obj.motion_state = INV_MOTION;
     inv_obj.flags[INV_MOTION_STATE_CHANGE] = INV_MOTION;
     inv_obj.no_motion_accel_time = inv_get_tick_count();
-#if defined CONFIG_MPU_SENSORS_MPU3050
+
     regs[0] = DINAD8 + 2;
     regs[1] = DINA0C;
     regs[2] = DINAD8 + 1;
@@ -469,8 +464,7 @@ inv_error_t inv_reset_motion(void)
         LOG_RESULT_LOCATION(result);
         return result;
     }
-#else
-#endif
+
     regs[0] = (unsigned char)((inv_obj.motion_duration >> 8) & 0xff);
     regs[1] = (unsigned char)(inv_obj.motion_duration & 0xff);
     result = inv_set_mpu_memory(KEY_D_1_106, 2, regs);
@@ -804,12 +798,7 @@ inv_error_t inv_set_accel_calibration(float range, signed char *orientation)
     }
 
     if (mldl_cfg->accel->id) {
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-    defined CONFIG_MPU_SENSORS_MPU6050B1
-        unsigned char tmp[3] = { DINA0C, DINAC9, DINA2C };
-#else
         unsigned char tmp[3] = { DINA4C, DINACD, DINA6C };
-#endif
         struct mldl_cfg *mldl_cfg = inv_get_dl_config();
         unsigned char regs[3];
         unsigned short orient;
@@ -831,15 +820,8 @@ inv_error_t inv_set_accel_calibration(float range, signed char *orientation)
 
         regs[0] = DINA26;
         regs[1] = DINA46;
-#if defined CONFIG_MPU_SENSORS_MPU3050 || defined CONFIG_MPU_SENSORS_MPU6050A2
         regs[2] = DINA66;
-#else
-        if (MPL_PROD_KEY(mldl_cfg->product_id, mldl_cfg->product_revision)
-                == MPU_PRODUCT_KEY_B1_E1_5)
-            regs[2] = DINA76;
-        else
-            regs[2] = DINA66;
-#endif
+
         if (orient & 4)
             regs[0] |= 1;
         if (orient & 0x20)
@@ -949,16 +931,9 @@ inv_error_t inv_set_gyro_calibration(float range, signed char *orientation)
     }
 
     {
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-    defined CONFIG_MPU_SENSORS_MPU6050B1
-        unsigned char tmpD = DINA4C;
-        unsigned char tmpE = DINACD;
-        unsigned char tmpF = DINA6C;
-#else
         unsigned char tmpD = DINAC9;
         unsigned char tmpE = DINA2C;
         unsigned char tmpF = DINACB;
-#endif
         regs[3] = DINA36;
         regs[4] = DINA56;
         regs[5] = DINA76;
@@ -1125,16 +1100,11 @@ inv_error_t inv_set_dead_zone(void)
     if (cntrl_params.functions & INV_DEAD_ZONE) {
         reg = 0x08;
     } else {
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-    defined CONFIG_MPU_SENSORS_MPU6050B1
-        reg = 0;
-#else
         if (inv_params_obj.bias_mode & INV_BIAS_FROM_LPF) {
             reg = 0x2;
         } else {
             reg = 0;
         }
-#endif
     }
 
     result = inv_set_mpu_memory(KEY_D_0_163, 1, &reg);
@@ -1815,71 +1785,6 @@ void inv_set_mode_change(inv_error_t(*mode_change_func)
 {
     inv_obj.mode_change_func = mode_change_func;
 }
-
-/**
-* Mantis setup
-*/
-#ifdef CONFIG_MPU_SENSORS_MPU6050B1
-inv_error_t inv_set_mpu_6050_config()
-{
-    long temp;
-    inv_error_t result;
-    unsigned char big8[4];
-    unsigned char atc[4];
-    long s[3], s2[3];
-    int kk;
-    struct mldl_cfg *mldlCfg = inv_get_dl_config();
-
-    result = inv_serial_read(inv_get_serial_handle(), inv_get_mpu_slave_addr(),
-                             0x0d, 4, atc);
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-
-    temp = atc[3] & 0x3f;
-    if (temp >= 32)
-        temp = temp - 64;
-    temp = (temp << 21) | 0x100000;
-    temp += (1L << 29);
-    temp = -temp;
-    result = inv_set_mpu_memory(KEY_D_ACT0, 4, inv_int32_to_big8(temp, big8));
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-
-    for (kk = 0; kk < 3; ++kk) {
-        s[kk] = atc[kk] & 0x3f;
-        if (s[kk] > 32)
-            s[kk] = s[kk] - 64;
-        s[kk] *= 2516582L;
-    }
-
-    for (kk = 0; kk < 3; ++kk) {
-        s2[kk] = mldlCfg->pdata->orientation[kk * 3] * s[0] +
-            mldlCfg->pdata->orientation[kk * 3 + 1] * s[1] +
-            mldlCfg->pdata->orientation[kk * 3 + 2] * s[2];
-    }
-    result = inv_set_mpu_memory(KEY_D_ACSX, 4, inv_int32_to_big8(s2[0], big8));
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-    result = inv_set_mpu_memory(KEY_D_ACSY, 4, inv_int32_to_big8(s2[1], big8));
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-    result = inv_set_mpu_memory(KEY_D_ACSZ, 4, inv_int32_to_big8(s2[2], big8));
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-
-    return result;
-}
-#endif
 
 /**
  * @}

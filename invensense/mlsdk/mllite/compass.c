@@ -304,48 +304,7 @@ inv_error_t inv_get_compass_data(long *data)
         inv_obj.compass_overunder = (int)tmp[6];
 
     } else {
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 ||             \
-    defined CONFIG_MPU_SENSORS_MPU6050B1
-        result = inv_get_external_sensor_data(data, 3);
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-#if defined CONFIG_MPU_SENSORS_MPU6050A2
-        {
-            static unsigned char first = TRUE;
-            // one-off write to AKM
-            if (first) {
-                unsigned char regs[] = {
-                    // beginning Mantis register for one-off slave R/W
-                    MPUREG_I2C_SLV4_ADDR,
-                    // the slave to write to
-                    mldl_cfg->pdata->compass.address,
-                    // the register to write to
-                    /*mldl_cfg->compass->trigger->reg */ 0x0A,
-                    // the value to write
-                    /*mldl_cfg->compass->trigger->value */ 0x01,
-                    // enable the write
-                    0xC0
-                };
-                result =
-                    inv_serial_write(inv_get_serial_handle(), mldl_cfg->addr,
-                                     ARRAY_SIZE(regs), regs);
-                first = FALSE;
-            } else {
-                unsigned char regs[] = {
-                    MPUREG_I2C_SLV4_CTRL,
-                    0xC0
-                };
-                result =
-                    inv_serial_write(inv_get_serial_handle(), mldl_cfg->addr,
-                                     ARRAY_SIZE(regs), regs);
-            }
-        }
-#endif
-#else
         return INV_ERROR_INVALID_CONFIGURATION;
-#endif                          // CONFIG_MPU_SENSORS_xxxx
     }
     data[0] = inv_q30_mult(data[0], inv_obj.compass_asa[0]);
     data[1] = inv_q30_mult(data[1], inv_obj.compass_asa[1]);

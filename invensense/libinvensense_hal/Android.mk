@@ -23,7 +23,6 @@ LOCAL_MODULE := libinvensense_hal.$(TARGET_BOOTLOADER_BOARD_NAME)
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_CFLAGS := -DLOG_TAG=\"Sensors\" -Werror -Wall
-LOCAL_CFLAGS += -DCONFIG_MPU_SENSORS_MPU3050=1
 
 LOCAL_SRC_FILES := SensorBase.cpp MPLSensor.cpp
 

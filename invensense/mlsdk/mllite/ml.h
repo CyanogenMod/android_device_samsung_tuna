@@ -456,13 +456,6 @@ struct inv_obj_t {
     /*API for setting bias update function */
     inv_error_t inv_set_bias_update(unsigned short biasFunction);
 
-#if defined CONFIG_MPU_SENSORS_MPU6050A2 || \
-    defined CONFIG_MPU_SENSORS_MPU6050B1
-    inv_error_t inv_turn_on_bias_from_no_motion(void);
-    inv_error_t inv_turn_off_bias_from_no_motion(void);
-    inv_error_t inv_set_mpu_6050_config(void);
-#endif
-
     /* Legacy functions for handling augmented data*/
     inv_error_t inv_get_array(int dataSet, long *data);
     inv_error_t inv_get_float_array(int dataSet, float *data);
