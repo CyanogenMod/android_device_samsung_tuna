@@ -71,27 +71,28 @@ extern "C" {
 
 /* Base values for the sensor list, these need to be in the order defined in MPLSensor.h */
 static struct sensor_t sSensorList[] =
-    { { "MPL Gyroscope", "Invensense", 1,
-         SENSORS_GYROSCOPE_HANDLE,
-         SENSOR_TYPE_GYROSCOPE, 2000.0f, 1.0f, 0.5f, 10000, 0, 0, 0, 0, 0, 0, { } },
-      { "MPL Accelerometer", "Invensense", 1,
-         SENSORS_ACCELERATION_HANDLE,
-         SENSOR_TYPE_ACCELEROMETER, 10240.0f, 1.0f, 0.5f, 10000, 0, 0, 0, 0, 0, 0, { } },
-      { "MPL Magnetic Field", "Invensense", 1,
-         SENSORS_MAGNETIC_FIELD_HANDLE,
-         SENSOR_TYPE_MAGNETIC_FIELD, 10240.0f, 1.0f, 0.5f, 10000, 0, 0, 0, 0, 0, 0, { } },
-      { "MPL Orientation", "Invensense", 1,
-         SENSORS_ORIENTATION_HANDLE,
-         SENSOR_TYPE_ORIENTATION, 360.0f, 1.0f, 9.7f, 10000, 0, 0, 0, 0, 0, 0, { } },
-      { "MPL Rotation Vector", "Invensense", 1,
-         SENSORS_ROTATION_VECTOR_HANDLE,
-         SENSOR_TYPE_ROTATION_VECTOR, 10240.0f, 1.0f, 0.5f, 10000, 0, 0, 0, 0, 0, 0, { } },
-      { "MPL Linear Acceleration", "Invensense", 1,
-         SENSORS_LINEAR_ACCEL_HANDLE,
-         SENSOR_TYPE_LINEAR_ACCELERATION, 10240.0f, 1.0f, 0.5f, 10000, 0, 0, 0, 0, 0, 0, { } },
-      { "MPL Gravity", "Invensense", 1,
-         SENSORS_GRAVITY_HANDLE,
-         SENSOR_TYPE_GRAVITY, 10240.0f, 1.0f, 0.5f, 10000, 0, 0, 0, 0, 0, 0, { } },
+{
+    {"MPL Gyroscope", "Invensense", 1, SENSORS_GYROSCOPE_HANDLE,
+     SENSOR_TYPE_GYROSCOPE, 2000.0f, 1.0f, 0.5f, 10000, 0, 0,
+     SENSOR_STRING_TYPE_GYROSCOPE, "", 0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Accelerometer", "Invensense", 1, SENSORS_ACCELERATION_HANDLE,
+     SENSOR_TYPE_ACCELEROMETER, 10240.0f, 1.0f, 0.5f, 10000, 0, 0,
+     SENSOR_STRING_TYPE_ACCELEROMETER, "", 0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Magnetic Field", "Invensense", 1, SENSORS_MAGNETIC_FIELD_HANDLE,
+     SENSOR_TYPE_MAGNETIC_FIELD, 10240.0f, 1.0f, 0.5f, 10000, 0, 0,
+     SENSOR_STRING_TYPE_MAGNETIC_FIELD, "", 0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Orientation", "Invensense", 1, SENSORS_ORIENTATION_HANDLE,
+     SENSOR_TYPE_ORIENTATION, 360.0f, 1.0f, 9.7f, 10000, 0, 0,
+     SENSOR_STRING_TYPE_ORIENTATION, "", 0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Rotation Vector", "Invensense", 1, SENSORS_ROTATION_VECTOR_HANDLE,
+     SENSOR_TYPE_ROTATION_VECTOR, 10240.0f, 1.0f, 0.5f, 10000, 0, 0,
+     SENSOR_STRING_TYPE_ORIENTATION, "", 0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Linear Acceleration", "Invensense", 1, SENSORS_LINEAR_ACCEL_HANDLE,
+     SENSOR_TYPE_LINEAR_ACCELERATION, 10240.0f, 1.0f, 0.5f, 10000, 0, 0,
+     SENSOR_STRING_TYPE_LINEAR_ACCELERATION, "", 0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Gravity", "Invensense", 1, SENSORS_GRAVITY_HANDLE,
+     SENSOR_TYPE_GRAVITY, 10240.0f, 1.0f, 0.5f, 10000, 0, 0,
+     SENSOR_STRING_TYPE_GRAVITY, "", 0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
 };
 
 static unsigned long long irq_timestamp = 0;
@@ -960,7 +961,7 @@ int MPLSensor::readEvents(sensors_event_t* data, int count)
         if (mEnabled & (1 << i)) {
             CALL_MEMBER_FN(this,mHandlers[i])(mPendingEvents + i,
                                               &mPendingMask, i);
-	    mPendingEvents[i].timestamp = irq_timestamp;
+            mPendingEvents[i].timestamp = irq_timestamp;
         }
     }
 
