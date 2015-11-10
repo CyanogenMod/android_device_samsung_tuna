@@ -146,10 +146,10 @@ MPLSensor::MPLSensor() :
             mNewData(0),
             mDmpStarted(false),
             mMasterSensorMask(INV_ALL_SENSORS),
-            mLocalSensorMask(ALL_MPL_SENSORS_NP), mPollTime(-1),
+            mLocalSensorMask(ALL_MPL_SENSORS_NP),
             mCurFifoRate(-1), mHaveGoodMpuCal(false), mHaveGoodCompassCal(false),
             mUseTimerIrqAccel(false), mUsetimerIrqCompass(true),
-            mUseTimerirq(false), mSampleCount(0),
+            mUseTimerirq(false),
             mEnabled(0), mPendingMask(0)
 {
     FUNC_LOG;
@@ -413,7 +413,6 @@ void MPLSensor::setPowerStates(int enabled_sensors)
         clearIrqData(irq_set);
 
         mDmpStarted = false;
-        mPollTime = -1;
         mCurFifoRate = -1;
     }
 }
@@ -559,7 +558,6 @@ void MPLSensor::cbOnMotion(uint16_t val)
 void MPLSensor::cbProcData()
 {
     mNewData = 1;
-    mSampleCount++;
 }
 
 //these handlers transform mpl data into one of the Android sensor types
@@ -914,16 +912,6 @@ int MPLSensor::update_delay()
     return rv;
 }
 
-/* return the current time in nanoseconds */
-int64_t MPLSensor::now_ns(void)
-{
-    //FUNC_LOG;
-    struct timespec ts;
-
-    clock_gettime(CLOCK_BOOTTIME, &ts);
-    return (int64_t) ts.tv_sec * 1000000000 + ts.tv_nsec;
-}
-
 int MPLSensor::readEvents(sensors_event_t* data, int count)
 {
     //VFUNC_LOG;
@@ -998,17 +986,6 @@ int MPLSensor::getTimerFd() const
 int MPLSensor::getPowerFd() const
 {
     return (uintptr_t) inv_get_serial_handle();
-}
-
-int MPLSensor::getPollTime()
-{
-    return mPollTime;
-}
-
-bool MPLSensor::hasPendingEvents() const
-{
-    //if we are using the polling workaround, force the main loop to check for data every time
-    return (mPollTime != -1);
 }
 
 void MPLSensor::handlePowerEvent()

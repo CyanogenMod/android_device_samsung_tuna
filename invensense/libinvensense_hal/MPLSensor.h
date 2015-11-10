@@ -61,8 +61,6 @@ public:
     virtual int getAccelFd() const;
     virtual int getTimerFd() const;
     virtual int getPowerFd() const;
-    virtual int getPollTime();
-    virtual bool hasPendingEvents() const;
     virtual void handlePowerEvent();
     virtual void sleepEvent();
     virtual void wakeEvent();
@@ -91,7 +89,6 @@ protected:
     int mDmpStarted;
     long mMasterSensorMask;
     long mLocalSensorMask;
-    int mPollTime;
     int mCurFifoRate; //current fifo rate
     bool mHaveGoodMpuCal; //flag indicating that the cal file can be written
     bool mHaveGoodCompassCal;
@@ -99,10 +96,7 @@ protected:
     bool mUsetimerIrqCompass;
     bool mUseTimerirq;
     struct pollfd mPollFds[4];
-    int mSampleCount;
     pthread_mutex_t mMplMutex;
-    int64_t now_ns();
-    int64_t select_ns(unsigned long long time_set[]);
 
     enum FILEHANDLES
     {

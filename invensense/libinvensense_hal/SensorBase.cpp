@@ -82,13 +82,6 @@ bool SensorBase::hasPendingEvents() const {
     return false;
 }
 
-int64_t SensorBase::getTimestamp() {
-    struct timespec t;
-    t.tv_sec = t.tv_nsec = 0;
-    clock_gettime(CLOCK_BOOTTIME, &t);
-    return int64_t(t.tv_sec)*1000000000LL + t.tv_nsec;
-}
-
 int SensorBase::openInput(const char* inputName) {
     int fd = -1;
     const char *dirname = "/dev/input";

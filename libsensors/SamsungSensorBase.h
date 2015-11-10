@@ -40,6 +40,11 @@ protected:
     int mSensorCode;
     pthread_mutex_t mLock;
 
+    static int64_t getTimestamp();
+    static int64_t timevalToNano(timeval const& t) {
+        return t.tv_sec*1000000000LL + t.tv_usec*1000;
+    }
+
     char *makeSysfsName(const char *input_name,
                         const char *input_file);
 

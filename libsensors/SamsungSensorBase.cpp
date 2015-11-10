@@ -139,6 +139,13 @@ done:
     return result;
 }
 
+int64_t SamsungSensorBase::getTimestamp() {
+    struct timespec t;
+    t.tv_sec = t.tv_nsec = 0;
+    clock_gettime(CLOCK_BOOTTIME, &t);
+    return int64_t(t.tv_sec)*1000000000LL + t.tv_nsec;
+}
+
 int SamsungSensorBase::readEvents(sensors_event_t* data, int count)
 {
     if (count < 1)
