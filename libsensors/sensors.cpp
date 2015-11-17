@@ -121,8 +121,8 @@ static struct hw_module_methods_t sensors_module_methods = {
 struct sensors_module_t HAL_MODULE_INFO_SYM = {
         .common = {
                 .tag = HARDWARE_MODULE_TAG,
-                .version_major = 1,
-                .version_minor = 0,
+                .module_api_version = SENSORS_MODULE_API_VERSION_0_1,
+                .hal_api_version = HARDWARE_HAL_API_VERSION,
                 .id = SENSORS_HARDWARE_MODULE_ID,
                 .name = "Samsung Sensor module",
                 .author = "Samsung Electronic Company",
@@ -395,7 +395,8 @@ static int open_sensors(const struct hw_module_t* module,
     memset(&dev->device, 0, sizeof(sensors_poll_device_t));
 
     dev->device.common.tag = HARDWARE_DEVICE_TAG;
-    dev->device.common.version  = 0;
+    // TODO: We can't expect this version to be supported forever...
+    dev->device.common.version  = SENSORS_DEVICE_API_VERSION_0_1;
     dev->device.common.module   = const_cast<hw_module_t*>(module);
     dev->device.common.close    = poll__close;
     dev->device.activate        = poll__activate;
