@@ -85,9 +85,6 @@ WITH_DEXPREOPT_BOOT_IMG_ONLY := true
 
 EXTENDED_FONT_FOOTPRINT := true
 
-# Needed for RIL
-TARGET_NEEDS_BIONIC_MD5 := true
-
 # Wifi
 BOARD_WLAN_DEVICE                := bcmdhd
 BOARD_WLAN_DEVICE_REV            := bcm4330_b2
