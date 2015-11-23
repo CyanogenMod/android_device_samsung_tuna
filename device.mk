@@ -43,7 +43,8 @@ PRODUCT_PACKAGES += \
 
 # RIL
 PRODUCT_PACKAGES += \
-	libsecril-client
+	libsecril-client \
+	libsecril-compat
 
 # Charging mode
 PRODUCT_PACKAGES += \
