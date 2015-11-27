@@ -250,7 +250,7 @@ inv_error_t inv_serial_close(void *sl_handle)
     return INV_SUCCESS;
 }
 
-inv_error_t inv_serial_reset(void *sl_handle)
+inv_error_t inv_serial_reset(void *sl_handle __unused)
 {
     return INV_ERROR_FEATURE_NOT_IMPLEMENTED;
 }
@@ -267,7 +267,7 @@ inv_error_t inv_serial_single_write(void *sl_handle,
 }
 
 inv_error_t inv_serial_write(void *sl_handle,
-                         unsigned char slaveAddr,
+                         unsigned char slaveAddr __unused,
                          unsigned short length,
                          unsigned char const *data)
 {
@@ -293,7 +293,7 @@ inv_error_t inv_serial_write(void *sl_handle,
         int ii;
         for (ii = 0; ii < length; ii++) {
             snprintf(strchar, sizeof(strchar), "%02x", data[0]);
-            strncat(data_buff, strchar, sizeof(data_buff));
+            strncat(data_buff, strchar, (sizeof(data_buff) - strlen(data_buff) - 1));
         }
         MPL_LOGI("I2C Write Success %02x %02x: %s \n",
                  data[0], length, data_buff);
@@ -303,7 +303,7 @@ inv_error_t inv_serial_write(void *sl_handle,
 }
 
 inv_error_t inv_serial_read(void *sl_handle,
-                        unsigned char  slaveAddr,
+                        unsigned char  slaveAddr __unused,
                         unsigned char  registerAddr,
                         unsigned short length,
                         unsigned char  *data)
@@ -332,7 +332,7 @@ inv_error_t inv_serial_read(void *sl_handle,
         int ii;
         for (ii = 0; ii < length; ii++) {
             snprintf(strchar, sizeof(strchar), "%02x", data[0]);
-            strncat(data_buff, strchar, sizeof(data_buff));
+            strncat(data_buff, strchar, (sizeof(data_buff) - strlen(data_buff) - 1));
         }
         MPL_LOGI("I2C Read  Success %02x %02x: %s \n",
                   registerAddr, length, data_buff);
@@ -342,7 +342,7 @@ inv_error_t inv_serial_read(void *sl_handle,
 }
 
 inv_error_t inv_serial_write_mem(void *sl_handle,
-                            unsigned char mpu_addr,
+                            unsigned char mpu_addr __unused,
                             unsigned short memAddr,
                             unsigned short length,
                             const unsigned char *data)
@@ -365,7 +365,7 @@ inv_error_t inv_serial_write_mem(void *sl_handle,
         int ii;
         for (ii = 0; ii < length; ii++) {
             snprintf(strchar, sizeof(strchar), "%02x", data[0]);
-            strncat(data_buff, strchar, sizeof(data_buff));
+            strncat(data_buff, strchar, (sizeof(data_buff) - strlen(data_buff) - 1));
         }
         MPL_LOGI("I2C WriteMem Success %04x %04x: %s \n",
                  memAddr, length, data_buff);
@@ -374,7 +374,7 @@ inv_error_t inv_serial_write_mem(void *sl_handle,
 }
 
 inv_error_t inv_serial_read_mem(void *sl_handle,
-                           unsigned char  mpu_addr,
+                           unsigned char  mpu_addr __unused,
                            unsigned short memAddr,
                            unsigned short length,
                            unsigned char  *data)
@@ -402,7 +402,7 @@ inv_error_t inv_serial_read_mem(void *sl_handle,
         int ii;
         for (ii = 0; ii < length; ii++) {
             snprintf(strchar, sizeof(strchar), "%02x", data[0]);
-            strncat(data_buff, strchar, sizeof(data_buff));
+            strncat(data_buff, strchar, (sizeof(data_buff) - strlen(data_buff) - 1));
         }
         MPL_LOGI("I2C ReadMem Success %04x %04x: %s\n",
                  memAddr, length, data_buff);
@@ -411,7 +411,7 @@ inv_error_t inv_serial_read_mem(void *sl_handle,
 }
 
 inv_error_t inv_serial_write_fifo(void *sl_handle,
-                             unsigned char mpu_addr,
+                             unsigned char mpu_addr __unused,
                              unsigned short length,
                              const unsigned char *data)
 {
@@ -438,7 +438,7 @@ inv_error_t inv_serial_write_fifo(void *sl_handle,
         int ii;
         for (ii = 0; ii < length; ii++) {
             snprintf(strchar, sizeof(strchar), "%02x", data[0]);
-            strncat(data_buff, strchar, sizeof(data_buff));
+            strncat(data_buff, strchar, (sizeof(data_buff) - strlen(data_buff) - 1));
         }
         MPL_LOGI("I2C Write Success %02x %02x: %s\n",
                  MPUREG_FIFO_R_W, length, data_buff);
@@ -447,7 +447,7 @@ inv_error_t inv_serial_write_fifo(void *sl_handle,
 }
 
 inv_error_t inv_serial_read_fifo(void *sl_handle,
-                            unsigned char  mpu_addr,
+                            unsigned char  mpu_addr __unused,
                             unsigned short length,
                             unsigned char  *data)
 {
@@ -474,7 +474,7 @@ inv_error_t inv_serial_read_fifo(void *sl_handle,
         int ii;
         for (ii = 0; ii < length; ii++) {
             snprintf(strchar, sizeof(strchar), "%02x", data[0]);
-            strncat(data_buff, strchar, sizeof(data_buff));
+            strncat(data_buff, strchar, (sizeof(data_buff) - strlen(data_buff) - 1));
         }
         MPL_LOGI("I2C ReadFifo Success %02x %02x: %s\n",
                  MPUREG_FIFO_R_W, length, data_buff);

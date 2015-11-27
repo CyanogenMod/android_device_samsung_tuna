@@ -18,7 +18,7 @@
 #ifndef INV_INCLUDE_H__
 #define INV_INCLUDE_H__
 
-#define INVENSENSE_FUNC_START  typedef int invensensePutFunctionCallsHere
+#define INVENSENSE_FUNC_START
 
 #ifdef COVERAGE
 #include "utestCommon.h"

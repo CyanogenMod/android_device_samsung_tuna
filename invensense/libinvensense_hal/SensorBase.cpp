@@ -74,7 +74,7 @@ int SensorBase::getFd() const {
     return data_fd;
 }
 
-int SensorBase::setDelay(int32_t handle, int64_t ns) {
+int SensorBase::setDelay(int32_t handle __unused, int64_t ns __unused) {
     return 0;
 }
 

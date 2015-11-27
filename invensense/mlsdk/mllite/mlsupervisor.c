@@ -69,7 +69,7 @@ static yas_filter_handle_t handle;
 
 #define SUPERVISOR_DEBUG 0
 
-struct inv_supervisor_cb_obj ml_supervisor_cb = { 0 };
+struct inv_supervisor_cb_obj ml_supervisor_cb = { NULL, NULL, NULL, NULL, NULL };
 
 /**
  *  @brief  This initializes all variables that should be reset on
@@ -92,7 +92,7 @@ void inv_init_sensor_fusion_supervisor(void)
 }
 
 static int MLUpdateCompassCalibration3DOF(int command, long *data,
-                                          unsigned long deltaTime)
+                                          unsigned long deltaTime __unused)
 {
     INVENSENSE_FUNC_START;
     int retValue = INV_SUCCESS;
@@ -335,7 +335,7 @@ static inv_error_t MLSensorFusionSupervisor(double *magFB, long *accSF,
     } else if ((inv_obj.acc_state == SF_NORMAL)
                || (inv_obj.acc_state == SF_SLOW_SETTLE)) {
         *accSF = inv_obj.accel_sens * 64;   //Normal
-    } else if ((inv_obj.acc_state == SF_DISTURBANCE)) {
+    } else if (inv_obj.acc_state == SF_DISTURBANCE) {
         *accSF = inv_obj.accel_sens * 64;   //Don't use accel (should be 0)
     } else if (inv_obj.acc_state == SF_FAST_SETTLE) {
         *accSF = inv_obj.accel_sens * 512;  //Amplify accel

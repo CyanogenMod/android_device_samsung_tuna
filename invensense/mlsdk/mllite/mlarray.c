@@ -214,7 +214,7 @@ inv_error_t inv_get_rot_mat(long *data)
  *
  *  @return Zero if the command is successful; an ML error code otherwise.
  */
-inv_error_t inv_get_angular_velocity(long *data)
+inv_error_t inv_get_angular_velocity(long *data __unused)
 {
 
     return INV_ERROR_FEATURE_NOT_IMPLEMENTED;
@@ -1023,7 +1023,7 @@ inv_error_t inv_get_gyro_float(float *data)
  *
  *  @return INV_SUCCESS if the command is successful; an error code otherwise.
  */
-inv_error_t inv_get_angular_velocity_float(float *data)
+inv_error_t inv_get_angular_velocity_float(float *data __unused)
 {
     return INV_ERROR_FEATURE_NOT_IMPLEMENTED;
     /* not implemented. old (invalid) implementation:

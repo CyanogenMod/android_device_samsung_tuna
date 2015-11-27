@@ -202,9 +202,9 @@ void mpu_print_cfg(struct mldl_cfg * mldl_cfg)
  */
 int inv_mpu_open(struct mldl_cfg *mldl_cfg,
                  void *mlsl_handle,
-                 void *accel_handle,
-                 void *compass_handle,
-                 void *pressure_handle)
+                 void *accel_handle __unused,
+                 void *compass_handle __unused,
+                 void *pressure_handle __unused)
 {
     int result;
     result = ioctl((int)(uintptr_t)mlsl_handle, MPU_GET_MPU_CONFIG, mldl_cfg);
@@ -235,9 +235,9 @@ int inv_mpu_open(struct mldl_cfg *mldl_cfg,
  */
 int inv_mpu_close(struct mldl_cfg *mldl_cfg,
 		  void *mlsl_handle,
-		  void *accel_handle,
-		  void *compass_handle,
-		  void *pressure_handle)
+		  void *accel_handle __unused,
+		  void *compass_handle __unused,
+		  void *pressure_handle __unused)
 {
     int result = INV_SUCCESS;
 
@@ -248,9 +248,9 @@ int inv_mpu_close(struct mldl_cfg *mldl_cfg,
 
 int inv_mpu_resume(struct mldl_cfg* mldl_cfg,
                    void *mlsl_handle,
-                   void *accel_handle,
-                   void *compass_handle,
-                   void *pressure_handle,
+                   void *accel_handle __unused,
+                   void *compass_handle __unused,
+                   void *pressure_handle __unused,
                    unsigned long sensors)
 {
     int result;
@@ -279,9 +279,9 @@ int inv_mpu_resume(struct mldl_cfg* mldl_cfg,
 
 int inv_mpu_suspend(struct mldl_cfg *mldl_cfg,
                     void *mlsl_handle,
-                    void *accel_handle,
-                    void *compass_handle,
-                    void *pressure_handle,
+                    void *accel_handle __unused,
+                    void *compass_handle __unused,
+                    void *pressure_handle __unused,
                     unsigned long sensors)
 {
     int result;
@@ -327,9 +327,9 @@ int inv_mpu_suspend(struct mldl_cfg *mldl_cfg,
  */
 int inv_mpu_slave_read(struct mldl_cfg *mldl_cfg,
 		void *gyro_handle,
-		void *slave_handle,
+		void *slave_handle __unused,
 		struct ext_slave_descr *slave,
-		struct ext_slave_platform_data *pdata,
+		struct ext_slave_platform_data *pdata __unused,
 		unsigned char *data)
 {
     int result;
@@ -371,7 +371,7 @@ int inv_mpu_slave_read(struct mldl_cfg *mldl_cfg,
  */
 int inv_mpu_slave_config(struct mldl_cfg *mldl_cfg,
                      void *gyro_handle,
-                     void *slave_handle,
+                     void *slave_handle __unused,
                      struct ext_slave_config *data,
                      struct ext_slave_descr *slave,
                      struct ext_slave_platform_data *pdata)
@@ -430,10 +430,10 @@ int inv_mpu_slave_config(struct mldl_cfg *mldl_cfg,
  */
 int inv_mpu_get_slave_config(struct mldl_cfg *mldl_cfg,
                          void *gyro_handle,
-                         void *slave_handle,
+                         void *slave_handle __unused,
                          struct ext_slave_config *data,
                          struct ext_slave_descr *slave,
-                         struct ext_slave_platform_data *pdata)
+                         struct ext_slave_platform_data *pdata __unused)
 {
     int result;
     if (!mldl_cfg || !data || !slave) {

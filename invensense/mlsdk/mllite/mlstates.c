@@ -59,7 +59,7 @@ struct state_callback_obj {
     state_change_callback_t stateChangeCallbacks[MAX_STATE_CHANGE_PROCESSES];
 };
 
-static struct state_callback_obj sStateChangeCallbacks = { 0 };
+static struct state_callback_obj sStateChangeCallbacks = { 0, 0, { NULL } };
 
 /* --------------- */
 /* -  Functions. - */

@@ -151,7 +151,7 @@ static void tuna_power_set_interactive(struct power_module *module, int on)
 }
 
 static void tuna_power_hint(struct power_module *module, power_hint_t hint,
-                            void *data)
+                            void *data __unused)
 {
     struct tuna_power_module *tuna = (struct tuna_power_module *) module;
     char buf[80];

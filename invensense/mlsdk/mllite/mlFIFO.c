@@ -937,7 +937,7 @@ inv_error_t inv_get_gyro_and_accel_sensor(long *data)
  *  @param[out] data    3-element vector of external sensor
  *  @return     0 on success or an error code.
  */
-inv_error_t inv_get_external_sensor_data(long *data, int size)
+inv_error_t inv_get_external_sensor_data(long *data, int size __unused)
 {
     memset(data, 0, COMPASS_NUM_AXES * sizeof(long));
     return INV_ERROR_FEATURE_NOT_IMPLEMENTED;
@@ -1085,7 +1085,7 @@ inv_error_t inv_send_packet_number(uint_fast16_t accuracy)
  *
  *  @return INV_SUCCESS if successful, a non-zero error code otherwise.
  */
-inv_error_t inv_send_gravity(uint_fast16_t elements, uint_fast16_t accuracy)
+inv_error_t inv_send_gravity(uint_fast16_t elements __unused, uint_fast16_t accuracy)
 {
     INVENSENSE_FUNC_START;
     inv_error_t result;
@@ -1194,7 +1194,7 @@ inv_error_t inv_send_linear_accel(uint_fast16_t elements,
  *  @param[in] accuracy Set to INV_32_BIT for 32-bit data, or INV_16_BIT for 16
  *             bit data.
  */
-inv_error_t inv_send_linear_accel_in_world(uint_fast16_t elements,
+inv_error_t inv_send_linear_accel_in_world(uint_fast16_t elements __unused,
                                            uint_fast16_t accuracy)
 {
     INVENSENSE_FUNC_START;
@@ -1324,8 +1324,8 @@ inv_error_t inv_send_sensor_data(uint_fast16_t elements, uint_fast16_t accuracy)
  *            Sending and Stop sending are reference counted, so data actually
  *            stops when the reference reaches zero.
  */
-inv_error_t inv_send_external_sensor_data(uint_fast16_t elements,
-                                          uint_fast16_t accuracy)
+inv_error_t inv_send_external_sensor_data(uint_fast16_t elements __unused,
+                                          uint_fast16_t accuracy __unused)
 {
     return INV_ERROR_FEATURE_NOT_IMPLEMENTED;    // Feature not supported
 }

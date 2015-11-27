@@ -31,7 +31,7 @@ extern "C" {
 
 #if defined(LINUX) || defined(__KERNEL__)
 #include <stdint.h>
-typedef uintptr_t HANDLE;
+typedef uintptr_t HANDLE; // TODO: shouldn't this be pthread_mutex_t* ???
 #endif
 
 	/* ------------ */
@@ -76,11 +76,11 @@ typedef uintptr_t HANDLE;
 	/* Kernel implmentations */
 #define GFP_KERNEL (0x70)
 	static inline void *kmalloc(size_t size,
-				    unsigned int gfp_flags)
+				    unsigned int gfp_flags __unused)
 	{
 		return inv_malloc((unsigned int)size);
 	}
-	static inline void *kzalloc(size_t size, unsigned int gfp_flags)
+	static inline void *kzalloc(size_t size, unsigned int gfp_flags __unused)
 	{
 		void *tmp = inv_malloc((unsigned int)size);
 		if (tmp)

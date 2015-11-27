@@ -676,7 +676,7 @@ inv_error_t inv_get_control_data(long *controlSignal, long *gridNum,
  *          structure.
  * @return  INV_SUCCESS or an error code.
 **/
-inv_error_t inv_update_control(struct inv_obj_t * inv_obj)
+inv_error_t inv_update_control(struct inv_obj_t * inv_obj __unused)
 {
     INVENSENSE_FUNC_START;
     unsigned char i;
