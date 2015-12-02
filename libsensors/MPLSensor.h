@@ -120,10 +120,6 @@ private:
 
     /* added for dynamic get sensor list              */
     bool mNineAxisEnabled;
-    void fillRV(struct sensor_t *list);
-    void fillOrientation(struct sensor_t *list);
-    void fillGravity(struct sensor_t *list);
-    void fillLinearAccel(struct sensor_t *list);
 };
 
 void setCallbackObject(MPLSensor*);

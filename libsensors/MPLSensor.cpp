@@ -1070,16 +1070,24 @@ int MPLSensor::populateSensorList(struct sensor_t *list, size_t len)
         numsensors = 7;
         /* all sensors will be added to the list     */
         /* fill in orientation values	             */
-        fillOrientation(list);
+        list[Orientation].maxRange = NINEAXIS_ORIENTATION_RANGE;
+        list[Orientation].resolution = NINEAXIS_ORIENTATION_RESOLUTION;
+        list[Orientation].power = NINEAXIS_ORIENTATION_POWER;
 
         /* fill in rotation vector values	     */
-        fillRV(list);
+        list[RotationVector].maxRange = NINEAXIS_ROTATION_VECTOR_RANGE;
+        list[RotationVector].resolution = NINEAXIS_ROTATION_VECTOR_RESOLUTION;
+        list[RotationVector].power = NINEAXIS_ROTATION_VECTOR_POWER;
 
         /* fill in gravity values			     */
-        fillGravity(list);
+        list[Gravity].maxRange = NINEAXIS_GRAVITY_RANGE;
+        list[Gravity].resolution = NINEAXIS_GRAVITY_RESOLUTION;
+        list[Gravity].power = NINEAXIS_GRAVITY_POWER;
 
         /* fill in Linear accel values            */
-        fillLinearAccel(list);
+        list[LinearAccel].maxRange = NINEAXIS_LINEAR_ACCEL_RANGE;
+        list[LinearAccel].resolution = NINEAXIS_LINEAR_ACCEL_RESOLUTION;
+        list[LinearAccel].power = NINEAXIS_LINEAR_ACCEL_POWER;
     } else {
         /* no 9-axis sensors, zero fill that part of the list */
         numsensors = 3;
@@ -1087,42 +1095,4 @@ int MPLSensor::populateSensorList(struct sensor_t *list, size_t len)
     }
 
     return numsensors;
-}
-
-/* fillRV depends on values of accel and compass in the list	*/
-void MPLSensor::fillRV(struct sensor_t *list)
-{
-    /* compute power on the fly */
-    list[RotationVector].power = list[Gyro].power + list[Accelerometer].power
-            + list[MagneticField].power;
-    list[RotationVector].resolution = .00001;
-    list[RotationVector].maxRange = 1.0;
-    return;
-}
-
-void MPLSensor::fillOrientation(struct sensor_t *list)
-{
-    list[Orientation].power = list[Gyro].power + list[Accelerometer].power
-            + list[MagneticField].power;
-    list[Orientation].resolution = .00001;
-    list[Orientation].maxRange = 360.0;
-    return;
-}
-
-void MPLSensor::fillGravity( struct sensor_t *list)
-{
-    list[Gravity].power = list[Gyro].power + list[Accelerometer].power
-            + list[MagneticField].power;
-    list[Gravity].resolution = .00001;
-    list[Gravity].maxRange = 9.81;
-    return;
-}
-
-void MPLSensor::fillLinearAccel(struct sensor_t *list)
-{
-    list[Gravity].power = list[Gyro].power + list[Accelerometer].power
-            + list[MagneticField].power;
-    list[Gravity].resolution = list[Accelerometer].resolution;
-    list[Gravity].maxRange = list[Accelerometer].maxRange;
-    return;
 }
