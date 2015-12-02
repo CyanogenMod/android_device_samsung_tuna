@@ -45,10 +45,6 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
 	libsecril-client
 
-# Sensors
-PRODUCT_PACKAGES += \
-	libinvensense_mpl
-
 # Charging mode
 PRODUCT_PACKAGES += \
 	charger_res_images

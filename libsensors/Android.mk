@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 LOCAL_PATH := $(call my-dir)
+
+include $(call all-named-subdir-makefiles,mlsdk)
 
 # HAL module implemenation stored in
 # hw/<SENSORS_HARDWARE_MODULE_ID>.<ro.product.board>.so
@@ -25,10 +25,19 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 
 LOCAL_MODULE_TAGS := optional
 
-LOCAL_CFLAGS := -DLOG_TAG=\"Sensors\"
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/../invensense/libinvensense_hal/
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/mlsdk/platform/include \
+	$(LOCAL_PATH)/mlsdk/platform/include/linux \
+	$(LOCAL_PATH)/mlsdk/platform/linux \
+	$(LOCAL_PATH)/mlsdk/mllite \
+	$(LOCAL_PATH)/mlsdk/mldmp \
+	$(LOCAL_PATH)/mlsdk/external/aichi \
+	$(LOCAL_PATH)/mlsdk/external/akmd
+
 LOCAL_SRC_FILES := \
 	sensors.cpp \
+	SensorBase.cpp \
+	MPLSensor.cpp \
 	InputEventReader.cpp \
 	LightSensor.cpp \
 	ProximitySensor.cpp \
@@ -36,7 +45,10 @@ LOCAL_SRC_FILES := \
 	SamsungSensorBase.cpp \
 	TemperatureSensor.cpp
 
-LOCAL_SHARED_LIBRARIES := libinvensense_hal.$(TARGET_BOOTLOADER_BOARD_NAME) liblog libcutils libutils libdl
+LOCAL_SHARED_LIBRARIES := liblog libcutils libutils libdl libmllite libmlplatform
+LOCAL_CFLAGS := -DLOG_TAG=\"Sensors\"
+LOCAL_CPPFLAGS := -DLINUX=1
+LOCAL_LDFLAGS := -rdynamic
 LOCAL_CLANG := true
 LOCAL_CFLAGS += -Wall -Werror
 
