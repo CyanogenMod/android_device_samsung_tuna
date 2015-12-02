@@ -42,17 +42,24 @@ static void onRequestShim(int request, void *data, size_t datalen, RIL_Token t)
 			}
 			/* else fallthrough to RIL_E_REQUEST_NOT_SUPPORTED */
 
-		/* Necessary; otherwise we seem to lock up. */
-		case RIL_REQUEST_SIM_OPEN_CHANNEL:
-
-		/* Might not be necessary, but we don't support it as far as I know. */
+		/* The following requests were introduced post-4.3. */
+		case RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC:
+		case RIL_REQUEST_SIM_OPEN_CHANNEL: /* !!! */
+		case RIL_REQUEST_SIM_CLOSE_CHANNEL:
+		case RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL:
+		case RIL_REQUEST_NV_READ_ITEM:
+		case RIL_REQUEST_NV_WRITE_ITEM:
+		case RIL_REQUEST_NV_WRITE_CDMA_PRL:
+		case RIL_REQUEST_NV_RESET_CONFIG:
+		case RIL_REQUEST_SET_UICC_SUBSCRIPTION:
 		case RIL_REQUEST_ALLOW_DATA:
-
-		/* LCE is new (Android 6.0+). RILJ probably won't care how we
-		 * reply to this, but better safe than sorry in my opinion.
-		 * According to hardware/ril, we should be replying to the
-		 * LCE commands with RIL_E_LCE_NOT_SUPPORTED, but RILJ does
-		 * not recognize that as a valid respone. LOL! */
+		case RIL_REQUEST_GET_HARDWARE_CONFIG:
+		case RIL_REQUEST_SIM_AUTHENTICATION:
+		case RIL_REQUEST_GET_DC_RT_INFO:
+		case RIL_REQUEST_SET_DC_RT_INFO_RATE:
+		case RIL_REQUEST_SET_DATA_PROFILE:
+		case RIL_REQUEST_SHUTDOWN: /* TODO: Is there something we can do for RIL_REQUEST_SHUTDOWN ? */
+		case RIL_REQUEST_SET_RADIO_CAPABILITY:
 		case RIL_REQUEST_START_LCE:
 		case RIL_REQUEST_STOP_LCE:
 		case RIL_REQUEST_PULL_LCEDATA:
