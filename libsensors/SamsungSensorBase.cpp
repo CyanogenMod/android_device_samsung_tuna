@@ -55,10 +55,9 @@ int SamsungSensorBase::handleEnable(int en __unused) {
     return 0;
 }
 
-SamsungSensorBase::SamsungSensorBase(const char *dev_name,
-                                     const char *data_name,
+SamsungSensorBase::SamsungSensorBase(const char *data_name,
                                      int sensor_code)
-    : SensorBase(dev_name, data_name),
+    : SensorBase(data_name),
       mEnabled(true),
       mHasPendingEvent(false),
       mInputReader(4),
@@ -182,5 +181,4 @@ int SamsungSensorBase::readEvents(sensors_event_t* data, int count)
 done:
     pthread_mutex_unlock(&mLock);
     return numEventReceived;
-
 }

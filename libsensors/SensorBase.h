@@ -29,21 +29,14 @@ struct sensors_event_t;
 
 class SensorBase {
 protected:
-    const char* dev_name;
     const char* data_name;
     char        input_name[PATH_MAX];
-    int         dev_fd;
     int         data_fd;
 
     int openInput(const char* inputName);
 
-    int open_device();
-    int close_device();
-
 public:
-            SensorBase(
-                    const char* dev_name,
-                    const char* data_name);
+    SensorBase(const char* data_name);
 
     virtual ~SensorBase();
 

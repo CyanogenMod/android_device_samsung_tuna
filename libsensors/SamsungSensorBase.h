@@ -52,8 +52,7 @@ protected:
     virtual bool handleEvent(input_event const * event);
 
 public:
-    SamsungSensorBase(const char* dev_name,
-                      const char* data_name,
+    SamsungSensorBase(const char* data_name,
                       int sensor_code);
 
     virtual ~SamsungSensorBase();

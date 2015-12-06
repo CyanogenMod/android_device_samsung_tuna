@@ -33,7 +33,7 @@
 #define PRESSURE_HECTO (1.0f/100.0f)
 
 PressureSensor::PressureSensor()
-    : SamsungSensorBase(NULL, "barometer", ABS_PRESSURE)
+    : SamsungSensorBase("barometer", ABS_PRESSURE)
 {
     mPendingEvent.sensor = ID_PR;
     mPendingEvent.type = SENSOR_TYPE_PRESSURE;

@@ -48,7 +48,6 @@ LOCAL_SRC_FILES := \
 LOCAL_SHARED_LIBRARIES := liblog libcutils libutils libdl libmllite libmlplatform
 LOCAL_CFLAGS := -DLOG_TAG=\"Sensors\"
 LOCAL_CPPFLAGS := -DLINUX=1
-LOCAL_LDFLAGS := -rdynamic
 LOCAL_CLANG := true
 LOCAL_CFLAGS += -Wall -Werror
 

@@ -34,6 +34,7 @@
 #include <utils/Log.h>
 
 #include "sensors.h"
+#include "sensor_params.h"
 
 #include "MPLSensor.h"
 #include "LightSensor.h"
@@ -93,6 +94,34 @@ static struct sensor_t sSensorList[LOCAL_SENSORS + MPLSensor::numSensors] =
     {"BMP180 Temperature", "Bosch", 1, SENSORS_TEMPERATURE_HANDLE,
      SENSOR_TYPE_AMBIENT_TEMPERATURE, 850.0f, 0.1f, 0.67f, 20000, 0, 0,
      SENSOR_STRING_TYPE_AMBIENT_TEMPERATURE, "", 20000, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Gyroscope", "Invensense", 1, SENSORS_GYROSCOPE_HANDLE,
+     SENSOR_TYPE_GYROSCOPE, GYRO_MPU3050_RANGE, GYRO_MPU3050_RESOLUTION,
+     GYRO_MPU3050_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_GYROSCOPE, "",
+     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Accelerometer", "Invensense", 1, SENSORS_ACCELERATION_HANDLE,
+     SENSOR_TYPE_ACCELEROMETER, ACCEL_BMA250_RANGE, ACCEL_BMA250_RESOLUTION,
+     ACCEL_BMA250_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_ACCELEROMETER, "",
+     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Magnetic Field", "Invensense", 1, SENSORS_MAGNETIC_FIELD_HANDLE,
+     SENSOR_TYPE_MAGNETIC_FIELD, COMPASS_YAS530_RANGE, COMPASS_YAS530_RESOLUTION,
+     COMPASS_YAS530_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_MAGNETIC_FIELD, "",
+     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Orientation", "Invensense", 1, SENSORS_ORIENTATION_HANDLE,
+     SENSOR_TYPE_ORIENTATION, NINEAXIS_ORIENTATION_RANGE, NINEAXIS_ORIENTATION_RESOLUTION,
+     NINEAXIS_ORIENTATION_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_ORIENTATION, "",
+     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Rotation Vector", "Invensense", 1, SENSORS_ROTATION_VECTOR_HANDLE,
+     SENSOR_TYPE_ROTATION_VECTOR, NINEAXIS_ROTATION_VECTOR_RANGE, NINEAXIS_ROTATION_VECTOR_RESOLUTION,
+     NINEAXIS_ROTATION_VECTOR_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_ORIENTATION, "",
+     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Linear Acceleration", "Invensense", 1, SENSORS_LINEAR_ACCEL_HANDLE,
+     SENSOR_TYPE_LINEAR_ACCELERATION, NINEAXIS_LINEAR_ACCEL_RANGE, NINEAXIS_LINEAR_ACCEL_RESOLUTION,
+     NINEAXIS_LINEAR_ACCEL_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_LINEAR_ACCELERATION, "",
+     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"MPL Gravity", "Invensense", 1, SENSORS_GRAVITY_HANDLE,
+     SENSOR_TYPE_GRAVITY, NINEAXIS_GRAVITY_RANGE, NINEAXIS_GRAVITY_RESOLUTION,
+     NINEAXIS_GRAVITY_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_GRAVITY, "",
+     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
 };
 static int numSensors = LOCAL_SENSORS;
 
@@ -253,7 +282,7 @@ sensors_poll_context_t::sensors_poll_context_t()
 sensors_poll_context_t::~sensors_poll_context_t()
 {
     FUNC_LOG;
-    for (int i=0 ; i<numSensorDrivers ; i++) {
+    for (int i = 0; i < numSensorDrivers; i++) {
         delete mSensors[i];
     }
     close(mPollFds[wake].fd);
@@ -269,7 +298,7 @@ int sensors_poll_context_t::activate(int handle, int enabled)
     if (!err) {
         const char wakeMessage(WAKE_MESSAGE);
         int result = write(mWritePipeFd, &wakeMessage, 1);
-        ALOGE_IF(result<0, "error sending wake message (%s)", strerror(errno));
+        ALOGE_IF(result < 0, "error sending wake message (%s)", strerror(errno));
     }
     return err;
 }
@@ -291,7 +320,7 @@ int sensors_poll_context_t::pollEvents(sensors_event_t* data, int count)
 
     do {
         // see if we have some leftover from the last poll()
-        for (int i=0 ; count && i<numSensorDrivers ; i++) {
+        for (int i = 0; count && i < numSensorDrivers; i++) {
             SensorBase* const sensor(mSensors[i]);
             if ((mPollFds[i].revents & POLLIN) || (sensor->hasPendingEvents())) {
                 int nb = sensor->readEvents(data, count);
@@ -304,13 +333,12 @@ int sensors_poll_context_t::pollEvents(sensors_event_t* data, int count)
                 data += nb;
 
                 //special handling for the mpl, which has multiple handles
-                if(i==mpl) {
-                    i+=2; //skip accel and timer
+                if (i == mpl) {
+                    i += 2; //skip accel and timer
                     mPollFds[mpl_accel].revents = 0;
                     mPollFds[mpl_timer].revents = 0;
-                }
-                if(i==mpl_accel) {
-                    i+=1; //skip timer
+                } else if (i == mpl_accel) {
+                    i += 1; //skip timer
                     mPollFds[mpl_timer].revents = 0;
                 }
             }
@@ -323,18 +351,18 @@ int sensors_poll_context_t::pollEvents(sensors_event_t* data, int count)
             do {
                 n = poll(mPollFds, numFds, nbEvents ? 0 : polltime);
             } while (n < 0 && errno == EINTR);
-            if (n<0) {
+            if (n < 0) {
                 ALOGE("poll() failed (%s)", strerror(errno));
                 return -errno;
             }
             if (mPollFds[wake].revents & POLLIN) {
                 char msg;
                 int result = read(mPollFds[wake].fd, &msg, 1);
-                ALOGE_IF(result<0, "error reading from wake pipe (%s)", strerror(errno));
+                ALOGE_IF(result < 0, "error reading from wake pipe (%s)", strerror(errno));
                 ALOGE_IF(msg != WAKE_MESSAGE, "unknown message on wake queue (0x%02x)", int(msg));
                 mPollFds[wake].revents = 0;
             }
-            if(mPollFds[mpl_power].revents & POLLIN) {
+            if (mPollFds[mpl_power].revents & POLLIN) {
                 ((MPLSensor*)mSensors[mpl])->handlePowerEvent();
                 mPollFds[mpl_power].revents = 0;
             }

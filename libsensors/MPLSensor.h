@@ -118,8 +118,27 @@ private:
     long int mOldEnabledMask;
     android::KeyedVector<int, int> mIrqFds;
 
-    /* added for dynamic get sensor list              */
     bool mNineAxisEnabled;
+
+    int handleToDriver(int handle) const {
+        switch (handle) {
+            case ID_A:
+                return Accelerometer;
+            case ID_M:
+                return MagneticField;
+            case ID_O:
+                return Orientation;
+            case ID_GY:
+                return Gyro;
+            case ID_GR:
+                return Gravity;
+            case ID_RV:
+                return RotationVector;
+            case ID_LA:
+                return LinearAccel;
+        }
+        return handle;
+    }
 };
 
 void setCallbackObject(MPLSensor*);

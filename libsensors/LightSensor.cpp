@@ -27,7 +27,7 @@
 #include "LightSensor.h"
 
 LightSensor::LightSensor()
-    : SamsungSensorBase(NULL, "lightsensor-level", ABS_MISC)
+    : SamsungSensorBase("lightsensor-level", ABS_MISC)
 {
     mPendingEvent.sensor = ID_L;
     mPendingEvent.type = SENSOR_TYPE_LIGHT;

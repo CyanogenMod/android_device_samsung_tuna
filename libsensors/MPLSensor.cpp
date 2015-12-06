@@ -56,7 +56,6 @@ extern "C" {
 }
 
 #include "mlcontrol.h"
-#include "sensor_params.h"
 
 #define EXTRA_VERBOSE (0)
 //#define FUNC_LOG ALOGV("%s", __PRETTY_FUNCTION__)
@@ -68,39 +67,6 @@ extern "C" {
 #define CALL_MEMBER_FN(pobject,ptrToMember)  ((pobject)->*(ptrToMember))
 
 /******************************************/
-
-/* Base values for the sensor list, these need to be in the order defined in MPLSensor.h */
-static struct sensor_t sSensorList[] =
-{
-    {"MPL Gyroscope", "Invensense", 1, SENSORS_GYROSCOPE_HANDLE,
-     SENSOR_TYPE_GYROSCOPE, GYRO_MPU3050_RANGE, GYRO_MPU3050_RESOLUTION,
-     GYRO_MPU3050_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_GYROSCOPE, "",
-     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
-    {"MPL Accelerometer", "Invensense", 1, SENSORS_ACCELERATION_HANDLE,
-     SENSOR_TYPE_ACCELEROMETER, ACCEL_BMA250_RANGE, ACCEL_BMA250_RESOLUTION,
-     ACCEL_BMA250_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_ACCELEROMETER, "",
-     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
-    {"MPL Magnetic Field", "Invensense", 1, SENSORS_MAGNETIC_FIELD_HANDLE,
-     SENSOR_TYPE_MAGNETIC_FIELD, COMPASS_YAS530_RANGE, COMPASS_YAS530_RESOLUTION,
-     COMPASS_YAS530_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_MAGNETIC_FIELD, "",
-     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
-    {"MPL Orientation", "Invensense", 1, SENSORS_ORIENTATION_HANDLE,
-     SENSOR_TYPE_ORIENTATION, NINEAXIS_ORIENTATION_RANGE, NINEAXIS_ORIENTATION_RESOLUTION,
-     NINEAXIS_ORIENTATION_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_ORIENTATION, "",
-     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
-    {"MPL Rotation Vector", "Invensense", 1, SENSORS_ROTATION_VECTOR_HANDLE,
-     SENSOR_TYPE_ROTATION_VECTOR, NINEAXIS_ROTATION_VECTOR_RANGE, NINEAXIS_ROTATION_VECTOR_RESOLUTION,
-     NINEAXIS_ROTATION_VECTOR_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_ORIENTATION, "",
-     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
-    {"MPL Linear Acceleration", "Invensense", 1, SENSORS_LINEAR_ACCEL_HANDLE,
-     SENSOR_TYPE_LINEAR_ACCELERATION, NINEAXIS_LINEAR_ACCEL_RANGE, NINEAXIS_LINEAR_ACCEL_RESOLUTION,
-     NINEAXIS_LINEAR_ACCEL_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_LINEAR_ACCELERATION, "",
-     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
-    {"MPL Gravity", "Invensense", 1, SENSORS_GRAVITY_HANDLE,
-     SENSOR_TYPE_GRAVITY, NINEAXIS_GRAVITY_RANGE, NINEAXIS_GRAVITY_RESOLUTION,
-     NINEAXIS_GRAVITY_POWER, 10000, 0, 0, SENSOR_STRING_TYPE_GRAVITY, "",
-     0, SENSOR_FLAG_CONTINUOUS_MODE, {}},
-};
 
 static unsigned long long irq_timestamp = 0;
 /* ***************************************************************************
@@ -149,7 +115,7 @@ void setCallbackObject(MPLSensor* gbpt)
 #define RV_ENABLED ((1<<ID_RV) & enabled_sensors)
 
 MPLSensor::MPLSensor() :
-    SensorBase(NULL, NULL),
+    SensorBase(NULL),
             mNewData(0),
             mDmpStarted(false),
             mMasterSensorMask(INV_ALL_SENSORS),
@@ -157,7 +123,8 @@ MPLSensor::MPLSensor() :
             mCurFifoRate(-1), mHaveGoodMpuCal(false), mHaveGoodCompassCal(false),
             mUseTimerIrqAccel(false), mUsetimerIrqCompass(true),
             mUseTimerirq(false),
-            mEnabled(0), mPendingMask(0)
+            mEnabled(0), mPendingMask(0),
+            mForceSleep(false), mNineAxisEnabled(false)
 {
     FUNC_LOG;
     int mpu_int_fd;
@@ -166,13 +133,6 @@ MPLSensor::MPLSensor() :
     ALOGV_IF(EXTRA_VERBOSE, "MPLSensor constructor: numSensors = %d", numSensors);
 
     pthread_mutex_init(&mMplMutex, NULL);
-
-    mForceSleep = false;
-
-    /* used for identifying whether 9axis is enabled or not             */
-    /* this variable will be changed in initMPL() when libmpl is loaded */
-    /* sensor list will be changed based on this variable               */
-    mNineAxisEnabled = false;
 
     for (size_t i = 0; i < ARRAY_SIZE(mPollFds); i++) {
         mPollFds[i].fd = -1;
@@ -214,7 +174,7 @@ MPLSensor::MPLSensor() :
     data_fd = mpu_int_fd;
 
     if ((accel_fd == -1) && (timer_fd != -1)) {
-        //no accel irq and timer available
+        // no accel irq, but timer is available
         mUseTimerIrqAccel = true;
     }
 
@@ -248,8 +208,7 @@ MPLSensor::MPLSensor() :
     mPendingEvents[Orientation].version = sizeof(sensors_event_t);
     mPendingEvents[Orientation].sensor = ID_O;
     mPendingEvents[Orientation].type = SENSOR_TYPE_ORIENTATION;
-    mPendingEvents[Orientation].orientation.status
-            = SENSOR_STATUS_ACCURACY_HIGH;
+    mPendingEvents[Orientation].orientation.status = SENSOR_STATUS_ACCURACY_HIGH;
 
     mHandlers[RotationVector] = &MPLSensor::rvHandler;
     mHandlers[LinearAccel] = &MPLSensor::laHandler;
@@ -271,7 +230,6 @@ MPLSensor::MPLSensor() :
 
     //setup the FIFO contents
     setupFIFO();
-
 
     pthread_mutex_unlock(&mMplMutex);
 }
@@ -325,17 +283,11 @@ void MPLSensor::setPowerStates(int enabled_sensors)
     FUNC_LOG;
     bool irq_set[5] = { false, false, false, false, false };
 
-    do {
-        if (LA_ENABLED || GR_ENABLED || RV_ENABLED || O_ENABLED) {
-            mLocalSensorMask = ALL_MPL_SENSORS_NP;
-            break;
-        }
-
-        if (!A_ENABLED && !M_ENABLED && !GY_ENABLED) {
-            mLocalSensorMask = 0;
-            break;
-        }
-
+    if (LA_ENABLED || GR_ENABLED || RV_ENABLED || O_ENABLED) {
+        mLocalSensorMask = ALL_MPL_SENSORS_NP;
+    } else if (!A_ENABLED && !M_ENABLED && !GY_ENABLED) {
+        mLocalSensorMask = 0;
+    } else {
         if (GY_ENABLED) {
             mLocalSensorMask |= INV_THREE_AXIS_GYRO;
         } else {
@@ -353,7 +305,7 @@ void MPLSensor::setPowerStates(int enabled_sensors)
         } else {
             mLocalSensorMask &= ~(INV_THREE_AXIS_COMPASS);
         }
-    } while (0);
+    }
 
     //record the new sensor state
     inv_error_t rv;
@@ -446,13 +398,13 @@ void MPLSensor::initMPL()
     }
 
     //check for the 9axis fusion library: if available load it and start 9x
-    void* h_dmp_lib=dlopen("libinvensense_mpl.so", RTLD_NOW);
-    if(h_dmp_lib) {
+    void* h_dmp_lib = dlopen("libinvensense_mpl.so", RTLD_NOW);
+    if (h_dmp_lib) {
         const char* error;
         error = dlerror();
         inv_error_t (*fp_inv_enable_9x_fusion)() =
               (inv_error_t(*)()) dlsym(h_dmp_lib, "inv_enable_9x_fusion");
-        if((error = dlerror()) != NULL) {
+        if ((error = dlerror()) != NULL) {
             ALOGE("%s %s", error, "inv_enable_9x_fusion");
         } else if ((*fp_inv_enable_9x_fusion)() != INV_SUCCESS) {
             ALOGE( "Warning : 9 axis sensor fusion not available "
@@ -534,12 +486,10 @@ void MPLSensor::setupCallbacks()
     FUNC_LOG;
     if (inv_set_motion_callback(mot_cb_wrapper) != INV_SUCCESS) {
         ALOGE("Error : Motion callback could not be set.\n");
-
     }
 
     if (inv_set_fifo_processed_callback(procData_cb_wrapper) != INV_SUCCESS) {
         ALOGE("Error : Processed data callback could not be set.");
-
     }
 }
 
@@ -552,7 +502,7 @@ void MPLSensor::cbOnMotion(uint16_t val)
     //after the first no motion, the gyro should be calibrated well
     if (val == 2) {
         if ((inv_get_dl_config()->requested_sensors) & INV_THREE_AXIS_GYRO) {
-            //if gyros are on and we got a no motion, set a flag
+            // if gyros are on and we got a no motion, set a flag
             // indicating that the cal file can be written.
             mHaveGoodMpuCal = true;
         }
@@ -567,8 +517,8 @@ void MPLSensor::cbProcData()
     mNewData = 1;
 }
 
-//these handlers transform mpl data into one of the Android sensor types
-//  scaling and coordinate transforms should be done in the handlers
+// these handlers transform mpl data into one of the Android sensor types.
+// scaling and coordinate transforms should be done in the handlers
 
 void MPLSensor::gyroHandler(sensors_event_t* s, uint32_t* pending_mask,
                              int index)
@@ -603,7 +553,7 @@ int MPLSensor::estimateCompassAccuracy()
     int rv;
 
     res = inv_get_compass_accuracy(&rv);
-    if(rv >= SENSOR_STATUS_ACCURACY_MEDIUM) {
+    if (rv >= SENSOR_STATUS_ACCURACY_MEDIUM) {
          mHaveGoodCompassCal = true;
     }
     ALOGE_IF(res != INV_SUCCESS, "error returned from inv_get_compass_accuracy");
@@ -763,34 +713,7 @@ int MPLSensor::enable(int32_t handle, int en)
 {
     FUNC_LOG;
 
-    int what = -1;
-
-    switch (handle) {
-    case ID_A:
-        what = Accelerometer;
-        break;
-    case ID_M:
-        what = MagneticField;
-        break;
-    case ID_O:
-        what = Orientation;
-        break;
-    case ID_GY:
-        what = Gyro;
-        break;
-    case ID_GR:
-        what = Gravity;
-        break;
-    case ID_RV:
-        what = RotationVector;
-        break;
-    case ID_LA:
-        what = LinearAccel;
-        break;
-    default: //this takes care of all the gestures
-        what = handle;
-        break;
-    }
+    int what = handleToDriver(handle);
 
     if (uint32_t(what) >= numSensors)
         return -EINVAL;
@@ -819,33 +742,8 @@ int MPLSensor::setDelay(int32_t handle, int64_t ns)
     FUNC_LOG;
     ALOGV_IF(EXTRA_VERBOSE,
             " setDelay handle: %d rate %d", handle, (int) (ns / 1000000LL));
-    int what = -1;
-    switch (handle) {
-    case ID_A:
-        what = Accelerometer;
-        break;
-    case ID_M:
-        what = MagneticField;
-        break;
-    case ID_O:
-        what = Orientation;
-        break;
-    case ID_GY:
-        what = Gyro;
-        break;
-    case ID_GR:
-        what = Gravity;
-        break;
-    case ID_RV:
-        what = RotationVector;
-        break;
-    case ID_LA:
-        what = LinearAccel;
-        break;
-    default:
-        what = handle;
-        break;
-    }
+
+    int what = handleToDriver(handle);
 
     if (uint32_t(what) >= numSensors)
         return -EINVAL;
@@ -895,7 +793,7 @@ int MPLSensor::update_delay()
             rv = (res == INV_SUCCESS);
         }
 
-        if (((inv_get_dl_config()->requested_sensors & INV_DMP_PROCESSOR) == 0)) {
+        if ((inv_get_dl_config()->requested_sensors & INV_DMP_PROCESSOR) == 0) {
             if (mUseTimerirq) {
                 ioctl(mIrqFds.valueFor(TIMERIRQ_FD), TIMERIRQ_STOP, 0);
                 clearIrqData(irq_set);
@@ -934,9 +832,7 @@ int MPLSensor::readEvents(sensors_event_t* data, int count)
     if (mDmpStarted) {
         rv = inv_update_data();
         ALOGE_IF(rv != INV_SUCCESS, "inv_update_data error (code %d)", (int) rv);
-    }
-
-    else {
+    } else {
         //probably just one extra read after shutting down
         ALOGV_IF(EXTRA_VERBOSE,
                 "MPLSensor::readEvents called, but there's nothing to do.");
@@ -1032,8 +928,8 @@ void MPLSensor::wakeEvent()
     pthread_mutex_lock(&mMplMutex);
     if (mForceSleep) {
         setPowerStates((mOldEnabledMask | mEnabled));
+        mForceSleep = false;
     }
-    mForceSleep = false;
     pthread_mutex_unlock(&mMplMutex);
 }
 
@@ -1042,25 +938,19 @@ void MPLSensor::wakeEvent()
  *  parameter list must point to a memory region of at least 7*sizeof(sensor_t)
  *  parameter len gives the length of the buffer pointed to by list
  */
-
 int MPLSensor::populateSensorList(struct sensor_t *list, size_t len)
 {
-    int numsensors;
+    int numsensors = 7;
 
-    if(len < 7*sizeof(sensor_t)) {
+    if (len < numsensors * sizeof(sensor_t)) {
         ALOGE("sensor list too small, not populating.");
         return 0;
     }
 
-    /* fill in the base values */
-    memcpy(list, sSensorList, sizeof (struct sensor_t) * 7);
-
-    if (mNineAxisEnabled) {
-        numsensors = 7;
-    } else {
+    if (!mNineAxisEnabled) {
         /* no 9-axis sensors, zero fill that part of the list */
         numsensors = 3;
-        memset(list+3, 0, 4*sizeof(struct sensor_t));
+        memset(list + numsensors, 0, (7 - numsensors) * sizeof(struct sensor_t));
     }
 
     return numsensors;

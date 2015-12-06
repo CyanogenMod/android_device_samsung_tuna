@@ -30,7 +30,7 @@
 /*****************************************************************************/
 
 ProximitySensor::ProximitySensor()
-    : SamsungSensorBase(NULL, "proximity", ABS_DISTANCE)
+    : SamsungSensorBase("proximity", ABS_DISTANCE)
 {
     mPendingEvent.sensor = ID_P;
     mPendingEvent.type = SENSOR_TYPE_PROXIMITY;

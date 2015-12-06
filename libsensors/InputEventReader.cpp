@@ -65,8 +65,7 @@ ssize_t InputEventCircularReader::fill(int fd)
         iov[0].iov_base = mHead;
         iov[0].iov_len = numFirst * sizeof(input_event);
 
-        if (numSecond > 0)
-        {
+        if (numSecond > 0) {
             iovcnt++;
             iov[1].iov_base = mBuffer;
             iov[1].iov_len = numSecond * sizeof(input_event);
