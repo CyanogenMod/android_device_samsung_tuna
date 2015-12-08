@@ -39,7 +39,6 @@
 #include "mlFIFO.h"
 #include "mlsl.h"
 #include "mlos.h"
-#include "ml_mputest.h"
 #include "ml_stored_data.h"
 #include "mldl_cfg.h"
 #include "mldl.h"
@@ -507,8 +506,6 @@ void MPLSensor::cbOnMotion(uint16_t val)
             mHaveGoodMpuCal = true;
         }
     }
-
-    return;
 }
 
 
@@ -525,7 +522,7 @@ void MPLSensor::gyroHandler(sensors_event_t* s, uint32_t* pending_mask,
 {
     VFUNC_LOG;
     inv_error_t res;
-    res = inv_get_float_array(INV_GYROS, s->gyro.v);
+    res = inv_get_gyro_float(s->gyro.v);
     s->gyro.v[0] = s->gyro.v[0] * M_PI / 180.0;
     s->gyro.v[1] = s->gyro.v[1] * M_PI / 180.0;
     s->gyro.v[2] = s->gyro.v[2] * M_PI / 180.0;
@@ -538,8 +535,7 @@ void MPLSensor::accelHandler(sensors_event_t* s, uint32_t* pending_mask,
 {
     //VFUNC_LOG;
     inv_error_t res;
-    res = inv_get_float_array(INV_ACCELS, s->acceleration.v);
-    //res = inv_get_accel_float(s->acceleration.v);
+    res = inv_get_accel_float(s->acceleration.v);
     s->acceleration.v[0] = s->acceleration.v[0] * 9.81;
     s->acceleration.v[1] = s->acceleration.v[1] * 9.81;
     s->acceleration.v[2] = s->acceleration.v[2] * 9.81;
@@ -567,12 +563,10 @@ void MPLSensor::compassHandler(sensors_event_t* s, uint32_t* pending_mask,
     VFUNC_LOG;
     inv_error_t res;
 
-    res = inv_get_float_array(INV_MAGNETOMETER, s->magnetic.v);
+    res = inv_get_magnetometer_float(s->magnetic.v);
 
     if (res != INV_SUCCESS) {
-        ALOGW(
-             "compass_handler inv_get_float_array(INV_MAGNETOMETER) returned %d",
-             res);
+        ALOGW("compass_handler inv_get_magnetometer_float returned %d", res);
     }
 
     s->magnetic.status = estimateCompassAccuracy();
@@ -587,11 +581,11 @@ void MPLSensor::rvHandler(sensors_event_t* s, uint32_t* pending_mask,
     VFUNC_LOG;
     float quat[4];
     float norm = 0;
-    inv_error_t r;
+    inv_error_t res;
 
-    r = inv_get_float_array(INV_QUATERNION, quat);
+    res = inv_get_quaternion_float(quat);
 
-    if (r != INV_SUCCESS) {
+    if (res != INV_SUCCESS) {
         *pending_mask &= ~(1 << index);
         return;
     } else {
@@ -630,7 +624,7 @@ void MPLSensor::laHandler(sensors_event_t* s, uint32_t* pending_mask,
 {
     VFUNC_LOG;
     inv_error_t res;
-    res = inv_get_float_array(INV_LINEAR_ACCELERATION, s->gyro.v);
+    res = inv_get_linear_accel_float(s->gyro.v);
     s->gyro.v[0] *= 9.81;
     s->gyro.v[1] *= 9.81;
     s->gyro.v[2] *= 9.81;
@@ -643,7 +637,7 @@ void MPLSensor::gravHandler(sensors_event_t* s, uint32_t* pending_mask,
 {
     VFUNC_LOG;
     inv_error_t res;
-    res = inv_get_float_array(INV_GRAVITY, s->gyro.v);
+    res = inv_get_gravity_float(s->gyro.v);
     s->gyro.v[0] *= 9.81;
     s->gyro.v[1] *= 9.81;
     s->gyro.v[2] *= 9.81;
@@ -701,7 +695,7 @@ void MPLSensor::orienHandler(sensors_event_t* s, uint32_t* pending_mask,
     inv_error_t res;
     float rot_mat[9];
 
-    res = inv_get_float_array(INV_ROTATION_MATRIX, rot_mat);
+    res = inv_get_rot_mat_float(rot_mat);
 
     calcOrientationSensor(rot_mat, s->orientation.v);
 
