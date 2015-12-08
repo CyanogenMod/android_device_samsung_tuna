@@ -74,9 +74,6 @@
 
 #ifndef MLDMP_H
 #define MLDMP_H
-#ifdef INV_INCLUDE_LEGACY_HEADERS
-#include "mldmp_legacy.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {

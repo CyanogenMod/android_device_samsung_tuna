@@ -37,7 +37,6 @@
 #include "mltypes.h"
 #include "mlinclude.h"
 #include "compass.h"
-#include "pressure.h"
 #include "dmpKey.h"
 #include "dmpDefault.h"
 #include "mlstates.h"
@@ -368,9 +367,7 @@ inv_error_t inv_accel_compass_supervisor(void)
         long long tmp[3] = { 0 };
         long long tmp64 = 0;
         unsigned long ctime = inv_get_tick_count();
-        if (((inv_get_compass_id() == COMPASS_ID_AK8975) &&
-             ((ctime - polltime) > 20)) ||
-            (polltime == 0 || ((ctime - polltime) > 20))) { // 50Hz max
+        if (polltime == 0 || ((ctime - polltime) > 20)) { // 50Hz max
             if (SUPERVISOR_DEBUG) {
                 MPL_LOGV("Fetch compass data from inv_process_fifo_packet\n");
                 MPL_LOGV("delta time = %ld\n", ctime - polltime);
@@ -461,18 +458,15 @@ inv_error_t inv_accel_compass_supervisor(void)
                 }
 
 #ifdef APPLY_COMPASS_FILTER
-                if (inv_get_compass_id() == COMPASS_ID_YAS530)
-                {
-                    fcin[0] = 1000*((float)inv_obj.compass_calibrated_data[0] /65536.f);
-                    fcin[1] = 1000*((float)inv_obj.compass_calibrated_data[1] /65536.f);
-                    fcin[2] = 1000*((float)inv_obj.compass_calibrated_data[2] /65536.f);
+                fcin[0] = 1000*((float)inv_obj.compass_calibrated_data[0] /65536.f);
+                fcin[1] = 1000*((float)inv_obj.compass_calibrated_data[1] /65536.f);
+                fcin[2] = 1000*((float)inv_obj.compass_calibrated_data[2] /65536.f);
 
-                    f.update(&handle, fcin, fcout);
+                f.update(&handle, fcin, fcout);
 
-                    inv_obj.compass_calibrated_data[0] = (long)(fcout[0]*65536.f/1000.f);
-                    inv_obj.compass_calibrated_data[1] = (long)(fcout[1]*65536.f/1000.f);
-                    inv_obj.compass_calibrated_data[2] = (long)(fcout[2]*65536.f/1000.f);
-                }
+                inv_obj.compass_calibrated_data[0] = (long)(fcout[0]*65536.f/1000.f);
+                inv_obj.compass_calibrated_data[1] = (long)(fcout[1]*65536.f/1000.f);
+                inv_obj.compass_calibrated_data[2] = (long)(fcout[2]*65536.f/1000.f);
 #endif
 
                 if (SUPERVISOR_DEBUG) {
@@ -528,32 +522,6 @@ inv_error_t inv_accel_compass_supervisor(void)
     if (ml_supervisor_cb.accel_compass_fusion_func != NULL)
         ml_supervisor_cb.accel_compass_fusion_func(magFB);
 
-    return INV_SUCCESS;
-}
-
-/**
- *  @brief  Entry point for software sensor fusion operations.
- *          Manages hardware interaction, calls sensor fusion supervisor for
- *          bias calculation.
- *  @return INV_SUCCESS or non-zero error code on error.
- */
-inv_error_t inv_pressure_supervisor(void)
-{
-    long pressureSensorData[1];
-    static unsigned long pressurePolltime = 0;
-    if (inv_pressure_present()) {   /* check for pressure data */
-        unsigned long ctime = inv_get_tick_count();
-        if ((pressurePolltime == 0 || ((ctime - pressurePolltime) > 80))) { //every 1/8 second
-            if (SUPERVISOR_DEBUG) {
-                MPL_LOGV("Fetch pressure data\n");
-                MPL_LOGV("delta time = %ld\n", ctime - pressurePolltime);
-            }
-            pressurePolltime = ctime;
-            if (inv_get_pressure_data(&pressureSensorData[0]) == INV_SUCCESS) {
-                inv_obj.pressure = pressureSensorData[0];
-            }
-        }
-    }
     return INV_SUCCESS;
 }
 

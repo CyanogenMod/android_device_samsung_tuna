@@ -26,9 +26,6 @@
 #define __INV_SUPERVISOR_H__
 
 #include "mltypes.h"
-#ifdef INV_INCLUDE_LEGACY_HEADERS
-#include "mlsupervisor_legacy.h"
-#endif
 
 // The value of inv_get_gyro_sum_of_sqr is scaled such the (1 dps)^2 = 2^this_number
 // this number must be >=0 and even.
@@ -65,7 +62,6 @@ struct inv_supervisor_cb_obj {
 inv_error_t inv_reset_compass_calibration(void);
 void inv_init_sensor_fusion_supervisor(void);
 inv_error_t inv_accel_compass_supervisor(void);
-inv_error_t inv_pressure_supervisor(void);
 
 #endif // __INV_SUPERVISOR_H__
 

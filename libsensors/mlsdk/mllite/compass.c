@@ -227,34 +227,6 @@ unsigned char inv_compass_present(void)
 }
 
 /**
- *  @brief   Query the compass slave address.
- *  @return  The 7-bit compass slave address.
- */
-unsigned char inv_get_compass_slave_addr(void)
-{
-    INVENSENSE_FUNC_START;
-    struct mldl_cfg *mldl_cfg = inv_get_dl_config();
-    if (NULL != mldl_cfg->pdata)
-        return mldl_cfg->pdata->compass.address;
-    else
-        return 0;
-}
-
-/**
- *  @brief   Get the ID of the compass in use.
- *  @return  ID of the compass in use.
- */
-unsigned short inv_get_compass_id(void)
-{
-    INVENSENSE_FUNC_START;
-    struct mldl_cfg *mldl_cfg = inv_get_dl_config();
-    if (NULL != mldl_cfg->compass) {
-        return mldl_cfg->compass->id;
-    }
-    return ID_INVALID;
-}
-
-/**
  *  @brief  Get a sample of compass data from the device.
  *  @param  data
  *              the buffer to store the compass raw data for
@@ -361,73 +333,6 @@ inv_error_t inv_set_compass_bias(long *bias)
             inv_set_mpu_memory(KEY_CPASS_BIAS_Z, 4,
                                inv_int32_to_big8(biasB[2], reg));
     }
-    return result;
-}
-
-/**
- *  @brief  Write a single register on the compass slave device, regardless
- *          of the bus it is connected to and the MPU's configuration.
- *  @param  reg
- *              the register to write to on the slave compass device.
- *  @param  val
- *              the value to write.
- *  @return INV_SUCCESS = 0 if successful. A non-zero error code otherwise.
- */
-inv_error_t inv_compass_write_reg(unsigned char reg, unsigned char val)
-{
-    struct ext_slave_config config;
-    unsigned char data[2];
-    inv_error_t result;
-
-    data[0] = reg;
-    data[1] = val;
-
-    config.key = MPU_SLAVE_WRITE_REGISTERS;
-    config.len = 2;
-    config.apply = TRUE;
-    config.data = data;
-
-    result = inv_mpu_config_compass(inv_get_dl_config(),
-                                    inv_get_serial_handle(),
-                                    inv_get_serial_handle(), &config);
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-    return result;
-}
-
-/**
- *  @brief  Read values from the compass slave device registers, regardless
- *          of the bus it is connected to and the MPU's configuration.
- *  @param  reg
- *              the register to read from on the slave compass device.
- *  @param  val
- *              a buffer of 3 elements to store the values read from the
- *              compass device.
- *  @return INV_SUCCESS = 0 if successful. A non-zero error code otherwise.
- */
-inv_error_t inv_compass_read_reg(unsigned char reg, unsigned char *val)
-{
-    struct ext_slave_config config;
-    unsigned char data[2];
-    inv_error_t result;
-
-    data[0] = reg;
-
-    config.key = MPU_SLAVE_READ_REGISTERS;
-    config.len = 2;
-    config.apply = TRUE;
-    config.data = data;
-
-    result = inv_mpu_get_compass_config(inv_get_dl_config(),
-                                        inv_get_serial_handle(),
-                                        inv_get_serial_handle(), &config);
-    if (result) {
-        LOG_RESULT_LOCATION(result);
-        return result;
-    }
-    *val = data[1];
     return result;
 }
 

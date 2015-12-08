@@ -46,9 +46,6 @@ extern "C" {
 
 #include "mltypes.h"
 #include "ml.h"
-#ifdef INV_INCLUDE_LEGACY_HEADERS
-#include "mlcontrol_legacy.h"
-#endif
 
     /* ------------ */
     /* - Defines. - */
@@ -184,32 +181,9 @@ extern "C" {
     /* ML Control Functions.                                                  */
     /**************************************************************************/
 
-    unsigned short inv_get_control_params(struct control_params *params);
-    unsigned short inv_set_control_params(struct control_params *params);
-
     /*API for handling control signals */
-    inv_error_t inv_set_control_sensitivity(unsigned short controlSignal,
-                                            long sensitivity);
-    inv_error_t inv_set_control_func(unsigned short function);
-    inv_error_t inv_get_control_signal(unsigned short controlSignal,
-                                       unsigned short reset, long *data);
-    inv_error_t inv_get_grid_num(unsigned short controlSignal,
-                                 unsigned short reset, long *data);
-    inv_error_t inv_set_grid_thresh(unsigned short controlSignal,
-                                    long threshold);
-    inv_error_t inv_set_grid_max(unsigned short controlSignal, long maximum);
-    inv_error_t
-        inv_set_grid_callback(void (*func)
-                              (unsigned short controlSignal, long *gridNum,
-                               long *gridChange));
-    inv_error_t inv_set_control_data(unsigned short controlSignal,
-                                     unsigned short parameterArray,
-                                     unsigned short parameterNum);
     inv_error_t inv_get_control_data(long *controlSignal, long *gridNum,
                                      long *gridChange);
-    inv_error_t inv_update_control(struct inv_obj_t *inv_obj);
-    inv_error_t inv_enable_control(void);
-    inv_error_t inv_disable_control(void);
 
 #ifdef __cplusplus
 }

@@ -661,12 +661,6 @@ inv_error_t inv_read_and_process_fifo(int_fast8_t numPackets,
             }
         }
 
-        result = inv_pressure_supervisor();
-        if (result) {
-            LOG_RESULT_LOCATION(result);
-            return result;
-        }
-
         // Callbacks now that we have a buffer of data ready
         result = inv_run_fifo_rate_processes();
         if (result) {

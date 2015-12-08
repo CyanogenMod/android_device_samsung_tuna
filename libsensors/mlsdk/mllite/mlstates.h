@@ -25,9 +25,6 @@
 #define INV_STATES_H__
 
 #include "mltypes.h"
-#ifdef INV_INCLUDE_LEGACY_HEADERS
-#include "mlstates_legacy.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,7 +42,6 @@ extern "C" {
 
     typedef inv_error_t(*state_change_callback_t) (unsigned char newState);
 
-    char *inv_state_name(unsigned char x);
     inv_error_t inv_state_transition(unsigned char newState);
     unsigned char inv_get_state(void);
     inv_error_t inv_register_state_callback(state_change_callback_t callback);

@@ -19,48 +19,6 @@
 #include "mlMathFunc.h"
 #include "mlinclude.h"
 
-/**
- * Performs one iteration of the filter, generating a new y(0)
- *         1     / N                /  N             \\
- * y(0) = ---- * |SUM b(k) * x(k) - | SUM a(k) * y(k)|| for N = length
- *        a(0)   \k=0               \ k=1            //
- *
- * The filters A and B should be (sizeof(long) * state->length).
- * The state variables x and y should be (sizeof(long) * (state->length - 1))
- *
- * The state variables x and y should be initialized prior to the first call
- *
- * @param state Contains the length of the filter, filter coefficients and
- *              filter state variables x and y.
- * @param x New input into the filter.
- */
-void inv_filter_long(struct filter_long *state, long x)
-{
-    const long *b = state->b;
-    const long *a = state->a;
-    long length = state->length;
-    long long tmp;
-    int ii;
-
-    /* filter */
-    tmp = (long long)x *(b[0]);
-    for (ii = 0; ii < length - 1; ii++) {
-        tmp += ((long long)state->x[ii] * (long long)(b[ii + 1]));
-    }
-    for (ii = 0; ii < length - 1; ii++) {
-        tmp -= ((long long)state->y[ii] * (long long)(a[ii + 1]));
-    }
-    tmp /= (long long)a[0];
-
-    /* Delay */
-    for (ii = length - 2; ii > 0; ii--) {
-        state->y[ii] = state->y[ii - 1];
-        state->x[ii] = state->x[ii - 1];
-    }
-    /* New values */
-    state->y[0] = (long)tmp;
-    state->x[0] = x;
-}
 
 /** Performs a multiply and shift by 29. These are good functions to write in assembly on
  * with devices with small memory where you want to get rid of the long long which some
@@ -111,109 +69,7 @@ void inv_q_mult(const long *q1, const long *q2, long *qProd)
                 (long long)q1[2] * q2[1] + (long long)q1[3] * q2[0]) >> 30);
 }
 
-void inv_q_add(long *q1, long *q2, long *qSum)
-{
-    INVENSENSE_FUNC_START;
-    qSum[0] = q1[0] + q2[0];
-    qSum[1] = q1[1] + q2[1];
-    qSum[2] = q1[2] + q2[2];
-    qSum[3] = q1[3] + q2[3];
-}
-
-void inv_q_normalize(long *q)
-{
-    INVENSENSE_FUNC_START;
-    double normSF = 0;
-    int i;
-    for (i = 0; i < 4; i++) {
-        normSF += ((double)q[i]) / 1073741824L * ((double)q[i]) / 1073741824L;
-    }
-    if (normSF > 0) {
-        normSF = 1 / sqrt(normSF);
-        for (i = 0; i < 4; i++) {
-            q[i] = (int)((double)q[i] * normSF);
-        }
-    } else {
-        q[0] = 1073741824L;
-        q[1] = 0;
-        q[2] = 0;
-        q[3] = 0;
-    }
-}
-
 void inv_q_invert(const long *q, long *qInverted)
-{
-    INVENSENSE_FUNC_START;
-    qInverted[0] = q[0];
-    qInverted[1] = -q[1];
-    qInverted[2] = -q[2];
-    qInverted[3] = -q[3];
-}
-
-void inv_q_multf(const float *q1, const float *q2, float *qProd)
-{
-    INVENSENSE_FUNC_START;
-    qProd[0] = (q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3]);
-    qProd[1] = (q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2]);
-    qProd[2] = (q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1]);
-    qProd[3] = (q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0]);
-}
-
-void inv_q_addf(float *q1, float *q2, float *qSum)
-{
-    INVENSENSE_FUNC_START;
-    qSum[0] = q1[0] + q2[0];
-    qSum[1] = q1[1] + q2[1];
-    qSum[2] = q1[2] + q2[2];
-    qSum[3] = q1[3] + q2[3];
-}
-
-void inv_q_normalizef(float *q)
-{
-    INVENSENSE_FUNC_START;
-    float normSF = 0;
-    float xHalf = 0;
-    normSF = (q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
-    if (normSF < 2) {
-        xHalf = 0.5f * normSF;
-        normSF = normSF * (1.5f - xHalf * normSF * normSF);
-        normSF = normSF * (1.5f - xHalf * normSF * normSF);
-        normSF = normSF * (1.5f - xHalf * normSF * normSF);
-        normSF = normSF * (1.5f - xHalf * normSF * normSF);
-        q[0] *= normSF;
-        q[1] *= normSF;
-        q[2] *= normSF;
-        q[3] *= normSF;
-    } else {
-        q[0] = 1.0;
-        q[1] = 0.0;
-        q[2] = 0.0;
-        q[3] = 0.0;
-    }
-    normSF = (q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
-}
-
-/** Performs a length 4 vector normalization with a square root.
-* @param[in,out] vector to normalize. Returns [1,0,0,0] is magnitude is zero.
-*/
-void inv_q_norm4(float *q)
-{
-    float mag;
-    mag = sqrtf(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
-    if (mag) {
-        q[0] /= mag;
-        q[1] /= mag;
-        q[2] /= mag;
-        q[3] /= mag;
-    } else {
-        q[0] = 1.f;
-        q[1] = 0.f;
-        q[2] = 0.f;
-        q[3] = 0.f;
-    }
-}
-
-void inv_q_invertf(const float *q, float *qInverted)
 {
     INVENSENSE_FUNC_START;
     qInverted[0] = q[0];
@@ -292,21 +148,6 @@ void inv_matrix_det_inc(float *a, float *b, int *n, int x, int y)
     *n = *n - 1;
 }
 
-void inv_matrix_det_incd(double *a, double *b, int *n, int x, int y)
-{
-    int k, l, i, j;
-    for (i = 0, k = 0; i < *n; i++, k++) {
-        for (j = 0, l = 0; j < *n; j++, l++) {
-            if (i == x)
-                i++;
-            if (j == y)
-                j++;
-            *(b + 10 * k + l) = *(a + 10 * i + j);
-        }
-    }
-    *n = *n - 1;
-}
-
 float inv_matrix_det(float *p, int *n)
 {
     float d[10][10], sum = 0;
@@ -320,24 +161,6 @@ float inv_matrix_det(float *p, int *n)
         sum =
             sum + *(p + 10 * i + j) * SIGNM(i + j) * inv_matrix_det(&d[0][0],
                                                                     n);
-    }
-
-    return (sum);
-}
-
-double inv_matrix_detd(double *p, int *n)
-{
-    double d[10][10], sum = 0;
-    int i, j, m;
-    m = *n;
-    if (*n == 2)
-        return (*p ** (p + 11) - *(p + 1) ** (p + 10));
-    for (i = 0, j = 0; j < m; j++) {
-        *n = m;
-        inv_matrix_det_incd(p, &d[0][0], n, i, j);
-        sum =
-            sum + *(p + 10 * i + j) * SIGNM(i + j) * inv_matrix_detd(&d[0][0],
-                                                                     n);
     }
 
     return (sum);

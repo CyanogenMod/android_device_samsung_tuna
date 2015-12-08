@@ -71,7 +71,7 @@ inv_error_t inv_set_motion_callback(void (*func) (unsigned short motion_state))
     return INV_SUCCESS;
 }
 
-inv_error_t inv_update_bias(void)
+static inv_error_t inv_update_bias(void)
 {
     INVENSENSE_FUNC_START;
     inv_error_t result;
@@ -127,7 +127,7 @@ inv_error_t inv_update_bias(void)
     return INV_SUCCESS;
 }
 
-inv_error_t MLAccelMotionDetection(struct inv_obj_t *inv_obj)
+static inv_error_t MLAccelMotionDetection(struct inv_obj_t *inv_obj)
 {
     long gain;
     unsigned long timeChange;
@@ -171,14 +171,18 @@ inv_error_t MLAccelMotionDetection(struct inv_obj_t *inv_obj)
             inv_obj->no_motion_accel_time = currentTime;
 
             // Check for change of state
-            if (!inv_get_gyro_present())
+
+            // TODO: With !gyro check in place, motion callbacks are NEVER fired?
+            //if (!inv_get_gyro_present())
                 inv_set_motion_state(INV_MOTION);
 
         } else if ((currentTime - inv_obj->no_motion_accel_time) >
                    5 * inv_obj->motion_duration) {
             // We have no motion according to accel
-            // Check fsor change of state
-            if (!inv_get_gyro_present())
+            // Check for change of state
+
+            // TODO: With !gyro check in place, motion callbacks are NEVER fired?
+            //if (!inv_get_gyro_present())
                 inv_set_motion_state(INV_NO_MOTION);
         }
     }
@@ -194,7 +198,7 @@ inv_error_t MLAccelMotionDetection(struct inv_obj_t *inv_obj)
  *          'no motion' state and update the internal motion status and bias
  *          calculations.
  */
-inv_error_t MLPollMotionStatus(struct inv_obj_t * inv_obj)
+static inv_error_t MLPollMotionStatus(struct inv_obj_t * inv_obj)
 {
     INVENSENSE_FUNC_START;
     unsigned char regs[3] = { 0 };
@@ -225,9 +229,8 @@ inv_error_t MLPollMotionStatus(struct inv_obj_t * inv_obj)
 
         motionFlag = (unsigned short)regs[0] * 256 + (unsigned short)regs[1];
 
-        _mlDebug(MPL_LOGV("motionFlag from RAM : 0x%04X\n", motionFlag);
-            )
-            if (motionFlag == inv_obj->motion_duration) {
+        _mlDebug(MPL_LOGV("motionFlag from RAM : 0x%04X\n", motionFlag);)
+        if (motionFlag == inv_obj->motion_duration) {
             if (inv_obj->motion_state == INV_MOTION) {
                 inv_update_bias();
                 repeatBiasUpdateTime = inv_get_tick_count();

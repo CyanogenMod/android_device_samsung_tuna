@@ -84,6 +84,7 @@ void mot_cb_wrapper(uint16_t val)
     if (gMPLSensor) {
         gMPLSensor->cbOnMotion(val);
     }
+    ALOGI("%s: Got motion callback! Value: %hu", __func__, val);
 }
 
 void procData_cb_wrapper()

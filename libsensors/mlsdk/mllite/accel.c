@@ -93,34 +93,6 @@ unsigned char inv_accel_present(void)
 }
 
 /**
- *  @brief   Query the accel slave address.
- *  @return  The 7-bit accel slave address.
- */
-unsigned char inv_get_slave_addr(void)
-{
-    INVENSENSE_FUNC_START;
-    struct mldl_cfg *mldl_cfg = inv_get_dl_config();
-    if (NULL != mldl_cfg->pdata)
-        return mldl_cfg->pdata->accel.address;
-    else
-        return 0;
-}
-
-/**
- *  @brief   Get the ID of the accel in use.
- *  @return  ID of the accel in use.
- */
-unsigned short inv_get_accel_id(void)
-{
-    INVENSENSE_FUNC_START;
-    struct mldl_cfg *mldl_cfg = inv_get_dl_config();
-    if (NULL != mldl_cfg->accel) {
-        return mldl_cfg->accel->id;
-    }
-    return ID_INVALID;
-}
-
-/**
  *  @brief  Get a sample of accel data from the device.
  *  @param  data
  *              the buffer to store the accel raw data for

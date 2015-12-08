@@ -85,21 +85,17 @@ static inv_error_t MLStateCloseCallbacks(void)
  *  @param  state   The state of which the label has to be returned.
  *  @return A string containing the state label.
 **/
-char *inv_state_name(unsigned char state)
+static char *inv_state_name(unsigned char state)
 {
     switch (state) {
     case INV_STATE_SERIAL_CLOSED:
         return INV_STATE_NAME(INV_STATE_SERIAL_CLOSED);
-        break;
     case INV_STATE_SERIAL_OPENED:
         return INV_STATE_NAME(INV_STATE_SERIAL_OPENED);
-        break;
     case INV_STATE_DMP_OPENED:
         return INV_STATE_NAME(INV_STATE_DMP_OPENED);
-        break;
     case INV_STATE_DMP_STARTED:
         return INV_STATE_NAME(INV_STATE_DMP_STARTED);
-        break;
     default:
         return NULL;
     }

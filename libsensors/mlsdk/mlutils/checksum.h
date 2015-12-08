@@ -6,9 +6,6 @@ extern "C" {
 #endif
 
 #include "mltypes.h"
-#ifdef INV_INCLUDE_LEGACY_HEADERS
-#include "checksum_legacy.h"
-#endif
 
     uint32_t inv_checksum(unsigned char *str, int len);
 

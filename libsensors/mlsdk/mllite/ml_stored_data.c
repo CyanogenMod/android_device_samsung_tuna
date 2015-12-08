@@ -342,9 +342,9 @@ inv_error_t inv_load_cal_V1(unsigned char *calData, unsigned short len)
     accelBias[2] = (long)((long long)accelBias[2] * 65536L *
                           inv_obj.accel_sens / 1073741824L);
     LOADCAL_LOG("accelBias[2] = %ld\n", accelBias[2]);
-    if (inv_set_array(INV_ACCEL_BIAS, accelBias)) {
-        LOG_RESULT_LOCATION(inv_set_array(INV_ACCEL_BIAS, accelBias));
-        return inv_set_array(INV_ACCEL_BIAS, accelBias);
+    if (inv_set_accel_bias(accelBias)) {
+        LOG_RESULT_LOCATION(inv_set_accel_bias(accelBias));
+        return inv_set_accel_bias(accelBias);
     }
 
     inv_obj.got_no_motion_bias = TRUE;
@@ -494,9 +494,9 @@ inv_error_t inv_load_cal_V2(unsigned char *calData, unsigned short len)
         LOADCAL_LOG("accel_bias[%d] = %ld\n", i, accel_bias[i]);
     }
 
-    if (inv_set_array(INV_ACCEL_BIAS, accel_bias)) {
-        LOG_RESULT_LOCATION(inv_set_array(INV_ACCEL_BIAS, accel_bias));
-        return inv_set_array(INV_ACCEL_BIAS, accel_bias);
+    if (inv_set_accel_bias(accel_bias)) {
+        LOG_RESULT_LOCATION(inv_set_accel_bias(accel_bias));
+        return inv_set_accel_bias(accel_bias);
     }
 
     inv_obj.got_no_motion_bias = TRUE;
@@ -651,9 +651,9 @@ inv_error_t inv_load_cal_V3(unsigned char *calData, unsigned short len)
         bias[i] = (int32_t) t;
         LOADCAL_LOG("accel_bias[%d] = %ld\n", i, bias[i]);
     }
-    if (inv_set_array(INV_ACCEL_BIAS, bias)) {
-        LOG_RESULT_LOCATION(inv_set_array(INV_ACCEL_BIAS, bias));
-        return inv_set_array(INV_ACCEL_BIAS, bias);
+    if (inv_set_accel_bias(bias)) {
+        LOG_RESULT_LOCATION(inv_set_accel_bias(bias));
+        return inv_set_accel_bias(bias);
     }
 
     /* read the compass biases */
@@ -882,9 +882,9 @@ inv_error_t inv_load_cal_V4(unsigned char *calData, unsigned short len)
         bias[i] = (int32_t) t;
         LOADCAL_LOG("accel_bias[%d] = %ld\n", i, bias[i]);
     }
-    if (inv_set_array(INV_ACCEL_BIAS, bias)) {
-        LOG_RESULT_LOCATION(inv_set_array(INV_ACCEL_BIAS, bias));
-        return inv_set_array(INV_ACCEL_BIAS, bias);
+    if (inv_set_accel_bias(bias)) {
+        LOG_RESULT_LOCATION(inv_set_accel_bias(bias));
+        return inv_set_accel_bias(bias);
     }
 
     /* read the compass biases */
@@ -1127,9 +1127,9 @@ inv_error_t inv_load_cal_V5(unsigned char *calData, unsigned short len)
         accelBias[i] = (long)tmp;
         LOADCAL_LOG("accelBias[%d] = %ld\n", i, accelBias[i]);
     }
-    if (inv_set_array(INV_ACCEL_BIAS, accelBias)) {
-        LOG_RESULT_LOCATION(inv_set_array(INV_ACCEL_BIAS, accelBias));
-        return inv_set_array(INV_ACCEL_BIAS, accelBias);
+    if (inv_set_accel_bias(accelBias)) {
+        LOG_RESULT_LOCATION(inv_set_accel_bias(accelBias));
+        return inv_set_accel_bias(accelBias);
     }
 
     inv_obj.got_no_motion_bias = TRUE;
@@ -1337,7 +1337,7 @@ inv_error_t inv_store_cal(unsigned char *calData, int length)
         }
     }
 
-    inv_get_array(INV_ACCEL_BIAS, bias);
+    inv_get_accel_bias(bias);
 
     /* write the accel biases */
     for (i = 0; i < 3; i++) {

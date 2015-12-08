@@ -46,9 +46,6 @@ extern "C" {
 #include "mldmp.h"
 #include "mlsl.h"
 #include "mpu.h"
-#ifdef INV_INCLUDE_LEGACY_HEADERS
-#include "ml_legacy.h"
-#endif
 
 /* ------------ */
 /* - Defines. - */
@@ -138,70 +135,6 @@ extern "C" {
 #define INV_PITCH                        (INV_X_AXIS)
 #define INV_ROLL                         (INV_Y_AXIS)
 #define INV_YAW                          (INV_Z_AXIS)
-
-/*************************************************************************/
-/*  Sensor types                                                         */
-/*************************************************************************/
-#define INV_GYROS                        0x0001
-#define INV_ACCELS                       0x0002
-
-/*************************************************************************/
-/*  Motion arrays                                                        */
-/*************************************************************************/
-#define INV_ROTATION_MATRIX              0x0003
-#define INV_QUATERNION                   0x0004
-#define INV_EULER_ANGLES                 0x0005
-#define INV_LINEAR_ACCELERATION          0x0006
-#define INV_LINEAR_ACCELERATION_WORLD    0x0007
-#define INV_GRAVITY                      0x0008
-#define INV_ANGULAR_VELOCITY             0x0009
-
-#define INV_GYRO_CALIBRATION_MATRIX      0x000B
-#define INV_ACCEL_CALIBRATION_MATRIX     0x000C
-#define INV_GYRO_BIAS                    0x000D
-#define INV_ACCEL_BIAS                   0x000E
-#define INV_GYRO_TEMP_SLOPE              0x000F
-
-#define INV_RAW_DATA                     0x0011
-#define INV_DMP_TAP                      0x0012
-#define INV_DMP_TAP2                     0x0021
-
-#define INV_EULER_ANGLES_X               0x0013
-#define INV_EULER_ANGLES_Y               0x0014
-#define INV_EULER_ANGLES_Z               0x0015
-
-#define INV_BIAS_UNCERTAINTY             0x0016
-#define INV_DMP_PACKET_NUMBER            0x0017
-#define INV_FOOTER                       0x0018
-
-#define INV_CONTROL_DATA                 0x0019
-
-#define INV_MAGNETOMETER                 0x001A
-#define INV_PEDLBS                       0x001B
-#define INV_MAG_RAW_DATA                 0x001C
-#define INV_MAG_CALIBRATION_MATRIX       0x001D
-#define INV_MAG_BIAS                     0x001E
-#define INV_HEADING                      0x001F
-
-#define INV_MAG_BIAS_ERROR               0x0020
-
-#define INV_PRESSURE                     0x0021
-#define INV_LOCAL_FIELD                  0x0022
-#define INV_MAG_SCALE                    0x0023
-
-#define INV_RELATIVE_QUATERNION          0x0024
-
-#define SET_QUATERNION                                  0x0001
-#define SET_GYROS                                       0x0002
-#define SET_LINEAR_ACCELERATION                         0x0004
-#define SET_GRAVITY                                     0x0008
-#define SET_ACCELS                                      0x0010
-#define SET_TAP                                         0x0020
-#define SET_PEDLBS                                      0x0040
-#define SET_LINEAR_ACCELERATION_WORLD                   0x0080
-#define SET_CONTROL                                     0x0100
-#define SET_PACKET_NUMBER                               0x4000
-#define SET_FOOTER                                      0x8000
 
 /*************************************************************************/
 /*  Integral reset options                                               */
@@ -459,8 +392,6 @@ struct inv_obj_t {
     /* Legacy functions for handling augmented data*/
     inv_error_t inv_get_array(int dataSet, long *data);
     inv_error_t inv_get_float_array(int dataSet, float *data);
-    inv_error_t inv_set_array(int dataSet, long *data);
-    inv_error_t inv_set_float_array(int dataSet, float *data);
     /* Individual functions for augmented data, per specific dataset */
 
 
@@ -550,13 +481,8 @@ struct inv_obj_t {
         inv_set_motion_callback(void (*func) (unsigned short motion_state));
     int inv_get_motion_state(void);
 
-    /*API for getting ML version. */
-    inv_error_t inv_get_version(unsigned char **version);
-
     inv_error_t inv_set_motion_interrupt(unsigned char on);
     inv_error_t inv_set_fifo_interrupt(unsigned char on);
-
-    int inv_get_interrupts(void);
 
     /* Simulated DMP */
     int inv_get_gyro_present(void);
@@ -566,7 +492,6 @@ struct inv_obj_t {
     inv_error_t inv_set_no_motion_threshAccel(long thresh);
     inv_error_t inv_reset_motion(void);
 
-    inv_error_t inv_update_bias(void);
     inv_error_t inv_set_dead_zone(void);
     void inv_start_bias_calc(void);
     void inv_stop_bias_calc(void);

@@ -55,7 +55,6 @@
 #define INV_Y_PRESSURE			(0x0800)
 #define INV_Z_PRESSURE			(0x1000)
 
-#define INV_TEMPERATURE			(0x2000)
 #define INV_TIME			(0x4000)
 
 #define INV_THREE_AXIS_GYRO		(0x000F)

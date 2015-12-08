@@ -50,7 +50,6 @@
 #include "dmpKey.h"
 #include "mlFIFOHW.h"
 #include "compass.h"
-#include "pressure.h"
 
 #include "log.h"
 #undef MPL_LOG_TAG
@@ -686,7 +685,7 @@ inv_error_t inv_set_offset(const short *offset)
  *  @return zero if the command is successful, an error code otherwise.
  *  @endif
  */
-inv_error_t
+static inv_error_t
 inv_get_mpu_memory_one_bank(unsigned char bank,
                             unsigned char memAddr,
                             unsigned short length, unsigned char *buffer)
@@ -732,6 +731,7 @@ inv_get_mpu_memory_one_bank(unsigned char bank,
  *  @return zero if the command is successful, an error code otherwise.
  *  @endif
  */
+static
 inv_error_t inv_set_mpu_memory_one_bank(unsigned char bank,
                                         unsigned short memAddr,
                                         unsigned short length,
@@ -954,42 +954,6 @@ unsigned char inv_get_product_rev(void)
  ******************************************************************************/
 
 /**
- * @brief   inv_get_interrupt_status returns the interrupt status from the specified
- *          interrupt pin.
- * @param   intPin
- *              Currently only the value INTPIN_MPU is supported.
- * @param   status
- *              The available statuses are:
- *              - BIT_MPU_RDY_EN
- *              - BIT_DMP_INT_EN
- *              - BIT_RAW_RDY_EN
- *
- * @return  INV_SUCCESS or a non-zero error code.
- */
-inv_error_t inv_get_interrupt_status(unsigned char intPin,
-                                     unsigned char *status)
-{
-    INVENSENSE_FUNC_START;
-
-    inv_error_t result;
-
-    switch (intPin) {
-
-    case INTPIN_MPU:
-            /*---- return the MPU interrupt status ----*/
-        result = inv_serial_read(sMLSLHandle, mldlCfg.addr,
-                                 MPUREG_INT_STATUS, 1, status);
-        break;
-
-    default:
-        result = INV_ERROR_INVALID_PARAMETER;
-        break;
-    }
-
-    return result;
-}
-
-/**
  *  @brief   query the current status of an interrupt source.
  *  @param   srcIndex
  *              index of the interrupt source.
@@ -1013,37 +977,6 @@ void inv_clear_interrupt_trigger(unsigned char srcIndex)
 {
     INVENSENSE_FUNC_START;
     intTrigger[srcIndex] = 0;
-}
-
-/**
- * @brief   inv_interrupt_handler function should be called when an interrupt is
- *          received.  The source parameter identifies which interrupt source
- *          caused the interrupt. Note that this routine should not be called
- *          directly from the interrupt service routine.
- *
- * @param   intSource   MPU, AUX1, AUX2, or timer. Can be one of: INTSRC_MPU, INTSRC_AUX1,
- *                      INTSRC_AUX2, or INT_SRC_TIMER.
- *
- * @return  Zero if the command is successful; an error code otherwise.
- */
-inv_error_t inv_interrupt_handler(unsigned char intSource)
-{
-    INVENSENSE_FUNC_START;
-    /*---- range check ----*/
-    if (intSource >= NUM_OF_INTSOURCES) {
-        return INV_ERROR;
-    }
-
-    /*---- save source of interrupt ----*/
-    intTrigger[intSource] = INT_TRIGGERED;
-
-#ifdef ML_USE_DMP_SIM
-    if (intSource == INTSRC_AUX1 || intSource == INTSRC_TIMER) {
-        MLSimHWDataInput();
-    }
-#endif
-
-    return INV_SUCCESS;
 }
 
 /***************************/

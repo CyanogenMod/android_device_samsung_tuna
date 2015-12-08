@@ -21,9 +21,6 @@
 #include "mpu.h"
 #include "mltypes.h"
 #include "mlinclude.h"
-#ifdef INV_INCLUDE_LEGACY_HEADERS
-#include "mlFIFOHW_legacy.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {

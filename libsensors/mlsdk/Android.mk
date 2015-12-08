@@ -39,24 +39,19 @@ ifeq ($(BOARD_INVENSENSE_APPLY_COMPASS_NOISE_FILTER),true)
 endif
 
 LOCAL_C_INCLUDES := \
-	$(MLSDK_PATH)/mldmp \
 	$(MLSDK_PATH)/mllite \
+	$(MLSDK_PATH)/mlutils \
 	$(MLSDK_PATH)/platform/include \
 	$(MLSDK_PATH)/platform/include/linux \
-	$(MLSDK_PATH)/mlutils \
-	$(MLSDK_PATH)/mlapps/common \
-	$(MLSDK_PATH)/mllite/akmd \
 	$(MLSDK_PATH)/platform/linux
 
 LOCAL_SRC_FILES := \
 	mlsdk/mllite/accel.c \
 	mlsdk/mllite/compass.c \
-	mlsdk/mllite/pressure.c \
 	mlsdk/mllite/mldl_cfg_mpu.c \
 	mlsdk/mllite/dmpDefault.c \
 	mlsdk/mllite/ml.c \
 	mlsdk/mllite/mlarray.c \
-	mlsdk/mllite/mlarray_legacy.c \
 	mlsdk/mllite/mlFIFO.c \
 	mlsdk/mllite/mlFIFOHW.c \
 	mlsdk/mllite/mlMathFunc.c \
@@ -68,9 +63,8 @@ LOCAL_SRC_FILES := \
 	mlsdk/mllite/mlsupervisor.c \
 	mlsdk/mllite/mlBiasNoMotion.c \
 	mlsdk/mllite/mlSetGyroBias.c \
-	mlsdk/mllite/ml_mputest.c \
-	mlsdk/mlutils/mputest.c \
-	mlsdk/mlutils/checksum.c
+	mlsdk/mllite/mlcompat.c \
+	mlsdk/mlutils/checksum.c \
 
 LOCAL_SHARED_LIBRARIES := libm libutils libcutils liblog libmlplatform
 include $(BUILD_SHARED_LIBRARY)

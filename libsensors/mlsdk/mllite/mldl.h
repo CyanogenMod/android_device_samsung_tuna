@@ -28,9 +28,6 @@
 #include "mlsl.h"
 #include <linux/mpu.h>
 #include "mldl_cfg.h"
-#ifdef INV_INCLUDE_LEGACY_HEADERS
-#include "mldl_legacy.h"
-#endif
 
     /* ------------ */
     /* - Defines. - */
@@ -155,21 +152,9 @@ extern "C" {
     unsigned short inv_dl_get_address(unsigned short key);
     uint_fast8_t inv_dmpkey_supported(unsigned short key);
 
-    inv_error_t inv_get_interrupt_status(unsigned char intPin,
-                                         unsigned char *value);
     unsigned char inv_get_interrupt_trigger(unsigned char index);
     void inv_clear_interrupt_trigger(unsigned char index);
-    inv_error_t inv_interrupt_handler(unsigned char intSource);
 
-    /** Only exposed for testing purposes */
-    inv_error_t inv_set_mpu_memory_one_bank(unsigned char bank,
-                                            unsigned short memAddr,
-                                            unsigned short length,
-                                            const unsigned char *buffer);
-    inv_error_t inv_get_mpu_memory_one_bank(unsigned char bank,
-                                            unsigned char memAddr,
-                                            unsigned short length,
-                                            unsigned char *buffer);
 #ifdef __cplusplus
 }
 #endif
