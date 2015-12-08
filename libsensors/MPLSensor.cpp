@@ -142,41 +142,41 @@ MPLSensor::MPLSensor() :
     pthread_mutex_lock(&mMplMutex);
 
     mpu_int_fd = open("/dev/mpuirq", O_RDWR);
-    if (mpu_int_fd == -1) {
-        ALOGE("could not open the mpu irq device node");
-    } else {
+    if (mpu_int_fd != -1) {
         fcntl(mpu_int_fd, F_SETFL, O_NONBLOCK);
         mIrqFds.add(MPUIRQ_FD, mpu_int_fd);
         mPollFds[MPUIRQ_FD].fd = mpu_int_fd;
         mPollFds[MPUIRQ_FD].events = POLLIN;
+    } else {
+        ALOGE("could not open the mpu irq device node");
     }
 
     accel_fd = open("/dev/accelirq", O_RDWR);
-    if (accel_fd == -1) {
-        ALOGE("could not open the accel irq device node");
-    } else {
+    if (accel_fd != -1) {
         fcntl(accel_fd, F_SETFL, O_NONBLOCK);
         mIrqFds.add(ACCELIRQ_FD, accel_fd);
         mPollFds[ACCELIRQ_FD].fd = accel_fd;
         mPollFds[ACCELIRQ_FD].events = POLLIN;
+    } else {
+        ALOGE("could not open the accel irq device node");
     }
 
     timer_fd = open("/dev/timerirq", O_RDWR);
-    if (timer_fd == -1) {
-        ALOGE("could not open the timer irq device node");
-    } else {
+    if (timer_fd != -1) {
         fcntl(timer_fd, F_SETFL, O_NONBLOCK);
         mIrqFds.add(TIMERIRQ_FD, timer_fd);
         mPollFds[TIMERIRQ_FD].fd = timer_fd;
         mPollFds[TIMERIRQ_FD].events = POLLIN;
+        if (accel_fd == -1) {
+            // no accel irq, but timer is available
+            mUseTimerIrqAccel = true;
+            ALOGW("using timer irq for accel");
+        }
+    } else {
+        ALOGE("could not open the timer irq device node");
     }
 
     data_fd = mpu_int_fd;
-
-    if ((accel_fd == -1) && (timer_fd != -1)) {
-        // no accel irq, but timer is available
-        mUseTimerIrqAccel = true;
-    }
 
     memset(mPendingEvents, 0, sizeof(mPendingEvents));
 
@@ -603,6 +603,7 @@ void MPLSensor::rvHandler(sensors_event_t* s, uint32_t* pending_mask,
 
     if (norm > 1.0f) {
         //renormalize
+        // TODO: Do we need to renormalize quat[0] as well?
         norm = sqrtf(norm);
         float inv_norm = 1.0f / norm;
         quat[1] = quat[1] * inv_norm;
@@ -614,11 +615,14 @@ void MPLSensor::rvHandler(sensors_event_t* s, uint32_t* pending_mask,
         quat[1] = -quat[1];
         quat[2] = -quat[2];
         quat[3] = -quat[3];
+        quat[0] = -quat[0];
     }
 
-    s->gyro.v[0] = quat[1];
-    s->gyro.v[1] = quat[2];
-    s->gyro.v[2] = quat[3];
+    s->data[0] = quat[1]; // "x * sin(θ/2)"
+    s->data[1] = quat[2]; // "y * sin(θ/2)"
+    s->data[2] = quat[3]; // "z * sin(θ/2)"
+    s->data[3] = quat[0]; // "    cos(θ/2)"
+    s->data[4] = -1;      // "estimated heading Accuracy (in radians) (-1 if unavailable)"
 }
 
 void MPLSensor::laHandler(sensors_event_t* s, uint32_t* pending_mask,
