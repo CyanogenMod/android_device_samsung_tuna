@@ -23,7 +23,7 @@ DEVICE_FOLDER := device/samsung/tuna
 
 $(call inherit-product-if-exists, hardware/ti/omap4/omap4.mk)
 
-DEVICE_PACKAGE_OVERLAYS := $(DEVICE_FOLDER)/overlay
+DEVICE_PACKAGE_OVERLAYS += $(DEVICE_FOLDER)/overlay
 
 PRODUCT_AAPT_CONFIG := normal
 PRODUCT_AAPT_PREF_CONFIG := xhdpi
