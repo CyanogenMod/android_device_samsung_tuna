@@ -77,8 +77,7 @@ PRODUCT_COPY_FILES += \
 	$(DEVICE_FOLDER)/rootdir/fstab.tuna:root/fstab.tuna
 
 # GPS
-PRODUCT_COPY_FILES += \
-	$(DEVICE_FOLDER)/gps.conf:system/etc/gps.conf
+$(call inherit-product, device/common/gps/gps_us_supl.mk)
 
 # Media profiles
 PRODUCT_COPY_FILES += \
