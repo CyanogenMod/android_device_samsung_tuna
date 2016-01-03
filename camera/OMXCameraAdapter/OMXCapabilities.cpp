@@ -575,6 +575,7 @@ status_t OMXCameraAdapter::encodeSizeCap(OMX_TI_CAPRESTYPE &res,
     return ret;
 }
 
+#ifdef OMAP_ENHANCEMENT_S3D
 status_t OMXCameraAdapter::encodeSizeCap3D(OMX_TI_CAPRESTYPE &res,
                       const CapResolution *cap,
                       size_t capCount,
@@ -607,6 +608,7 @@ status_t OMXCameraAdapter::encodeSizeCap3D(OMX_TI_CAPRESTYPE &res,
 
    return ret;
 }
+#endif
 
 status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params, OMX_TI_CAPTYPE &caps)
 {
@@ -618,6 +620,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
 
     LOG_FUNCTION_NAME;
 
+#ifdef OMAP_ENHANCEMENT_S3D
     for ( unsigned int i = 0 ; i < caps.ulCapFrameLayoutCount; i++ ) {
         if (caps.eCapFrameLayout[i] == OMX_TI_StereoFrameLayoutTopBottom)
         {
@@ -633,6 +636,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
             s3d_detected = 1;
         }
     }
+#endif
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
 
@@ -653,6 +657,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
         params->set(CameraProperties::MAX_PICTURE_WIDTH, caps.tImageResRange.nWidthMax);
         params->set(CameraProperties::MAX_PICTURE_HEIGHT, caps.tImageResRange.nHeightMax);
     }
+#ifdef OMAP_ENHANCEMENT_S3D
     else // 3d mode
     {
         if (s3d_tb_detected)
@@ -714,6 +719,7 @@ status_t OMXCameraAdapter::insertImageSizes(CameraProperties::Properties* params
             params->set(CameraProperties::SUPPORTED_PICTURE_SUBSAMPLED_SIZES, supported);
         }
     }
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -730,6 +736,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
 
     LOG_FUNCTION_NAME;
 
+#ifdef OMAP_ENHANCEMENT_S3D
     for ( unsigned int i = 0 ; i < caps.ulPrvFrameLayoutCount; i++ ) {
         if (caps.ePrvFrameLayout[i] == OMX_TI_StereoFrameLayoutTopBottom)
         {
@@ -745,6 +752,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
             s3d_detected = 1;
         }
     }
+#endif
 
     memset(supported, '\0', MAX_PROP_VALUE_LENGTH);
 
@@ -762,12 +770,14 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
             return ret;
         }
 
+#ifndef CAMERAHAL_TUNA
         /* Insert Portait Resolutions by verifying Potrait Capability Support */
         ret = encodeSizeCap(caps.tRotatedPreviewResRange,
                             mPreviewPortraitRes,
                             ARRAY_SIZE(mPreviewPortraitRes),
                             supported,
                             MAX_PROP_VALUE_LENGTH);
+#endif
 
         if ( NO_ERROR != ret ) {
             CAMHAL_LOGEB("Error inserting supported Potrait preview sizes 0x%x", ret);
@@ -775,6 +785,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
             params->set(CameraProperties::SUPPORTED_PREVIEW_SIZES, supported);
         }
     }
+#ifdef OMAP_ENHANCEMENT_S3D
     else // 3d mode
     {
         if (s3d_tb_detected)
@@ -839,6 +850,7 @@ status_t OMXCameraAdapter::insertPreviewSizes(CameraProperties::Properties* para
             params->set(CameraProperties::SUPPORTED_PREVIEW_SUBSAMPLED_SIZES, supported);
         }
      }
+#endif
 
     LOG_FUNCTION_NAME_EXIT;
 
@@ -956,6 +968,7 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
         }
     }
 
+#ifndef CAMERAHAL_TUNA
     for (int i = 0; i < caps.ulImageCodingFormatCount ; i++) {
         ret = encodeImageCodingFormatCap(caps.eImageCodingFormat[i],
                                         mImageCodingFormat,
@@ -967,8 +980,16 @@ status_t OMXCameraAdapter::insertImageFormats(CameraProperties::Properties* para
             break;
         }
     }
+#endif
 
     if ( NO_ERROR == ret ) {
+#ifdef CAMERAHAL_TUNA
+        // jpeg is supported but not advertised
+        if (supported[0] != '\0') {
+            strncat(supported, PARAM_SEP, 1);
+        }
+        strncat(supported, android::CameraParameters::PIXEL_FORMAT_JPEG, MAX_PROP_VALUE_LENGTH - 1);
+#endif
         params->set(CameraProperties::SUPPORTED_PICTURE_FORMATS, supported);
     }
 
@@ -1589,15 +1610,23 @@ status_t OMXCameraAdapter::insertRaw(CameraProperties::Properties* params, OMX_T
     LOG_FUNCTION_NAME;
 
     memset(supported, '\0', sizeof(supported));
+#ifdef CAMERAHAL_TUNA
+    sprintf(supported,"%d",int(caps.tImageResRange.nWidthMax));
+#else
     sprintf(supported,"%d",int(caps.uSenNativeResWidth));
+#endif
     params->set(CameraProperties::RAW_WIDTH, supported);
 
     memset(supported, '\0', sizeof(supported));
+#ifdef CAMERAHAL_TUNA
+    sprintf(supported,"%d",int(caps.tImageResRange.nHeightMax));
+#else
     if (caps.bMechanicalMisalignmentSupported) {
         sprintf(supported,"%d",int(caps.uSenNativeResHeight) * 2);
     } else {
         sprintf(supported,"%d",int(caps.uSenNativeResHeight));
     }
+#endif
     params->set(CameraProperties::RAW_HEIGHT, supported);
 
     LOG_FUNCTION_NAME_EXIT;
@@ -1616,11 +1645,19 @@ status_t OMXCameraAdapter::insertFacing(CameraProperties::Properties* params, OM
 
     memset(supported, '\0', sizeof(supported));
 
+#ifdef CAMERAHAL_TUNA
+    if (caps.tSenMounting.nSenId == SENSORID_S5K4E1GA) {
+        i = 0; // FACING_BACK
+    } else {
+        i = 1; // FACING_FRONT
+    }
+#else
     for (i = 0; i < ARRAY_SIZE(mFacing); i++) {
         if((OMX_TI_SENFACING_TYPE)mFacing[i].num == caps.tSenMounting.eFacing) {
             break;
         }
     }
+#endif
     if ( i == ARRAY_SIZE(mFacing) ) {
         p = "UNKNOWN_FACING";
     } else {
@@ -1665,6 +1702,7 @@ status_t OMXCameraAdapter::insertAutoConvergenceModes(CameraProperties::Properti
 
     memset(supported, '\0', sizeof(supported));
 
+#ifndef CAMERAHAL_TUNA
     for ( unsigned int i = 0 ; i < caps.ulAutoConvModesCount; i++ ) {
         p = getLUTvalue_OMXtoHAL(caps.eAutoConvModes[i], mAutoConvergenceLUT);
         if ( NULL != p ) {
@@ -1674,6 +1712,7 @@ status_t OMXCameraAdapter::insertAutoConvergenceModes(CameraProperties::Properti
             strncat(supported, p, REMAINING_BYTES(supported));
         }
     }
+#endif
     params->set(CameraProperties::AUTOCONVERGENCE_MODE_VALUES, supported);
 
     LOG_FUNCTION_NAME_EXIT;
@@ -1751,6 +1790,7 @@ status_t OMXCameraAdapter::insertCaptureModes(CameraProperties::Properties* para
         strncat(supported, TICameraParameters::ZOOM_BRACKETING, REMAINING_BYTES(supported));
     }
 
+#ifndef CAMERAHAL_TUNA
     for ( unsigned int i = 0 ; i < caps.ulBracketingModesCount; i++ ) {
         p = getLUTvalue_OMXtoHAL(caps.eBracketingModes[i], mBracketingModesLUT);
         if ( NULL != p ) {
@@ -1760,6 +1800,7 @@ status_t OMXCameraAdapter::insertCaptureModes(CameraProperties::Properties* para
             strncat(supported, p, REMAINING_BYTES(supported));
         }
     }
+#endif
 
     params->set(CameraProperties::CAP_MODE_VALUES, supported);
 
@@ -1833,10 +1874,14 @@ status_t OMXCameraAdapter::insertGBCESupported(CameraProperties::Properties* par
 
     LOG_FUNCTION_NAME;
 
+#ifndef CAMERAHAL_TUNA
     if (caps.bGbceSupported) {
         params->set(CameraProperties::SUPPORTED_GBCE,
                     android::CameraParameters::TRUE);
-    } else {
+    } else
+#endif
+    {
+
         params->set(CameraProperties::SUPPORTED_GBCE,
                     android::CameraParameters::FALSE);
     }
@@ -2005,7 +2050,9 @@ status_t OMXCameraAdapter::insertDefaults(CameraProperties::Properties* params, 
     params->set(CameraProperties::SENSOR_ORIENTATION, DEFAULT_SENSOR_ORIENTATION);
     params->set(CameraProperties::AUTOCONVERGENCE_MODE, DEFAULT_AUTOCONVERGENCE_MODE);
     params->set(CameraProperties::MANUAL_CONVERGENCE, DEFAULT_MANUAL_CONVERGENCE);
+#ifndef CAMERAHAL_TUNA
     params->set(CameraProperties::MECHANICAL_MISALIGNMENT_CORRECTION, DEFAULT_MECHANICAL_MISALIGNMENT_CORRECTION_MODE);
+#endif
 
     char property[PROPERTY_VALUE_MAX];
     property_get("ro.product.manufacturer",
@@ -2210,9 +2257,11 @@ bool OMXCameraAdapter::_checkOmxTiCap(const OMX_TI_CAPTYPE & caps)
     CAMHAL_CHECK_OMX_TI_CAP(ulFlashCount, eFlashModes);
     CAMHAL_CHECK_OMX_TI_CAP(ulPrvVarFPSModesCount, tPrvVarFPSModes);
     CAMHAL_CHECK_OMX_TI_CAP(ulCapVarFPSModesCount, tCapVarFPSModes);
+#ifndef CAMERAHAL_TUNA
     CAMHAL_CHECK_OMX_TI_CAP(ulAutoConvModesCount, eAutoConvModes);
     CAMHAL_CHECK_OMX_TI_CAP(ulBracketingModesCount, eBracketingModes);
     CAMHAL_CHECK_OMX_TI_CAP(ulImageCodingFormatCount, eImageCodingFormat);
+#endif
     CAMHAL_CHECK_OMX_TI_CAP(ulPrvFrameLayoutCount, ePrvFrameLayout);
     CAMHAL_CHECK_OMX_TI_CAP(ulCapFrameLayoutCount, eCapFrameLayout);
 
@@ -2248,28 +2297,36 @@ bool OMXCameraAdapter::_dumpOmxTiCap(const int sensorId, const OMX_TI_CAPTYPE & 
     CAMHAL_LOGD("tPreviewResRange.nHeightMin = %d", int(caps.tPreviewResRange.nHeightMin));
     CAMHAL_LOGD("tPreviewResRange.nWidthMax  = %d", int(caps.tPreviewResRange.nWidthMax));
     CAMHAL_LOGD("tPreviewResRange.nHeightMax = %d", int(caps.tPreviewResRange.nHeightMax));
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGD("tPreviewResRange.nMaxResInPixels = %d", int(caps.tPreviewResRange.nMaxResInPixels));
+#endif
 
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGD("");
     CAMHAL_LOGD("tRotatedPreviewResRange.nWidthMin  = %d", int(caps.tRotatedPreviewResRange.nWidthMin));
     CAMHAL_LOGD("tRotatedPreviewResRange.nHeightMin = %d", int(caps.tRotatedPreviewResRange.nHeightMin));
     CAMHAL_LOGD("tRotatedPreviewResRange.nWidthMax  = %d", int(caps.tRotatedPreviewResRange.nWidthMax));
     CAMHAL_LOGD("tRotatedPreviewResRange.nHeightMax = %d", int(caps.tRotatedPreviewResRange.nHeightMax));
     CAMHAL_LOGD("tRotatedPreviewResRange.nMaxResInPixels = %d", int(caps.tRotatedPreviewResRange.nMaxResInPixels));
+#endif
 
     CAMHAL_LOGD("");
     CAMHAL_LOGD("tImageResRange.nWidthMin  = %d", int(caps.tImageResRange.nWidthMin));
     CAMHAL_LOGD("tImageResRange.nHeightMin = %d", int(caps.tImageResRange.nHeightMin));
     CAMHAL_LOGD("tImageResRange.nWidthMax  = %d", int(caps.tImageResRange.nWidthMax));
     CAMHAL_LOGD("tImageResRange.nHeightMax = %d", int(caps.tImageResRange.nHeightMax));
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGD("tImageResRange.nMaxResInPixels = %d", int(caps.tImageResRange.nMaxResInPixels));
+#endif
 
     CAMHAL_LOGD("");
     CAMHAL_LOGD("tThumbResRange.nWidthMin  = %d", int(caps.tThumbResRange.nWidthMin));
     CAMHAL_LOGD("tThumbResRange.nHeightMin = %d", int(caps.tThumbResRange.nHeightMin));
     CAMHAL_LOGD("tThumbResRange.nWidthMax  = %d", int(caps.tThumbResRange.nWidthMax));
     CAMHAL_LOGD("tThumbResRange.nHeightMax = %d", int(caps.tThumbResRange.nHeightMax));
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGD("tThumbResRange.nMaxResInPixels = %d", int(caps.tThumbResRange.nMaxResInPixels));
+#endif
 
     CAMHAL_LOGD("");
     CAMHAL_LOGD("ulWhiteBalanceCount = %d", int(caps.ulWhiteBalanceCount));
@@ -2344,10 +2401,13 @@ bool OMXCameraAdapter::_dumpOmxTiCap(const int sensorId, const OMX_TI_CAPTYPE & 
     CAMHAL_LOGD("");
     CAMHAL_LOGD("tSenMounting.nSenId    = %d", int(caps.tSenMounting.nSenId));
     CAMHAL_LOGD("tSenMounting.nRotation = %d", int(caps.tSenMounting.nRotation));
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGD("tSenMounting.bMirror   = %d", int(caps.tSenMounting.bMirror));
     CAMHAL_LOGD("tSenMounting.bFlip     = %d", int(caps.tSenMounting.bFlip));
     CAMHAL_LOGD("tSenMounting.eFacing   = %d", int(caps.tSenMounting.eFacing));
+#endif
 
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGD("");
     CAMHAL_LOGD("ulAutoConvModesCount = %d", int(caps.ulAutoConvModesCount));
     for ( int i = 0; i < int(caps.ulAutoConvModesCount); ++i )
@@ -2357,19 +2417,26 @@ bool OMXCameraAdapter::_dumpOmxTiCap(const int sensorId, const OMX_TI_CAPTYPE & 
     CAMHAL_LOGD("ulBracketingModesCount = %d", int(caps.ulBracketingModesCount));
     for ( int i = 0; i < int(caps.ulBracketingModesCount); ++i )
         CAMHAL_LOGD("  eBracketingModes[%2d] = %d", i, int(caps.eBracketingModes[i]));
+#endif
 
     CAMHAL_LOGD("");
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGD("bGbceSupported    = %d", int(caps.bGbceSupported));
     CAMHAL_LOGD("bRawJpegSupported = %d", int(caps.bRawJpegSupported));
+#endif
 
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGD("");
     CAMHAL_LOGD("ulImageCodingFormatCount = %d", int(caps.ulImageCodingFormatCount));
     for ( int i = 0; i < int(caps.ulImageCodingFormatCount); ++i )
         CAMHAL_LOGD("  eImageCodingFormat[%2d] = %d", i, int(caps.eImageCodingFormat[i]));
+#endif
 
     CAMHAL_LOGD("");
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGD("uSenNativeResWidth       = %d", int(caps.uSenNativeResWidth));
     CAMHAL_LOGD("uSenNativeResHeight      = %d", int(caps.uSenNativeResHeight));
+#endif
     CAMHAL_LOGD("ulAlgoAreasFocusCount    = %d", int(caps.ulAlgoAreasFocusCount));
     CAMHAL_LOGD("ulAlgoAreasExposureCount = %d", int(caps.ulAlgoAreasExposureCount));
     CAMHAL_LOGD("bAELockSupported         = %d", int(caps.bAELockSupported));
@@ -2488,6 +2555,19 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
     }
 #endif
 
+#ifdef CAMERAHAL_TUNA
+    // missing camera caps
+    caps->bAELockSupported = OMX_TRUE;
+    caps->bAWBLockSupported = OMX_TRUE;
+    caps->bStillCapDuringVideoSupported = OMX_TRUE;
+    caps->bVideoStabilizationSupported = OMX_TRUE;
+    if (caps->tSenMounting.nSenId == SENSORID_S5K4E1GA) {
+        caps->nFocalLength = 343; // DEFAULT_FOCAL_LENGTH_PRIMARY
+    } else {
+        caps->nFocalLength = 195; // DEFAULT_FOCAL_LENGTH_SECONDARY
+    }
+#endif
+
 #ifdef CAMERAHAL_DEBUG
     _dumpOmxTiCap(sensorId, *caps);
 #endif
@@ -2498,7 +2578,9 @@ status_t OMXCameraAdapter::getCaps(const int sensorId, CameraProperties::Propert
     }
 
     CAMHAL_LOGDB("sen mount id=%u", (unsigned int)caps->tSenMounting.nSenId);
+#ifndef CAMERAHAL_TUNA
     CAMHAL_LOGDB("facing id=%u", (unsigned int)caps->tSenMounting.eFacing);
+#endif
 
  EXIT:
     if (bufferlist) {

@@ -131,7 +131,9 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mComponentState = OMX_StateLoaded;
 
     CAMHAL_LOGVB("OMX_GetHandle -0x%x sensor_index = %lu", eError, mSensorIndex);
+#ifndef CAMERAHAL_TUNA
     initDccFileDataSave(&mCameraAdapterParameters.mHandleComp, mCameraAdapterParameters.mPrevPortIndex);
+#endif
 
     eError = OMX_SendCommand(mCameraAdapterParameters.mHandleComp,
                                   OMX_CommandPortDisable,
@@ -1020,7 +1022,7 @@ status_t OMXCameraAdapter::setupTunnel(uint32_t SliceHeight, uint32_t EncoderHan
         CAMHAL_LOGEB("OMX_SetParameter OMX_IndexParamPortDefinition Error- %x", eError);
     }
 
-#ifndef MOTOROLA_CAMERA
+#ifdef OMAP_ENHANCEMENT_VTC
     //Slice  Configuration
     OMX_TI_PARAM_VTCSLICE VTCSlice;
     OMX_INIT_STRUCT_PTR(&VTCSlice, OMX_TI_PARAM_VTCSLICE);
@@ -1204,6 +1206,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
         CAMHAL_LOGEB("Unsupported port index (%lu)", port);
     }
 
+#ifdef OMAP_ENHANCEMENT_S3D
     if (( mSensorIndex == OMX_TI_StereoSensor ) && (OMX_CAMERA_PORT_VIDEO_OUT_VIDEO != port)) {
         ret = setS3DFrameLayout(port);
         if ( NO_ERROR != ret )
@@ -1212,6 +1215,7 @@ status_t OMXCameraAdapter::setFormat(OMX_U32 port, OMXCameraPortParameters &port
             return ret;
             }
         }
+#endif
 
     eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
             OMX_IndexParamPortDefinition, &portCheck);
@@ -2655,6 +2659,7 @@ status_t OMXCameraAdapter::printComponentVersion(OMX_HANDLETYPE handle)
     return ret;
 }
 
+#ifdef OMAP_ENHANCEMENT_S3D
 status_t OMXCameraAdapter::setS3DFrameLayout(OMX_U32 port) const
 {
     OMX_ERRORTYPE eError = OMX_ErrorNone;
@@ -2709,6 +2714,7 @@ status_t OMXCameraAdapter::setS3DFrameLayout(OMX_U32 port) const
 
     return NO_ERROR;
 }
+#endif
 
 status_t OMXCameraAdapter::autoFocus()
 {
@@ -3585,7 +3591,9 @@ OMX_ERRORTYPE OMXCameraAdapter::OMXCameraAdapterFillBufferDone(OMX_IN OMX_HANDLE
             }
         }
 
+#ifndef CAMERAHAL_TUNA
         sniffDccFileDataSave(pBuffHeader);
+#endif
 
         stat |= advanceZoom();
 
@@ -4049,7 +4057,7 @@ status_t OMXCameraAdapter::setExtraData(bool enable, OMX_U32 nPortIndex, OMX_EXT
     extraDataControl.nPortIndex = nPortIndex;
     extraDataControl.eExtraDataType = eType;
 #ifdef CAMERAHAL_TUNA
-    extraDataControl.eCameraView = OMX_2D;
+    extraDataControl.eCameraView = OMX_2D_Prv;
 #endif
 
     if (enable) {

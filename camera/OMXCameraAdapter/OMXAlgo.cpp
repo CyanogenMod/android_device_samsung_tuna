@@ -79,8 +79,13 @@ status_t OMXCameraAdapter::setParametersAlgo(const android::CameraParameters &pa
         }
 
     } else {
+#ifdef CAMERAHAL_TUNA
+        capMode = OMXCameraAdapter::HIGH_QUALITY_ZSL;
+        mCapabilitiesOpMode = MODE_ZEROSHUTTERLAG;
+#else
         capMode = OMXCameraAdapter::HIGH_QUALITY;
         mCapabilitiesOpMode = MODE_HIGH_QUALITY;
+#endif
     }
 
     if ( mSensorIndex == 2 ) {
@@ -638,6 +643,13 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
 
     LOG_FUNCTION_NAME;
 
+#ifdef CAMERAHAL_TUNA
+    OMX_TI_PARAM_ZSLHISTORYLENTYPE zslHistoryLen;
+    OMX_INIT_STRUCT_PTR (&zslHistoryLen, OMX_TI_PARAM_ZSLHISTORYLENTYPE);
+    // ZSL has 4 buffers history by default
+    zslHistoryLen.nHistoryLen = 4;
+#endif
+
     //CAC is disabled by default
     OMX_INIT_STRUCT_PTR (&bCAC, OMX_CONFIG_BOOLEANTYPE);
     OMX_INIT_STRUCT_PTR (&singlePrevMode, OMX_TI_CONFIG_SINGLEPREVIEWMODETYPE);
@@ -690,6 +702,19 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
 
         if( NO_ERROR == ret )
             {
+#ifdef CAMERAHAL_TUNA
+            if (!mIternalRecordingHint) {
+	            eError = OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
+	                             ( OMX_INDEXTYPE ) OMX_TI_IndexParamZslHistoryLen,
+	                             &zslHistoryLen);
+	            if (OMX_ErrorNone != eError) {
+	                CAMHAL_LOGEB("Error while configuring ZSL History len 0x%x", eError);
+	                ret = Utils::ErrorUtils::omxToAndroidError(eError);
+	            } else {
+	                CAMHAL_LOGDA("ZSL History len configured successfully");
+	            }
+            }
+#endif
             eError =  OMX_SetParameter(mCameraAdapterParameters.mHandleComp,
                                        ( OMX_INDEXTYPE ) OMX_IndexCameraOperatingMode,
                                        &camMode);
@@ -704,6 +729,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
                 }
             }
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
         if((NO_ERROR == ret) && (OMXCameraAdapter::CP_CAM == mode)) {
             //Configure Single Preview Mode
             eError =  OMX_SetConfig(mCameraAdapterParameters.mHandleComp,
@@ -716,7 +742,7 @@ status_t OMXCameraAdapter::setCaptureMode(OMXCameraAdapter::CaptureMode mode)
                 CAMHAL_LOGDA("single preview mode configured successfully");
             }
         }
-
+#endif
 
         if( NO_ERROR == ret )
             {
@@ -1211,7 +1237,7 @@ status_t OMXCameraAdapter::setVFramerate(OMX_U32 minFrameRate, OMX_U32 maxFrameR
 status_t OMXCameraAdapter::setMechanicalMisalignmentCorrection(const bool enable)
 {
     status_t ret = NO_ERROR;
-#ifndef MOTOROLA_CAMERA
+#if !defined(MOTOROLA_CAMERA) && !defined(CAMERAHAL_TUNA)
     OMX_ERRORTYPE eError = OMX_ErrorNone;
     OMX_TI_CONFIG_MM mm;
 

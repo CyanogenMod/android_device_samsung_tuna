@@ -2658,7 +2658,15 @@ status_t CameraHal::startRecording( )
     // then we need to force default capture mode (as opposed to video mode)
     if ( ((valstr = mParameters.get(android::CameraParameters::KEY_FOCUS_MODE)) != NULL) &&
          (strcmp(valstr, android::CameraParameters::FOCUS_MODE_CONTINUOUS_PICTURE) == 0) ){
+#ifdef CAMERAHAL_TUNA
+        // workaround video recording stuck in FOCUS_MODE_CONTINUOUS_PICTURE
+        // introducing artifacts and breaking video snapshots on tuna
+        mParameters.set(android::CameraParameters::KEY_FOCUS_MODE,
+                        android::CameraParameters::FOCUS_MODE_CONTINUOUS_VIDEO);
+        restartPreviewRequired = setVideoModeParameters(mParameters);
+#else
         restartPreviewRequired = resetVideoModeParameters();
+#endif
     }
 
     // only need to check recording hint if preview restart is not already needed

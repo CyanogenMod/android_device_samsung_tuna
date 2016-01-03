@@ -387,7 +387,7 @@ status_t OMXCameraAdapter::setParameters3A(const android::CameraParameters &para
         }
     }
 
-#ifndef MOTOROLA_CAMERA
+#if !defined(MOTOROLA_CAMERA) && !defined(CAMERAHAL_TUNA)
 // TI extensions for enable/disable algos
     declareParameter3ABool(params, TICameraParameters::KEY_ALGO_EXTERNAL_GAMMA,
                        mParameters3A.AlgoExternalGamma, SetAlgoExternalGamma, "External Gamma");
@@ -411,7 +411,7 @@ status_t OMXCameraAdapter::setParameters3A(const android::CameraParameters &para
     return ret;
 }
 
-#ifndef MOTOROLA_CAMERA
+#if !defined(MOTOROLA_CAMERA) && !defined(CAMERAHAL_TUNA)
 void OMXCameraAdapter::updateGammaTable(const char* gamma)
 {
     unsigned int plane = 0;
@@ -1852,7 +1852,7 @@ status_t OMXCameraAdapter::setParameter3ABool(const OMX_INDEXTYPE omx_idx,
   return Utils::ErrorUtils::omxToAndroidError(eError);
 }
 
-#ifndef MOTOROLA_CAMERA
+#if !defined(MOTOROLA_CAMERA) && !defined(CAMERAHAL_TUNA)
 status_t OMXCameraAdapter::setAlgoExternalGamma(Gen3A_settings& Gen3A)
 {
     return setParameter3ABool((OMX_INDEXTYPE) OMX_TI_IndexConfigExternalGamma, Gen3A.AlgoExternalGamma, "External Gamma");
@@ -2098,7 +2098,7 @@ status_t OMXCameraAdapter::apply3Asettings( Gen3A_settings& Gen3A )
                   }
                   break;
 
-#ifndef MOTOROLA_CAMERA
+#if !defined(MOTOROLA_CAMERA) && !defined(CAMERAHAL_TUNA)
                 //TI extensions for enable/disable algos
                 case SetAlgoExternalGamma:
                   {
