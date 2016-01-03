@@ -105,5 +105,4 @@ for FILE in `egrep -v '(^#|^$)' ../tuna/common-proprietary-files.txt`; do
     fi
 done
 
-echo "This is designed to extract files from an official cm-11 build"
 ../tuna/setup-makefiles.sh

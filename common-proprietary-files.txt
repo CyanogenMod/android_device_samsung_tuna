@@ -1,23 +1,31 @@
-vendor/bin/fRom
-vendor/bin/pvrsrvctl
+# 9-axis sensor support
+vendor/lib/libinvensense_mpl.so
+
+# Ducati
 vendor/firmware/ducati-m3.bin
-vendor/firmware/libpn544_fw.so
-vendor/lib/drm/libdrmwvmplugin.so
+
+# Face recognition SDK
+vendor/lib/libfrsdk.so
+
+# SGX DDK 1.9@2291151
+etc/powervr.ini
 vendor/lib/egl/libEGL_POWERVR_SGX540_120.so
 vendor/lib/egl/libGLESv1_CM_POWERVR_SGX540_120.so
 vendor/lib/egl/libGLESv2_POWERVR_SGX540_120.so
-vendor/lib/hw/gralloc.omap4.so
+vendor/lib/hw/gralloc.omap4460.so
+vendor/lib/libglslcompiler_SGX540_120.so
+vendor/lib/libIMGegl_SGX540_120.so
+vendor/lib/libpvr2d_SGX540_120.so
+vendor/lib/libpvrANDROID_WSEGL_SGX540_120.so
+vendor/lib/libPVRScopeServices_SGX540_120.so
+vendor/lib/libsrv_init_SGX540_120.so
+vendor/lib/libsrv_um_SGX540_120.so
+vendor/lib/libusc_SGX540_120.so
+
+# Widevine DRM
+vendor/lib/drm/libdrmwvmplugin.so
 vendor/lib/mediadrm/libwvdrmengine.so
-vendor/lib/libfrsdk.so
-vendor/lib/libglslcompiler.so
-vendor/lib/libIMGegl.so
-vendor/lib/libinvensense_mpl.so
-vendor/lib/libpvr2d.so
-vendor/lib/libpvrANDROID_WSEGL.so
-vendor/lib/libPVRScopeServices.so
-vendor/lib/libsrv_init.so
-vendor/lib/libsrv_um.so
-vendor/lib/libusc.so
-vendor/lib/libwvdrm_L1.so
+vendor/lib/libdrmdecrypt.so
+vendor/lib/libwvdrm_L3.so
 vendor/lib/libwvm.so
-vendor/lib/libWVStreamControlAPI_L1.so
+vendor/lib/libWVStreamControlAPI_L3.so
