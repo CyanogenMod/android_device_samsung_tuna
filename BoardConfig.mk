@@ -69,10 +69,6 @@ BOARD_CREATE_TUNA_HDCP_KEYS_SYMLINK := true
 # set if the target supports FBIO_WAITFORVSYNC
 TARGET_HAS_WAITFORVSYNC := true
 
-# device-specific extensions to the updater binary
-TARGET_RECOVERY_UPDATER_LIBS += librecovery_updater_tuna
-TARGET_RELEASETOOLS_EXTENSIONS := $(DEVICE_FOLDER)
-
 # Filesystem
 TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USERIMAGES_USE_F2FS := true
