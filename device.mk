@@ -34,7 +34,7 @@ PRODUCT_PACKAGES += \
 	audio.primary.tuna \
 	audio.r_submix.default \
 	audio.usb.default \
-	camera.omap4 \
+	camera.tuna \
 	lights.tuna \
 	nfc.tuna \
 	libpn544_fw \
