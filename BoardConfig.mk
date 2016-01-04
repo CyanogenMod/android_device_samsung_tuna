@@ -82,8 +82,9 @@ BOARD_FLASH_BLOCK_SIZE := 4096
 # Disable journaling on system.img to save space.
 BOARD_SYSTEMIMAGE_JOURNAL_SIZE := 0
 
-# Enable dex-preoptimization to speed up first boot sequence
+# Pre-optimize the boot image
 WITH_DEXPREOPT := true
+WITH_DEXPREOPT_BOOT_IMG_ONLY := true
 
 # Needed for RIL
 TARGET_NEEDS_BIONIC_MD5 := true
