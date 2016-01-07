@@ -237,7 +237,7 @@ status_t OMXCameraAdapter::setupEXIF()
     struct timeval sTv;
     struct tm *pTime;
     OMXCameraPortParameters * capData = NULL;
-    CameraBuffer *memmgr_buf_array;
+    CameraBuffer *memmgr_buf_array = NULL;
     int buf_size = 0;
 
     LOG_FUNCTION_NAME;
@@ -371,6 +371,28 @@ status_t OMXCameraAdapter::setupEXIF()
              {
              exifTags->ulImageHeight = capData->mHeight;
              exifTags->eStatusImageHeight = OMX_TI_TagUpdated;
+             }
+
+         if ( OMX_TI_TagReadWrite == exifTags->eStatusPixelXDimension &&
+              OMX_TI_TagReadWrite == exifTags->eStatusPixelYDimension)
+             {
+             if (mPictureRotation == 90 || mPictureRotation == 270) {
+                 exifTags->ulPixelXDimension = capData->mHeight;
+                 exifTags->ulPixelYDimension = capData->mWidth;
+                 }
+             else
+                 {
+                 exifTags->ulPixelXDimension = capData->mWidth;
+                 exifTags->ulPixelYDimension = capData->mHeight;
+                 }
+             exifTags->eStatusPixelXDimension = OMX_TI_TagUpdated;
+             exifTags->eStatusPixelYDimension = OMX_TI_TagUpdated;
+             }
+
+         if ( OMX_TI_TagReadWrite == exifTags->eStatusOrientation)
+             {
+             exifTags->usOrientation = 0;
+             exifTags->eStatusOrientation = OMX_TI_TagUpdated;
              }
 
          if ( ( OMX_TI_TagReadWrite == exifTags->eStatusGpsLatitude ) &&
@@ -560,14 +582,20 @@ status_t OMXCameraAdapter::setupEXIF_libjpeg(ExifElementsTable* exifTable,
 
     if ((NO_ERROR == ret)) {
         char temp_value[5];
-        snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%lu", capData->mWidth);
+        snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%lu", (unsigned long)capData->mWidth);
         ret = exifTable->insertElement(TAG_IMAGE_WIDTH, temp_value);
+        if ((NO_ERROR == ret)) {
+            ret = exifTable->insertElement(TAG_EXIF_IMAGE_WIDTH, temp_value);
+        }
      }
 
     if ((NO_ERROR == ret)) {
         char temp_value[5];
-        snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%lu", capData->mHeight);
+        snprintf(temp_value, sizeof(temp_value)/sizeof(char), "%lu", (unsigned long)capData->mHeight);
         ret = exifTable->insertElement(TAG_IMAGE_LENGTH, temp_value);
+        if ((NO_ERROR == ret)) {
+            ret = exifTable->insertElement(TAG_EXIF_IMAGE_LENGTH, temp_value);
+        }
      }
 
     if ((NO_ERROR == ret) && (mEXIFData.mGPSData.mLatValid)) {
