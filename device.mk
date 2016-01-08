@@ -111,13 +111,6 @@ PRODUCT_PACKAGES += \
 	Nfc \
 	Tag
 
-# Live Wallpapers
-PRODUCT_PACKAGES += \
-	LiveWallpapers \
-	LiveWallpapersPicker \
-	VisualizationWallpapers \
-	librs_jni
-
 # Key maps
 PRODUCT_COPY_FILES += \
 	$(DEVICE_FOLDER)/keymap/tuna-gpio-keypad.kl:system/usr/keylayout/tuna-gpio-keypad.kl \
@@ -198,9 +191,6 @@ PRODUCT_PROPERTY_OVERRIDES += \
 	debug.vfr.enable=0
 
 PRODUCT_CHARACTERISTICS := nosdcard
-
-PRODUCT_PACKAGES += \
-	com.android.future.usb.accessory
 
 # Filesystem management tools
 PRODUCT_PACKAGES += \
