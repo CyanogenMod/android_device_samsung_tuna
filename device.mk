@@ -170,7 +170,7 @@ ADDITIONAL_BUILD_PROPERTIES += \
 
 # I/O Scheduler
 PRODUCT_PROPERTY_OVERRIDES += \
-	sys.io.scheduler=cfq
+	sys.io.scheduler=bfq
 
 PRODUCT_PROPERTY_OVERRIDES += \
 	ro.opengles.version=131072 \
