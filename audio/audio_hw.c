@@ -3600,8 +3600,27 @@ static int adev_set_mic_mute(struct audio_hw_device *dev, bool state)
 {
     struct tuna_audio_device *adev = (struct tuna_audio_device *)dev;
 
-    if (adev->mode == AUDIO_MODE_IN_CALL)
-            ril_set_mic_mute(&adev->ril, state);
+    /* Muting the microphone for calls works differently.
+     * Basically, the mic_mute flag causes in_read to 0 out its read data,
+     * however in_read is not used in the RIL context and has no effect there.
+     * Previous versions of Android would send the mic mute command to the RIL,
+     * however it is now expected to be handled here instead. */
+
+    if (adev->mode == AUDIO_MODE_IN_CALL) {
+        ril_set_mic_mute(&adev->ril, state);
+        /* While we would prefer to keep the traditional behavior of telling
+         * the RIL to mute the mic, this is not doable on toro due to its RIL
+         * ignoring the particular RIL_REQUEST_OEM_HOOK_RAW for it, which is
+         * the only feasible way to do it from a source like the audio HAL.
+         * Instead we must go over the RIL's head and change the mixer volume.
+         * select_output_device also uses this same method to mute the in-call
+         * mic, albeit temporarily, as well. */
+        unsigned int channel;
+        int volume = (state ? 0 : MIXER_ABE_GAIN_0DB);
+        for (channel = 0; channel < 2; channel++)
+            mixer_ctl_set_value(adev->mixer_ctls.voice_ul_volume,
+                                channel, volume);
+    }
 
     adev->mic_mute = state;
 
