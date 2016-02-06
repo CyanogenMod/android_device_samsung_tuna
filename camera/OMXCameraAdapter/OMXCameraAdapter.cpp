@@ -247,6 +247,7 @@ status_t OMXCameraAdapter::initialize(CameraProperties::Properties* caps)
     mCapabilities = caps;
     mZoomUpdating = false;
     mZoomUpdate = false;
+    mPrevZoomModeIsVideo = false;
     mGBCE = BRIGHTNESS_OFF;
     mGLBCE = BRIGHTNESS_OFF;
     mParameters3A.ExposureLock = OMX_FALSE;
@@ -4149,6 +4150,7 @@ OMXCameraAdapter::OMXCameraAdapter(size_t sensor_index)
     mOmxInitialized = false;
     mComponentState = OMX_StateInvalid;
     mSensorIndex = sensor_index;
+    mPrevZoomSensorIndex = sensor_index;
     mPictureRotation = 0;
     // Initial values
     mTimeSourceDelta = 0;
