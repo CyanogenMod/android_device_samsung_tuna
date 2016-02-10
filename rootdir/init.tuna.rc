@@ -1,3 +1,4 @@
+import init.omap4.rc
 import init.tuna.usb.rc
 
 on init
@@ -40,7 +41,6 @@ on post-fs-data
 
 on boot
     mount debugfs /sys/kernel/debug /sys/kernel/debug
-    chmod 0666 /dev/pvrsrvkm
 
     # autosuspend root hubs immediatly after attached devices
     write /sys/bus/usb/devices/usb1/power/autosuspend_delay_ms 0
@@ -78,14 +78,6 @@ on fs
 
     # pvr module
     insmod /system/lib/modules/pvrsrvkm_sgx540_120.ko
-    start pvrsrvinit
-
-    # change permissions for Tiler driver
-    chmod 0777 /dev/tiler
-    chmod 0777 /dev/dmm
-
-    # change permissions for ION driver
-    chmod 0777 /dev/ion
 
     # add symlink for HDCP key
     symlink /factory/hdcp.keys /system/vendor/firmware/hdcp.keys
@@ -144,13 +136,6 @@ service dumpdcc /system/bin/dumpdcc
     group media
     class late_start
     oneshot
-
-service pvrsrvinit /system/bin/pvrsrvinit
-    class core
-    user root
-    group root
-    oneshot
-    disabled
 
 # create filesystems if necessary
 service setup_fs /system/bin/setup_fs \

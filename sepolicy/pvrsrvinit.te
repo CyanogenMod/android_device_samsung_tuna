@@ -1,8 +1,0 @@
-# pvrsrvinit
-type pvrsrvinit, domain;
-type pvrsrvinit_exec, exec_type, file_type;
-
-init_daemon_domain(pvrsrvinit)
-
-allow pvrsrvinit gpu_device:chr_file { read write ioctl open };
-allow pvrsrvinit self:capability sys_module;
