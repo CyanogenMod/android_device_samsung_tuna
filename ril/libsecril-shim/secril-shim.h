@@ -4,13 +4,15 @@
 #define LOG_TAG "secril-shim"
 #define RIL_SHLIB
 
+#include <dlfcn.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <cutils/compiler.h>
 #include <cutils/properties.h>
 #include <sys/cdefs.h>
 #include <telephony/ril.h>
 #include <utils/Log.h>
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define RIL_LIB_PATH "/vendor/lib/libsec-ril.so"
 

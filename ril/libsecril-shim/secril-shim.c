@@ -22,7 +22,7 @@ static void onRequestShim(int request, void *data, size_t datalen, RIL_Token t)
 			} else if (tunaVariant == VARIANT_TORO || tunaVariant == VARIANT_TOROPLUS) {
 				raf = RAF_LTE | RAF_IS95A | RAF_IS95B | RAF_1xRTT | RAF_EVDO_0 | RAF_EVDO_A | RAF_EVDO_B | RAF_EHRPD;
 			}
-			if (__predict_true(raf != RAF_UNKNOWN)) {
+			if (CC_LIKELY(raf != RAF_UNKNOWN)) {
 				RIL_RadioCapability rc[1] =
 				{
 					{ /* rc[0] */
@@ -79,7 +79,7 @@ const RIL_RadioFunctions* RIL_Init(const struct RIL_Env *env, int argc, char **a
 	void *origRil;
 	char propBuf[PROPERTY_VALUE_MAX];
 
-	if (__predict_true(tunaVariant == VARIANT_INIT)) {
+	if (CC_LIKELY(tunaVariant == VARIANT_INIT)) {
 		property_get("ro.product.subdevice", propBuf, "unknown");
 		if (!strcmp(propBuf, "maguro")) {
 			tunaVariant = VARIANT_MAGURO;
@@ -98,23 +98,21 @@ const RIL_RadioFunctions* RIL_Init(const struct RIL_Env *env, int argc, char **a
 	/* Open and Init the original RIL. */
 
 	origRil = dlopen(RIL_LIB_PATH, RTLD_LOCAL);
-	if (__predict_false(!origRil)) {
+	if (CC_UNLIKELY(!origRil)) {
 		RLOGE("%s: failed to load '" RIL_LIB_PATH  "': %s\n", __func__, dlerror());
 		return NULL;
 	}
 
 	origRilInit = dlsym(origRil, "RIL_Init");
-	if (__predict_false(!origRilInit)) {
+	if (CC_UNLIKELY(!origRilInit)) {
 		RLOGE("%s: couldn't find original RIL_Init!\n", __func__);
-		dlclose(origRil);
-		return NULL;
+		goto fail_after_dlopen;
 	}
 
 	origRilFunctions = origRilInit(env, argc, argv);
-	if (__predict_false(!origRilFunctions)) {
+	if (CC_UNLIKELY(!origRilFunctions)) {
 		RLOGE("%s: the original RIL_Init derped.\n", __func__);
-		dlclose(origRil);
-		return NULL;
+		goto fail_after_dlopen;
 	}
 
 	/* Shim functions as needed. */
@@ -122,4 +120,8 @@ const RIL_RadioFunctions* RIL_Init(const struct RIL_Env *env, int argc, char **a
 	shimmedFunctions.onRequest = onRequestShim;
 
 	return &shimmedFunctions;
+
+fail_after_dlopen:
+	dlclose(origRil);
+	return NULL;
 }
