@@ -72,6 +72,48 @@ static void onRequestShim(int request, void *data, size_t datalen, RIL_Token t)
 	origRilFunctions->onRequest(request, data, datalen, t);
 }
 
+static void patchMem(void *libHandle, bool beforeRilInit)
+{
+	/* hSecOem is a nice symbol to use, it's in all 3 RILs and gives us easy
+	 * access to the memory region we're generally most interested in. */
+	uint8_t *hSecOem;
+
+	hSecOem = dlsym(libHandle, "hSecOem");
+	if (CC_UNLIKELY(!hSecOem)) {
+		RLOGE("%s: hSecOem could not be found!\n", __func__);
+		return;
+	}
+
+	RLOGD("%s: hSecOem found at %p!\n", __func__, hSecOem);
+
+	switch (tunaVariant) {
+		case VARIANT_MAGURO:
+			if (!beforeRilInit) {
+				/* 'ril features' is (only) used to enable/disable an extension
+				 * to LAST_CALL_FAIL_CAUSE. Android had just been happily
+				 * ignoring the extra data being sent, until it did introduce a
+				 * vendor extension for LAST_CALL_FAIL_CAUSE in Android 6.0;
+				 * of course it doesn't like this RIL's extra data now (crashes),
+				 * so we need to disable it. rilFeatures is initialized in
+				 * RIL_Init, so defer it until afterwards. */
+				uint8_t *rilFeatures = hSecOem + 0x1918;
+
+				RLOGD("%s: rilFeatures is currently %" PRIu8 "\n", __func__, *rilFeatures);
+				if (CC_LIKELY(*rilFeatures == 1)) {
+					*rilFeatures = 0;
+					RLOGI("%s: rilFeatures was changed to %" PRIu8 "\n", __func__, *rilFeatures);
+				} else {
+					RLOGD("%s: rilFeatures was not 1; leaving alone\n", __func__);
+				}
+			}
+			break;
+		case VARIANT_TORO:
+			break;
+		case VARIANT_TOROPLUS:
+			break;
+	}
+}
+
 const RIL_RadioFunctions* RIL_Init(const struct RIL_Env *env, int argc, char **argv)
 {
 	RIL_RadioFunctions const* (*origRilInit)(const struct RIL_Env *env, int argc, char **argv);
@@ -109,11 +151,17 @@ const RIL_RadioFunctions* RIL_Init(const struct RIL_Env *env, int argc, char **a
 		goto fail_after_dlopen;
 	}
 
+	/* Fix RIL issues by patching memory: pre-init pass. */
+	patchMem(origRil, true);
+
 	origRilFunctions = origRilInit(env, argc, argv);
 	if (CC_UNLIKELY(!origRilFunctions)) {
 		RLOGE("%s: the original RIL_Init derped.\n", __func__);
 		goto fail_after_dlopen;
 	}
+
+	/* Fix RIL issues by patching memory: post-init pass. */
+	patchMem(origRil, false);
 
 	/* Shim functions as needed. */
 	shimmedFunctions = *origRilFunctions;
