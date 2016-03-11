@@ -122,7 +122,7 @@ const RIL_RadioFunctions* RIL_Init(const struct RIL_Env *env, int argc, char **a
 	char propBuf[PROPERTY_VALUE_MAX];
 
 	if (CC_LIKELY(tunaVariant == VARIANT_INIT)) {
-		property_get("ro.product.subdevice", propBuf, "unknown");
+		property_get("ro.product.device", propBuf, "unknown");
 		if (!strcmp(propBuf, "maguro")) {
 			tunaVariant = VARIANT_MAGURO;
 		} else if (!strcmp(propBuf, "toro")) {
