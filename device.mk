@@ -62,8 +62,12 @@ PRODUCT_PACKAGES += \
 PRODUCT_PROPERTY_OVERRIDES += \
 	media.aac_51_output_enabled=true
 
+# SMC
 PRODUCT_PACKAGES += \
 	keystore.tuna
+
+ PRODUCT_COPY_FILES += \
+	$(DEVICE_FOLDER)/tee-fs-setup.sh:system/vendor/bin/tee-fs-setup.sh
 
 # Init files
 PRODUCT_COPY_FILES += \
