@@ -62,8 +62,8 @@ PRODUCT_PACKAGES += \
 PRODUCT_PROPERTY_OVERRIDES += \
 	media.aac_51_output_enabled=true
 
-#PRODUCT_PACKAGES += \
-#	keystore.tuna
+PRODUCT_PACKAGES += \
+	keystore.tuna
 
 # Init files
 PRODUCT_COPY_FILES += \

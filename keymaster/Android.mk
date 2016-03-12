@@ -29,7 +29,7 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
 	libcore/include \
 	external/openssl/include \
-	hardware/ti/omap4xxx/security/tf_sdk/include
+	hardware/ti/omap4/security/tf_sdk/include
 
 LOCAL_CFLAGS := -fvisibility=hidden -Wall -Werror
 
