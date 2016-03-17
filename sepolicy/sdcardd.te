@@ -1,0 +1,3 @@
+# sdcardd
+allow sdcardd self:capability { setuid setgid dac_override };
+allow sdcardd system_data_file:dir  create_dir_perms;

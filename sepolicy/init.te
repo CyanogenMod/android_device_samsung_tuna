@@ -1,3 +1,9 @@
 # init
 allow init radio_device:lnk_file relabelto;
 allow init self:capability sys_module;
+
+# For sdcard link
+allow init tmpfs:lnk_file create;
+
+# For 'cpuset' module requests
+allow init kernel:system module_request;

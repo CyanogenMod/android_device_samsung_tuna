@@ -1,0 +1,6 @@
+# smc_pa_ctrl
+type smc_pa_ctrl, domain;
+type smc_pa_ctrl_exec, exec_type, file_type;
+init_daemon_domain(smc_pa_ctrl)
+
+allow smc_pa_ctrl tee_device:chr_file rw_file_perms;

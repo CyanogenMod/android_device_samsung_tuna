@@ -1,0 +1,4 @@
+# system_server
+
+# Needed for /system/vendor/lib/hw/gps.omap4.so
+allow system_server system_file:file { execmod };

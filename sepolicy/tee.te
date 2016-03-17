@@ -1,0 +1,8 @@
+# tee_data_file cannot be used as it has data_file_type,
+# which triggers 'neverallow' for 'recovery' domain.
+type tee_file, file_type;
+
+allow tee unlabeled:dir search;
+allow tee tee_file:dir rw_dir_perms;
+allow tee tee_file:file create_file_perms;
+allow tee labeledfs:filesystem associate;

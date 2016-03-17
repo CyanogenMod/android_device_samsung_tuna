@@ -1,0 +1,42 @@
+# recovery
+type recovery_exec, exec_type, file_type;
+
+# Instead of 'init_daemon_domain(recovery)' we're using
+# 'domain_auto_trans', which is the first part of 'init_daemon_domain'.
+# We cannot use 'init_daemon_domain' directly as it also results
+# in automatic transition from 'tmpfs' to 'recovery_tmpfs' which
+# is not accounted for by existing recovery.te rules and, moreover,
+# is forbidden by 'neverallow' that blocks execution of files not on
+# 'tmpfs'.
+domain_auto_trans(init, recovery_exec, recovery)
+
+# For running tunasetup
+allow recovery shell_exec:file read;
+
+# For tee_fs setprop
+allow recovery property_socket:sock_file write;
+allow recovery init:unix_stream_socket connectto;
+allow recovery tee_fs_prop:property_service set;
+
+# For creating or checking /tee
+allow recovery tee_block_device:blk_file { getattr open ioctl read write };
+allow recovery unlabeled:dir { add_name create getattr open read relabelfrom relabelto search setattr write };
+allow recovery block_device:dir { search };
+allow recovery recovery:capability { chown dac_override fowner sys_admin };
+allow recovery kmsg_device:chr_file { getattr ioctl open write };
+allow recovery tee_file:dir { getattr open read relabelto setattr };
+
+# For running mke2fs when creating tee
+allow recovery system_file:file execute_no_trans;
+
+# For remounting and relabeling /factory and /system
+allow recovery efs_block_device:blk_file { getattr open ioctl read write };
+allow recovery system_block_device:blk_file { open ioctl read };
+allow recovery labeledfs:filesystem { mount remount };
+allow recovery kernel:process setsched;
+allow recovery rootfs:dir mounton;
+allow recovery { efs_file radio_efs_file bluetooth_efs_file }:dir { getattr open read search setattr };
+allow recovery { efs_file radio_efs_file bluetooth_efs_file }:file { getattr open read relabelfrom relabelto setattr };
+
+# For rebooting in tunasetup
+allow recovery powerctl_prop:property_service set;

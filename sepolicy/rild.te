@@ -1,4 +1,15 @@
 # rild
-allow rild radio_data_file:dir { r_dir_perms setattr };
+
+# Needed for /data/radio/*, /data/misc/radio/* and /factory/*
+allow rild { radio_data_file radio_efs_file }:dir { rw_dir_perms setattr };
+allow rild { radio_data_file radio_efs_file }:file rw_file_perms;
+
 allow rild self:process execmem;
-allow rild block_device:dir search;
+allow rild block_device:dir { search };
+
+# Needed for /system/vendor/lib/libsec-ril.so
+allow rild system_file:file { execute execmod };
+
+# Have no idea why rild needs access to logcat,
+# potentially to catch errors from some other components?
+allow rild logcat_exec:file { getattr read open execute execute_no_trans };

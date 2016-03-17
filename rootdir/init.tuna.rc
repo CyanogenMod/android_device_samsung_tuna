@@ -142,6 +142,7 @@ service setup_fs /system/bin/setup_fs \
         class core
         user root
         group root
+        seclabel u:r:fs_setup:s0
         oneshot
 
 service tf_daemon /system/bin/tf_daemon \
@@ -157,6 +158,7 @@ service smc_pa_wvdrm /system/bin/smc_pa_ctrl \
         class core
         user drmrpc
         group drmrpc
+        seclabel u:r:smc_pa_ctrl:s0
         oneshot
         disabled
 
@@ -251,6 +253,7 @@ service tee_fs_setup /system/vendor/bin/tee-fs-setup.sh
     class core
     user root
     group root
+    seclabel u:r:recovery:s0
     disabled
     oneshot
 
