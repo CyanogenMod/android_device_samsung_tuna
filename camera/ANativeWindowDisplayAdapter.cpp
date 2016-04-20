@@ -403,6 +403,8 @@ int ANativeWindowDisplayAdapter::disableDisplay(bool cancel_buffer)
         }
        else
         {
+        CAMHAL_LOGEA("disableDisplay: resetting mANativeWindow to NULL");
+        returnBuffersToWindow();
         mANativeWindow = NULL;
         // Clear the frames with camera adapter map
         mFramesWithCameraAdapterMap.clear();
@@ -475,6 +477,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
 
         if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
+            returnBuffersToWindow();
             mANativeWindow = NULL;
         }
 
@@ -489,6 +492,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
 
         if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
+            returnBuffersToWindow();
             mANativeWindow = NULL;
         }
 
@@ -510,6 +514,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
 
         if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
+            returnBuffersToWindow();
             mANativeWindow = NULL;
         }
 
@@ -542,6 +547,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
 
             if ( NO_INIT == err ) {
                 CAMHAL_LOGEA("Preview surface abandoned!");
+                returnBuffersToWindow();
                 mANativeWindow = NULL;
             }
 
@@ -595,6 +601,7 @@ CameraBuffer* ANativeWindowDisplayAdapter::allocateBufferList(int width, int hei
 
             if ( NO_INIT == err ) {
                 CAMHAL_LOGEA("Preview surface abandoned!");
+                returnBuffersToWindow();
                 mANativeWindow = NULL;
             }
 
@@ -712,6 +719,7 @@ status_t ANativeWindowDisplayAdapter::minUndequeueableBuffers(int& undequeueable
 
         if ( NO_INIT == ret ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
+            returnBuffersToWindow();
             mANativeWindow = NULL;
         }
 
@@ -793,6 +801,7 @@ status_t ANativeWindowDisplayAdapter::returnBuffersToWindow()
              ret = mANativeWindow->cancel_buffer(mANativeWindow, handle);
              if ( NO_INIT == ret ) {
                  CAMHAL_LOGEA("Preview surface abandoned!");
+                 returnBuffersToWindow();
                  mANativeWindow = NULL;
                  return ret;
              } else if ( NO_ERROR != ret ) {
@@ -1145,6 +1154,7 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
 
         if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
+            returnBuffersToWindow();
             mANativeWindow = NULL;
         }
 
@@ -1157,6 +1167,7 @@ bool ANativeWindowDisplayAdapter::handleFrameReturn()
 
         if ( NO_INIT == err ) {
             CAMHAL_LOGEA("Preview surface abandoned!");
+            returnBuffersToWindow();
             mANativeWindow = NULL;
         }
 
