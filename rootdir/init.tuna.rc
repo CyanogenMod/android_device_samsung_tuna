@@ -49,7 +49,6 @@ on fs
     mkdir /tee 0770 drmrpc drmrpc
 
     mount_all /fstab.tuna
-    swapon_all /fstab.tuna
 
     restorecon /dev/block/platform/omap/omap_hsmmc.0/by-name/radio
     restorecon_recursive /factory
