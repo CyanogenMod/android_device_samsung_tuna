@@ -45,6 +45,7 @@
 
 # Block devices
 /dev/block/mmcblk0					u:object_r:root_block_device:s0
+/dev/block/mmcblk0p9					u:object_r:radio_device:s0
 /dev/block/platform/omap/omap_hsmmc.0/by-name/boot	u:object_r:boot_block_device:s0
 /dev/block/platform/omap/omap_hsmmc.0/by-name/recovery	u:object_r:recovery_block_device:s0
 /dev/block/platform/omap/omap_hsmmc.0/by-name/cache	u:object_r:cache_block_device:s0
