@@ -22,10 +22,14 @@ vendor/lib/libsrv_init_SGX540_120.so
 vendor/lib/libsrv_um_SGX540_120.so
 vendor/lib/libusc_SGX540_120.so
 
+# SMC
+vendor/firmware/smc_pa_wvdrm.ift
+vendor/etc/smc_normal_world_android_cfg.ini
+
 # Widevine DRM
 vendor/lib/drm/libdrmwvmplugin.so
 vendor/lib/mediadrm/libwvdrmengine.so
-vendor/lib/libdrmdecrypt.so
+vendor/lib/libdrmmtkutil.so
 vendor/lib/libwvdrm_L3.so
 vendor/lib/libwvm.so
 vendor/lib/libWVStreamControlAPI_L3.so
