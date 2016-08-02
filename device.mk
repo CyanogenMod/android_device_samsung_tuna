@@ -184,6 +184,13 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PROPERTY_OVERRIDES += \
 	camera2.portability.force_api=1
 
+# Snap support
+PRODUCT_PACKAGES += \
+	Snap
+
+PRODUCT_PROPERTY_OVERRIDES += \
+	camera.qcom.misc.disable=1
+
 # Disable VFR support for encoders
 PRODUCT_PROPERTY_OVERRIDES += \
 	debug.vfr.enable=0
